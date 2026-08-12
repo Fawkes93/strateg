@@ -13,6 +13,7 @@ Record (20 bytes, big-endian after LZMA):
 from __future__ import annotations
 
 import lzma
+import random
 import struct
 import threading
 import time
@@ -162,7 +163,10 @@ def _http_get(
                 # Retry rate limits / temporary failures
                 if r.status_code in (429, 500, 502, 503, 504):
                     wait = backoff * (2**attempt)
-                    time.sleep(min(wait, 60.0))
+                    if r.status_code in (429, 503):
+                        wait = max(wait, 8.0)
+                    wait = min(wait, 90.0) + random.uniform(0.0, 2.0)
+                    time.sleep(wait)
                     continue
                 return r.status_code, r.content
             except Exception as e:
@@ -220,6 +224,44 @@ def fetch_hour(
     ticks = decode_bi5(content, hour, scale)
     path.write_bytes(content)
     return ticks
+
+
+def cache_hour(
+    symbol: str,
+    when: datetime,
+    *,
+    cache_dir: Path,
+    base_url: str = DEFAULT_BASE,
+    force: bool = False,
+    client: Optional["httpx.Client"] = None,
+) -> str:
+    """
+    Ensure one hour's .bi5 is on disk. Does **not** decode ticks (safe for
+    multi-month downloads). Returns 'cache' | 'net' | 'empty'.
+    """
+    symbol = normalize_duka_symbol(symbol)
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    else:
+        when = when.astimezone(timezone.utc)
+    hour = when.replace(minute=0, second=0, microsecond=0)
+    path = _cache_path(cache_dir, symbol, hour)
+
+    if path.exists() and not force:
+        return "cache"
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    url = _hour_url(base_url, symbol, hour)
+    status, content = _http_get(url, client=client)
+
+    if status == 404 or not content:
+        path.write_bytes(b"")
+        return "empty"
+    if status != 200:
+        raise RuntimeError(f"Dukascopy HTTP {status} for {url}")
+
+    path.write_bytes(content)
+    return "net"
 
 
 def fetch_hours_parallel(
@@ -353,6 +395,128 @@ def fetch_hours_parallel(
     return all_ticks
 
 
+def cache_hours(
+    symbol: str,
+    hours: List[datetime],
+    *,
+    cache_dir: Path,
+    base_url: str = DEFAULT_BASE,
+    force: bool = False,
+    max_workers: int = DEFAULT_DOWNLOAD_WORKERS,
+    progress: Optional[Callable[..., None]] = None,
+) -> Dict[str, int]:
+    """
+    Download missing .bi5 hours to disk without decoding ticks.
+
+    Returns counts: hours, cache, net, empty.
+    """
+    counts = {"hours": 0, "cache": 0, "net": 0, "empty": 0}
+    if not hours:
+        return counts
+
+    symbol = normalize_duka_symbol(symbol)
+    n = len(hours)
+    workers = max(1, min(int(max_workers), n, 32))
+    counts["hours"] = n
+
+    need_net: List[datetime] = []
+    n_cache = 0
+    for h in hours:
+        if not force and bi5_hour_is_cached(cache_dir, symbol, h):
+            n_cache += 1
+        else:
+            need_net.append(h)
+    counts["cache"] = n_cache
+
+    if progress:
+        progress(
+            hours_done=n_cache,
+            hours_total=n,
+            from_cache=n_cache,
+            from_net=0,
+            message=f"Hour {n_cache}/{n} · cache {n_cache} · net 0 (scan done)",
+        )
+
+    lock = threading.Lock()
+    n_net = 0
+    n_empty = 0
+    done = n_cache
+
+    def _bump(kind: str) -> None:
+        nonlocal done, n_net, n_empty
+        with lock:
+            done += 1
+            if kind == "net":
+                n_net += 1
+            elif kind == "empty":
+                n_empty += 1
+            d, nn, ne = done, n_net, n_empty
+        if progress:
+            progress(
+                hours_done=d,
+                hours_total=n,
+                from_cache=n_cache,
+                from_net=nn,
+                message=f"Hour {d}/{n} · cache {n_cache} · net {nn} · empty {ne}",
+            )
+
+    def _one(h: datetime, client: "httpx.Client") -> None:
+        kind = cache_hour(
+            symbol,
+            h,
+            cache_dir=cache_dir,
+            base_url=base_url,
+            force=force,
+            client=client,
+        )
+        _bump(kind if kind in ("net", "empty") else "net")
+
+    pending = list(need_net)
+    attempt = 0
+    while pending:
+        attempt += 1
+        w = workers if attempt == 1 else max(2, workers // 2)
+        if httpx is None:
+            raise RuntimeError("httpx is required: pip install httpx")
+        limits = httpx.Limits(
+            max_connections=w + 4,
+            max_keepalive_connections=w,
+        )
+        failed: List[Tuple[datetime, str]] = []
+        with httpx.Client(
+            timeout=httpx.Timeout(60.0, connect=20.0),
+            follow_redirects=True,
+            headers=_HEADERS,
+            limits=limits,
+        ) as client:
+            with ThreadPoolExecutor(max_workers=w) as pool:
+                fut_map = {pool.submit(_one, h, client): h for h in pending}
+                for f in as_completed(fut_map):
+                    h = fut_map[f]
+                    try:
+                        f.result()
+                    except Exception as e:
+                        failed.append((h, str(e)))
+        if not failed:
+            break
+        if attempt >= 4:
+            sample = "; ".join(f"{h.isoformat()}: {err[:80]}" for h, err in failed[:3])
+            raise RuntimeError(
+                f"Dukascopy still failing {len(failed)} hour(s) after {attempt} attempts. "
+                f"Examples: {sample}"
+            )
+        time.sleep(min(2.0 * attempt, 8.0))
+        pending = [h for h, _ in failed]
+        if progress:
+            progress(
+                message=f"Retry {attempt}: {len(pending)} hours failed, reducing workers to {w}",
+            )
+
+    counts["net"] = n_net
+    counts["empty"] = n_empty
+    return counts
+
+
 def hour_range(start: datetime, end: datetime) -> List[datetime]:
     if start.tzinfo is None:
         start = start.replace(tzinfo=timezone.utc)
@@ -418,6 +582,57 @@ def download_range(
     filtered = [t for t in all_ticks if start <= t.ts < end]
     filtered.sort(key=lambda t: t.ts)
     return filtered
+
+
+def month_windows(start: datetime, end: datetime) -> List[Tuple[datetime, datetime]]:
+    """Split [start, end) into calendar-month windows (UTC)."""
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    else:
+        start = start.astimezone(timezone.utc)
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+    else:
+        end = end.astimezone(timezone.utc)
+    if end <= start:
+        return []
+
+    cur = datetime(start.year, start.month, 1, tzinfo=timezone.utc)
+    out: List[Tuple[datetime, datetime]] = []
+    while cur < end:
+        if cur.month == 12:
+            nxt = datetime(cur.year + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            nxt = datetime(cur.year, cur.month + 1, 1, tzinfo=timezone.utc)
+        a, b = max(cur, start), min(nxt, end)
+        if a < b:
+            out.append((a, b))
+        cur = nxt
+    return out
+
+
+def cache_range(
+    symbol: str,
+    start: datetime,
+    end: datetime,
+    *,
+    cache_dir: Path,
+    base_url: str = DEFAULT_BASE,
+    force: bool = False,
+    progress: Optional[Callable[..., None]] = None,
+    max_workers: int = DEFAULT_DOWNLOAD_WORKERS,
+) -> Dict[str, int]:
+    """Download [start, end) hours to the bi5 cache without assembling ticks."""
+    hours = hour_range(start, end)
+    return cache_hours(
+        symbol,
+        hours,
+        cache_dir=cache_dir,
+        base_url=base_url,
+        force=force,
+        max_workers=max_workers,
+        progress=progress,
+    )
 
 
 def parse_ymd(s: str) -> datetime:
