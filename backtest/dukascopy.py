@@ -1,0 +1,537 @@
+"""
+Free Dukascopy historical tick download (public datafeed .bi5 files).
+
+No account. Same feed used by dukascopy-node, duka, Tickstory, etc.
+
+URL (month is **0-indexed** — January = 00):
+  https://datafeed.dukascopy.com/datafeed/{SYMBOL}/{YYYY}/{MM}/{DD}/{HH}h_ticks.bi5
+
+Record (20 bytes, big-endian after LZMA):
+  ms_offset u32, ask u32, bid u32, ask_vol f32, bid_vol f32
+"""
+
+from __future__ import annotations
+
+import lzma
+import struct
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+from typing import Callable, Dict, List, Optional, Tuple
+
+try:
+    import httpx
+except ImportError:  # pragma: no cover
+    httpx = None  # type: ignore
+
+# Parallel net downloads (Dukascopy public feed). Lower if you hit 429s.
+DEFAULT_DOWNLOAD_WORKERS = 16
+
+# Dukascopy symbol → (reaktor-style symbol, price_scale)
+INSTRUMENTS: Dict[str, Tuple[str, float]] = {
+    "XAUUSD": ("XAU/USD", 1000.0),
+    "EURUSD": ("EUR/USD", 100000.0),
+    "BTCUSD": ("BTC/USD", 10.0),
+}
+
+DEFAULT_BASE = "https://datafeed.dukascopy.com/datafeed"
+TICK_STRUCT = struct.Struct(">IIIff")
+RECORD_SIZE = 20
+# Compact assembled range cache (one file per symbol+from+to)
+TICK_PACK_STRUCT = struct.Struct("<ddd")  # unix_ts, bid, ask
+TICK_PACK_VERSION = 1
+
+# Process-local packs so re-runs in the same UI server skip disk entirely
+_MEM_PACKS: Dict[str, List["Tick"]] = {}
+
+
+@dataclass(frozen=True)
+class Tick:
+    ts: datetime  # aware UTC
+    bid: float
+    ask: float
+    bid_vol: float = 0.0
+    ask_vol: float = 0.0
+
+    @property
+    def mid(self) -> float:
+        return (self.bid + self.ask) * 0.5
+
+    @property
+    def spread(self) -> float:
+        return max(0.0, self.ask - self.bid)
+
+
+def normalize_duka_symbol(symbol: str) -> str:
+    return symbol.upper().replace("/", "").replace("_", "").replace("-", "")
+
+
+def reaktor_symbol(duka_symbol: str) -> str:
+    key = normalize_duka_symbol(duka_symbol)
+    if key in INSTRUMENTS:
+        return INSTRUMENTS[key][0]
+    if key.startswith("XAU"):
+        return "XAU/USD"
+    if key.startswith("EUR"):
+        return "EUR/USD"
+    if key.startswith("BTC"):
+        return "BTC/USD"
+    return duka_symbol
+
+
+def price_scale(duka_symbol: str) -> float:
+    key = normalize_duka_symbol(duka_symbol)
+    if key in INSTRUMENTS:
+        return INSTRUMENTS[key][1]
+    return 1000.0
+
+
+def _hour_url(base: str, symbol: str, when: datetime) -> str:
+    y, m, d, h = when.year, when.month - 1, when.day, when.hour
+    return f"{base.rstrip('/')}/{symbol}/{y}/{m:02d}/{d:02d}/{h:02d}h_ticks.bi5"
+
+
+def _cache_path(cache_dir: Path, symbol: str, when: datetime) -> Path:
+    return (
+        cache_dir
+        / symbol
+        / f"{when.year:04d}"
+        / f"{when.month:02d}"
+        / f"{when.day:02d}"
+        / f"{when.hour:02d}h_ticks.bi5"
+    )
+
+
+def decode_bi5(raw: bytes, hour_start: datetime, scale: float) -> List[Tick]:
+    if not raw:
+        return []
+    try:
+        data = lzma.decompress(raw)
+    except lzma.LZMAError:
+        return []
+
+    if hour_start.tzinfo is None:
+        hour_start = hour_start.replace(tzinfo=timezone.utc)
+    else:
+        hour_start = hour_start.astimezone(timezone.utc)
+
+    n = len(data) // RECORD_SIZE
+    out: List[Tick] = []
+    for i in range(n):
+        ms, ask_i, bid_i, ask_v, bid_v = TICK_STRUCT.unpack_from(data, i * RECORD_SIZE)
+        ask = ask_i / scale
+        bid = bid_i / scale
+        if bid <= 0 or ask <= 0:
+            continue
+        ts = hour_start + timedelta(milliseconds=ms)
+        out.append(Tick(ts=ts, bid=bid, ask=ask, bid_vol=bid_v, ask_vol=ask_v))
+    return out
+
+
+_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Accept": "*/*",
+}
+
+
+def _http_get(
+    url: str,
+    timeout: float = 90.0,
+    *,
+    client: Optional["httpx.Client"] = None,
+    retries: int = 8,
+    backoff: float = 2.0,
+) -> Tuple[int, bytes]:
+    if httpx is None:
+        raise RuntimeError("httpx is required: pip install httpx")
+    last_err: Optional[Exception] = None
+    owns = client is None
+    if owns:
+        client = httpx.Client(timeout=timeout, follow_redirects=True, headers=_HEADERS)
+    assert client is not None
+    try:
+        for attempt in range(retries):
+            try:
+                r = client.get(url)
+                # Retry rate limits / temporary failures
+                if r.status_code in (429, 500, 502, 503, 504):
+                    wait = backoff * (2**attempt)
+                    time.sleep(min(wait, 60.0))
+                    continue
+                return r.status_code, r.content
+            except Exception as e:
+                last_err = e
+                wait = backoff * (2**attempt)
+                time.sleep(min(wait, 60.0))
+    finally:
+        if owns:
+            client.close()
+    raise RuntimeError(f"Dukascopy GET failed after {retries} tries: {url} ({last_err})")
+
+
+def fetch_hour(
+    symbol: str,
+    when: datetime,
+    *,
+    cache_dir: Path,
+    base_url: str = DEFAULT_BASE,
+    force: bool = False,
+    sleep_sec: float = 0.0,
+    client: Optional["httpx.Client"] = None,
+) -> List[Tick]:
+    """
+    Load one hour of ticks. Disk cache hit is free; net fetch has no default
+    throttle (use fetch_hours_parallel for concurrent downloads).
+    """
+    symbol = normalize_duka_symbol(symbol)
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    else:
+        when = when.astimezone(timezone.utc)
+    hour = when.replace(minute=0, second=0, microsecond=0)
+
+    path = _cache_path(cache_dir, symbol, hour)
+    scale = price_scale(symbol)
+
+    if path.exists() and not force:
+        raw = path.read_bytes()
+        if len(raw) == 0:
+            return []
+        return decode_bi5(raw, hour, scale)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    url = _hour_url(base_url, symbol, hour)
+    status, content = _http_get(url, client=client)
+    if sleep_sec > 0:
+        time.sleep(sleep_sec)
+
+    if status == 404 or not content:
+        path.write_bytes(b"")
+        return []
+    if status != 200:
+        raise RuntimeError(f"Dukascopy HTTP {status} for {url}")
+
+    ticks = decode_bi5(content, hour, scale)
+    path.write_bytes(content)
+    return ticks
+
+
+def fetch_hours_parallel(
+    symbol: str,
+    hours: List[datetime],
+    *,
+    cache_dir: Path,
+    base_url: str = DEFAULT_BASE,
+    force: bool = False,
+    max_workers: int = DEFAULT_DOWNLOAD_WORKERS,
+    progress: Optional[Callable[..., None]] = None,
+) -> List[Tick]:
+    """
+    Fetch many hours with thread pool. Cached hours read from disk in the
+    workers too (fast). Returns ticks sorted by time (all hours concatenated).
+    """
+    if not hours:
+        return []
+    symbol = normalize_duka_symbol(symbol)
+    n = len(hours)
+    workers = max(1, min(int(max_workers), n, 32))
+
+    # Split cache hits vs net so progress is honest and we don't open client for all-cache
+    need_net: List[datetime] = []
+    cached_hours: List[datetime] = []
+    for h in hours:
+        if not force and bi5_hour_is_cached(cache_dir, symbol, h):
+            cached_hours.append(h)
+        else:
+            need_net.append(h)
+
+    results: Dict[datetime, List[Tick]] = {}
+    lock = threading.Lock()
+    done = 0
+    n_net = 0
+    n_cache = 0
+    tick_total = 0
+
+    def _bump(from_cache: bool, hour: datetime, ticks: List[Tick]) -> None:
+        nonlocal done, n_net, n_cache, tick_total
+        with lock:
+            results[hour] = ticks
+            done += 1
+            tick_total += len(ticks)
+            if from_cache:
+                n_cache += 1
+            else:
+                n_net += 1
+            d, nc, nn, tt = done, n_cache, n_net, tick_total
+        if progress:
+            progress(
+                hours_done=d,
+                hours_total=n,
+                ticks=tt,
+                from_cache=nc,
+                from_net=nn,
+                message=(
+                    f"Hour {d}/{n} · cache {nc} · net {nn} · {tt:,} ticks"
+                ),
+            )
+
+    def _load_one(h: datetime, client: Optional["httpx.Client"], from_cache: bool) -> None:
+        ticks = fetch_hour(
+            symbol,
+            h,
+            cache_dir=cache_dir,
+            base_url=base_url,
+            force=force and not from_cache,
+            sleep_sec=0.0,
+            client=client,
+        )
+        _bump(from_cache, h, ticks)
+
+    # Disk cache: parallel file reads (no HTTP)
+    if cached_hours:
+        cw = max(1, min(8, len(cached_hours)))
+        with ThreadPoolExecutor(max_workers=cw) as pool:
+            futs = [pool.submit(_load_one, h, None, True) for h in cached_hours]
+            for f in as_completed(futs):
+                f.result()
+
+    # Network: shared client + many threads. Failed hours retried with fewer workers.
+    pending = list(need_net)
+    attempt = 0
+    while pending:
+        attempt += 1
+        w = workers if attempt == 1 else max(2, workers // 2)
+        if httpx is None:
+            raise RuntimeError("httpx is required: pip install httpx")
+        limits = httpx.Limits(
+            max_connections=w + 4,
+            max_keepalive_connections=w,
+        )
+        failed: List[Tuple[datetime, str]] = []
+        with httpx.Client(
+            timeout=httpx.Timeout(60.0, connect=20.0),
+            follow_redirects=True,
+            headers=_HEADERS,
+            limits=limits,
+        ) as client:
+            with ThreadPoolExecutor(max_workers=w) as pool:
+                fut_map = {
+                    pool.submit(_load_one, h, client, False): h for h in pending
+                }
+                for f in as_completed(fut_map):
+                    h = fut_map[f]
+                    try:
+                        f.result()
+                    except Exception as e:
+                        failed.append((h, str(e)))
+        if not failed:
+            break
+        if attempt >= 4:
+            sample = "; ".join(f"{h.isoformat()}: {err[:80]}" for h, err in failed[:3])
+            raise RuntimeError(
+                f"Dukascopy still failing {len(failed)} hour(s) after {attempt} attempts. "
+                f"Examples: {sample}"
+            )
+        # brief pause then retry only missing hours
+        time.sleep(min(2.0 * attempt, 8.0))
+        pending = [h for h, _ in failed]
+        if progress:
+            progress(
+                message=f"Retry {attempt}: {len(pending)} hours failed, reducing workers to {w}",
+            )
+
+    # Preserve chronological hour order
+    all_ticks: List[Tick] = []
+    for h in hours:
+        all_ticks.extend(results.get(h) or [])
+    return all_ticks
+
+
+def hour_range(start: datetime, end: datetime) -> List[datetime]:
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    else:
+        start = start.astimezone(timezone.utc)
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+    else:
+        end = end.astimezone(timezone.utc)
+    if end <= start:
+        return []
+
+    cur = start.replace(minute=0, second=0, microsecond=0)
+    last = (end - timedelta(microseconds=1)).replace(minute=0, second=0, microsecond=0)
+    out: List[datetime] = []
+    while cur <= last:
+        out.append(cur)
+        cur += timedelta(hours=1)
+    return out
+
+
+def download_range(
+    symbol: str,
+    start: datetime,
+    end: datetime,
+    *,
+    cache_dir: Path,
+    base_url: str = DEFAULT_BASE,
+    force: bool = False,
+    progress: bool = True,
+    max_workers: int = DEFAULT_DOWNLOAD_WORKERS,
+) -> List[Tick]:
+    hours = hour_range(start, end)
+
+    def _prog(**kwargs) -> None:
+        if progress and kwargs.get("hours_done"):
+            d = kwargs["hours_done"]
+            n = kwargs.get("hours_total") or len(hours)
+            if d % 24 == 0 or d == n:
+                print(
+                    f"  duka {normalize_duka_symbol(symbol)}: "
+                    f"{kwargs.get('message') or f'hour {d}/{n}'}",
+                    flush=True,
+                )
+
+    all_ticks = fetch_hours_parallel(
+        symbol,
+        hours,
+        cache_dir=cache_dir,
+        base_url=base_url,
+        force=force,
+        max_workers=max_workers,
+        progress=_prog if progress else None,
+    )
+
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+    start = start.astimezone(timezone.utc)
+    end = end.astimezone(timezone.utc)
+
+    filtered = [t for t in all_ticks if start <= t.ts < end]
+    filtered.sort(key=lambda t: t.ts)
+    return filtered
+
+
+def parse_ymd(s: str) -> datetime:
+    s = s.strip()
+    if "T" in s:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    else:
+        d = date.fromisoformat(s)
+        dt = datetime(d.year, d.month, d.day)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def pack_key(symbol: str, start: datetime, end: datetime) -> str:
+    symbol = normalize_duka_symbol(symbol)
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    else:
+        start = start.astimezone(timezone.utc)
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+    else:
+        end = end.astimezone(timezone.utc)
+    return (
+        f"{symbol}_"
+        f"{start.strftime('%Y%m%dT%H%M')}_"
+        f"{end.strftime('%Y%m%dT%H%M')}"
+    )
+
+
+def pack_path(pack_dir: Path, symbol: str, start: datetime, end: datetime) -> Path:
+    return pack_dir / f"{pack_key(symbol, start, end)}.tickpack"
+
+
+def save_tick_pack(path: Path, ticks: List[Tick]) -> None:
+    """Write assembled ticks as a single binary file (fast reload)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("wb") as f:
+        f.write(struct.pack("<I", TICK_PACK_VERSION))
+        f.write(struct.pack("<Q", len(ticks)))
+        for t in ticks:
+            f.write(
+                TICK_PACK_STRUCT.pack(
+                    t.ts.timestamp(),
+                    float(t.bid),
+                    float(t.ask),
+                )
+            )
+    tmp.replace(path)
+
+
+def load_tick_pack(path: Path) -> List[Tick]:
+    """Load ticks written by save_tick_pack."""
+    with path.open("rb") as f:
+        ver = struct.unpack("<I", f.read(4))[0]
+        if ver != TICK_PACK_VERSION:
+            raise ValueError(f"unsupported tick pack version {ver}")
+        n = struct.unpack("<Q", f.read(8))[0]
+        out: List[Tick] = []
+        out_append = out.append
+        fromtimestamp = datetime.fromtimestamp
+        utc = timezone.utc
+        unpack = TICK_PACK_STRUCT.unpack
+        read = f.read
+        rec = TICK_PACK_STRUCT.size
+        for _ in range(n):
+            blob = read(rec)
+            if len(blob) < rec:
+                break
+            ts, bid, ask = unpack(blob)
+            out_append(
+                Tick(
+                    ts=fromtimestamp(ts, tz=utc),
+                    bid=bid,
+                    ask=ask,
+                )
+            )
+        return out
+
+
+def get_cached_pack(
+    symbol: str,
+    start: datetime,
+    end: datetime,
+    pack_dir: Path,
+) -> Optional[List[Tick]]:
+    """Memory first, then disk pack. None if missing."""
+    key = pack_key(symbol, start, end)
+    if key in _MEM_PACKS:
+        return _MEM_PACKS[key]
+    path = pack_path(pack_dir, symbol, start, end)
+    if not path.exists() or path.stat().st_size < 16:
+        return None
+    ticks = load_tick_pack(path)
+    _MEM_PACKS[key] = ticks
+    return ticks
+
+
+def store_cached_pack(
+    symbol: str,
+    start: datetime,
+    end: datetime,
+    pack_dir: Path,
+    ticks: List[Tick],
+) -> Path:
+    key = pack_key(symbol, start, end)
+    _MEM_PACKS[key] = ticks
+    path = pack_path(pack_dir, symbol, start, end)
+    save_tick_pack(path, ticks)
+    return path
+
+
+def bi5_hour_is_cached(cache_dir: Path, symbol: str, when: datetime) -> bool:
+    path = _cache_path(cache_dir, normalize_duka_symbol(symbol), when)
+    return path.exists()

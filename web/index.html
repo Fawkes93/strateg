@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Strateg — local forward research</title>
+  <link rel="stylesheet" href="/static/app.css?v=20260812a" />
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Strateg</h1>
+      <p class="sub">
+        Local only · no Telegram · no Supabase · no live Reaktor process
+      </p>
+    </div>
+    <div class="badge" id="status-badge">idle</div>
+  </header>
+
+  <nav class="main-tabs" role="tablist">
+    <button type="button" class="main-tab active" data-tab="research">Research</button>
+    <button type="button" class="main-tab" data-tab="sweep">Sweep (overnight)</button>
+  </nav>
+
+  <!-- ========== RESEARCH TAB (unchanged flow) ========== -->
+  <div id="tab-research" class="tab-panel">
+    <section class="card pipeline">
+      <h2>Pipeline</h2>
+      <ol>
+        <li><strong>Download</strong> free Dukascopy ticks (cached on disk)</li>
+        <li><strong>Generate alerts</strong> with Reaktor-style range live + spike rules</li>
+        <li><strong>Score</strong> each alert on those ticks: hit / clean (like Performance)</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>Parameters</h2>
+      <div class="grid">
+        <label>
+          Symbol
+          <select id="symbol">
+            <option value="XAUUSD" selected>XAUUSD (gold)</option>
+            <option value="EURUSD">EURUSD</option>
+          </select>
+        </label>
+        <label>
+          From (UTC)
+          <input type="date" id="date_from" value="2026-03-02" />
+        </label>
+        <label>
+          To (UTC, exclusive)
+          <input type="date" id="date_to" value="2026-03-09" />
+        </label>
+        <label>
+          Look ahead
+          <select id="hours">
+            <option value="6" selected>6 hours</option>
+            <option value="12">12 hours</option>
+            <option value="24">24 hours</option>
+          </select>
+        </label>
+        <label>
+          Target T (pts)
+          <select id="threshold">
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500" selected>500</option>
+            <option value="800">800</option>
+            <option value="1000">1000</option>
+            <option value="1200">1200</option>
+            <option value="1500">1500</option>
+            <option value="2000">2000</option>
+            <option value="3000">3000</option>
+          </select>
+        </label>
+        <label>
+          Opposite max (% of T)
+          <input type="number" id="adverse_pct" min="0" step="1" value="100" />
+        </label>
+      </div>
+
+      <div class="engines">
+        <span class="label">Engines</span>
+        <label class="chk"><input type="checkbox" id="eng_candle" checked /> Range live</label>
+        <label class="chk"><input type="checkbox" id="eng_spike" checked /> Spike</label>
+        <label class="chk"><input type="checkbox" id="eng_spike_neo" /> Spike Neo</label>
+        <label class="chk"><input type="checkbox" id="eng_impulse_retrace" /> Impulse retrace</label>
+        <label class="chk"><input type="checkbox" id="eng_range_wick" /> Range wick</label>
+      </div>
+
+      <details class="signal-panel" id="signal-panel" open>
+        <summary>Signal config (range · wick · spike · neo · impulse · filters)</summary>
+        <p class="hint" id="signal-hints"></p>
+        <h3 class="sig-h">Range live</h3>
+        <div class="grid" id="grid-range"></div>
+        <h3 class="sig-h">Range wick (legacy wick-latched)</h3>
+        <div class="grid" id="grid-range-wick"></div>
+        <h3 class="sig-h">Spike (1m)</h3>
+        <div class="grid" id="grid-spike"></div>
+        <h3 class="sig-h">Spike Neo (15m coil→expand)</h3>
+        <div class="grid" id="grid-spike-neo"></div>
+        <h3 class="sig-h">Impulse retrace (blast → 50%/75% pullback)</h3>
+        <div class="grid" id="grid-impulse"></div>
+        <h3 class="sig-h">Filters / session</h3>
+        <div class="grid" id="grid-filters"></div>
+        <div class="actions" style="margin-top:0.75rem">
+          <button type="button" id="btn-reset-signals" class="secondary">Reset to Reaktor defaults</button>
+        </div>
+      </details>
+
+      <p class="hint">
+        <strong>Hit</strong> = fav ≥ T within look-ahead.
+        <strong>Clean</strong> = hit and reverse stayed ≤ opposite% × T until then.
+      </p>
+
+      <div class="actions">
+        <button type="button" id="btn-run" class="primary">Run research</button>
+        <label class="chk force">
+          <input type="checkbox" id="force_download" /> Force re-download hours
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Progress</h2>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+      </div>
+      <p class="progress-msg" id="progress-msg">Idle — set params and run.</p>
+      <div class="stats-row" id="progress-stats"></div>
+    </section>
+
+    <section class="card" id="results-card">
+      <div class="results-head">
+        <h2>Results</h2>
+        <button type="button" id="btn-pdf" class="secondary" disabled>Download PDF</button>
+      </div>
+      <p class="muted" id="results-meta">No run yet.</p>
+      <div id="results-config" class="results-config hidden"></div>
+      <div class="hero-grid" id="hero-grid"></div>
+      <h3>Hit / clean by alert type × T</h3>
+      <div class="table-wrap">
+        <table id="table-by-type">
+          <thead>
+            <tr>
+              <th>Alert type</th>
+              <th>T</th>
+              <th>n</th>
+              <th>Hit %</th>
+              <th>Clean %</th>
+              <th>avg clean dur (min)</th>
+              <th>avg fav</th>
+              <th>avg adv</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <h3>Alert list (selected T)</h3>
+      <div class="type-tabs" id="alert-type-tabs" role="tablist"></div>
+      <div class="table-wrap">
+        <table id="table-alerts">
+          <thead>
+            <tr>
+              <th>Time (UTC)</th>
+              <th>Kind</th>
+              <th>Side</th>
+              <th>Entry</th>
+              <th>Hit</th>
+              <th>Clean</th>
+              <th>Duration (min)</th>
+              <th>max fav</th>
+              <th>adv until hit</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- ========== SWEEP TAB ========== -->
+  <div id="tab-sweep" class="tab-panel hidden">
+    <section class="card">
+      <h2>Overnight sweep</h2>
+      <p class="hint">
+        Build date ranges + experiment rows. Each row is a param set (short names).
+        Comma-separate values in a cell to expand (e.g. <code>1.8,2.0,2.2</code>).
+        <strong>Range + spike share one load/replay</strong> each run.
+        Default pairing is <strong>Together</strong>: each range variant runs with one
+        spike variant (shorter list cycles) — not a full product.
+        Optional full grid = every range × every spike.
+        Report: <strong>top 3 T by clean %</strong> per engine, by date range.
+      </p>
+
+      <div class="grid">
+        <label>
+          Symbol
+          <select id="sw-symbol">
+            <option value="XAUUSD" selected>XAUUSD</option>
+          </select>
+        </label>
+        <label>
+          Look ahead (h)
+          <select id="sw-hours">
+            <option value="6" selected>6</option>
+            <option value="12">12</option>
+            <option value="24">24</option>
+          </select>
+        </label>
+        <label>
+          Opposite % of T
+          <input type="number" id="sw-adverse" value="100" min="0" step="1" />
+        </label>
+        <label>
+          Top N by clean
+          <input type="number" id="sw-topn" value="3" min="1" max="10" />
+        </label>
+        <label>
+          T list (csv)
+          <input type="text" id="sw-thresholds" value="100,200,500,800,1000,1200,1500,2000" />
+        </label>
+        <label>
+          How variants combine
+          <select id="sw-pairing">
+            <option value="together" selected>Together (default)</option>
+            <option value="grid">Full grid (range × spike)</option>
+          </select>
+        </label>
+        <label>
+          CPU workers
+          <select id="sw-workers">
+            <option value="1">1 (serial, max tick reuse)</option>
+            <option value="2">2</option>
+            <option value="4" selected>4 (default)</option>
+            <option value="6">6</option>
+            <option value="8">8</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint muted">
+        <strong>Speed:</strong> ticks load once per date range, then all param variants
+        replay on that pack. Workers &gt; 1 run date groups (or split variants) in parallel
+        processes — uses more CPU cores. Stop still finishes the current worker jobs.
+      </p>
+      <p class="hint muted">
+        <strong>Together (default):</strong> 3 range mults + spike win 60,90 →
+        <em>3 runs</em> per date (not 5, not 6). Each run fires both engines;
+        the shorter list cycles: (1.8+60), (2.0+90), (2.2+60).
+        Count = dates × <strong>max</strong>(range variants, spike variants) —
+        so editing the smaller side may not change the total until it exceeds the other
+        (live counter shows both: <code>range N · spike M</code>).
+        <strong>Full grid:</strong> every range × every spike (3×2=6).
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Date ranges (inside this sweep)</h2>
+      <div id="sw-ranges"></div>
+      <div class="actions">
+        <button type="button" class="secondary" id="sw-add-range">+ Date range</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Range live experiments</h2>
+      <label class="chk"><input type="checkbox" id="sw-test-range" checked /> Test range live</label>
+      <p class="hint muted">
+        <strong>Empty table = no runs</strong> (nothing is invented).
+        Fill at least one cell, or click <em>+ Defaults only</em> for one Reaktor-defaults experiment.
+        Blank placeholder rows do not count.
+      </p>
+      <p class="hint muted" id="sw-range-hint"></p>
+      <div class="table-wrap exp-wrap">
+        <table class="exp-table" id="sw-range-table">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" id="sw-add-range-row">+ Add research row</button>
+        <button type="button" class="secondary" id="sw-add-range-defaults">+ Defaults only</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Spike experiments</h2>
+      <label class="chk"><input type="checkbox" id="sw-test-spike" checked /> Test spike</label>
+      <p class="hint muted">
+        Same: empty = no runs. Use <em>+ Defaults only</em> if you want baseline defaults.
+      </p>
+      <p class="hint muted" id="sw-spike-hint"></p>
+      <div class="table-wrap exp-wrap">
+        <table class="exp-table" id="sw-spike-table">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" id="sw-add-spike-row">+ Add research row</button>
+        <button type="button" class="secondary" id="sw-add-spike-defaults">+ Defaults only</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Spike Neo experiments</h2>
+      <label class="chk"><input type="checkbox" id="sw-test-spike-neo" /> Test Spike Neo</label>
+      <p class="hint muted">
+        Coil → expand → structure hold (15m). Independent of classic Spike.
+        Empty = no neo runs unless another engine has rows (then neo uses defaults as partner).
+      </p>
+      <p class="hint muted" id="sw-neo-hint"></p>
+      <div class="table-wrap exp-wrap">
+        <table class="exp-table" id="sw-neo-table">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" id="sw-add-neo-row">+ Add research row</button>
+        <button type="button" class="secondary" id="sw-add-neo-defaults">+ Defaults only</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Impulse retrace experiments</h2>
+      <label class="chk"><input type="checkbox" id="sw-test-impulse" /> Test Impulse retrace</label>
+      <p class="hint muted">
+        After a directed blast, alert at pullback fractions (default 50% then 75%). Bias = blast direction.
+        Must hit a level within <code>max_age</code> sec of the blast extreme (default 120); no fire past
+        <code>max_depth</code> (default 0.85).
+        <code>fracs</code> = list in one experiment (e.g. <code>0.5,0.75</code>), not cartesian expand.
+        Optional coil gate: <code>quiet</code> (true/false), <code>quiet_n</code>, <code>quiet_sw</code>.
+      </p>
+      <p class="hint muted" id="sw-impulse-hint"></p>
+      <div class="table-wrap exp-wrap">
+        <table class="exp-table" id="sw-impulse-table">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" id="sw-add-impulse-row">+ Add research row</button>
+        <button type="button" class="secondary" id="sw-add-impulse-defaults">+ Defaults only</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Range wick experiments</h2>
+      <label class="chk"><input type="checkbox" id="sw-test-wick" /> Test Range wick</label>
+      <p class="hint muted">
+        Older wick-latched range (source <code>candle_wick</code>). Uses forming H/L for directed move — A/B vs live range.
+        Same short names as range live (mult, min_dir, hold, struct, …).
+      </p>
+      <p class="hint muted" id="sw-wick-hint"></p>
+      <div class="table-wrap exp-wrap">
+        <table class="exp-table" id="sw-wick-table">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" id="sw-add-wick-row">+ Add research row</button>
+        <button type="button" class="secondary" id="sw-add-wick-defaults">+ Defaults only</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="actions">
+        <button type="button" class="primary" id="sw-run">Run overnight sweep</button>
+        <button type="button" class="secondary" id="sw-stop" disabled>Stop sweep</button>
+        <span class="sw-elapsed" id="sw-elapsed" title="Elapsed wall time">—</span>
+        <span class="muted" id="sw-run-count"></span>
+      </div>
+      <div class="progress-wrap" style="margin-top:1rem">
+        <div class="progress-bar" id="sw-progress-bar" style="width:0%"></div>
+      </div>
+      <p class="progress-msg" id="sw-progress-msg">Idle</p>
+      <div class="stats-row" id="sw-progress-stats"></div>
+    </section>
+
+    <section class="card" id="sw-report-card">
+      <div class="results-head">
+        <h2>Sweep report</h2>
+        <button type="button" class="secondary" id="sw-pdf" disabled>Download PDF</button>
+      </div>
+      <p class="muted" id="sw-report-meta">No batch yet.</p>
+      <div class="sw-report-filters" id="sw-report-filters" hidden>
+        <label class="sw-filter-label" for="sw-filter-row">
+          Research row
+          <select id="sw-filter-row" title="Show only one research experiment across date ranges">
+            <option value="">All research rows</option>
+          </select>
+        </label>
+        <label class="sw-filter-label" for="sw-filter-engine">
+          Engine
+          <select id="sw-filter-engine" title="Filter by engine / alert kind">
+            <option value="">All engines</option>
+          </select>
+        </label>
+        <label class="sw-filter-label" for="sw-filter-t">
+          T (threshold)
+          <select id="sw-filter-t" title="Show only one forward target size T">
+            <option value="">All T</option>
+          </select>
+        </label>
+        <span class="muted" id="sw-filter-count"></span>
+      </div>
+      <div id="sw-report"></div>
+    </section>
+  </div>
+
+  <footer class="foot">
+    Research tab = single run. Sweep tab = date ranges × param rows overnight.
+  </footer>
+
+  <script src="/static/app.js?v=20260812b"></script>
+  <script src="/static/sweep.js?v=20260812b"></script>
+</body>
+</html>
