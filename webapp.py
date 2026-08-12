@@ -43,6 +43,9 @@ class RunRequest(BaseModel):
     )
     adverse_mult: float = 1.0
     signal_price: str = "mid"
+    sl_manage: str = "off"  # off | be | lock
+    sl_manage_at_frac: float = 0.5
+    sl_manage_lock_pts: float = 100.0
     force_download: bool = False
     signal: Optional[Dict[str, Any]] = None
 
@@ -62,6 +65,9 @@ class BatchRequest(BaseModel):
     test_impulse_retrace: bool = False
     test_range_wick: bool = False
     pairing: str = "together"  # together | grid
+    sl_manage: str = "off"  # off | be | lock
+    sl_manage_at_frac: float = 0.5
+    sl_manage_lock_pts: float = 100.0
     date_ranges: List[Dict[str, str]] = Field(default_factory=list)
     range_rows: List[Dict[str, Any]] = Field(default_factory=list)
     spike_rows: List[Dict[str, Any]] = Field(default_factory=list)
@@ -102,6 +108,9 @@ def job_run(body: RunRequest):
         thresholds=list(body.thresholds) or [500.0],
         adverse_mult=float(body.adverse_mult),
         signal_price=body.signal_price or "mid",
+        sl_manage=body.sl_manage or "off",
+        sl_manage_at_frac=float(body.sl_manage_at_frac or 0.5),
+        sl_manage_lock_pts=float(body.sl_manage_lock_pts or 100.0),
         force_download=bool(body.force_download),
         signal=body.signal,
     )

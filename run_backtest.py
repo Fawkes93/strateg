@@ -87,6 +87,18 @@ def main() -> int:
         default=1.0,
         help="Clean win if adverse until hit ≤ mult×T (1.0 = opp ≤ T; 0.5 = half T)",
     )
+    p.add_argument(
+        "--sl-manage",
+        choices=("off", "be", "lock"),
+        default="off",
+        help="Factor-style: at ½T move SL to break-even (be) or lock +N pts (lock)",
+    )
+    p.add_argument(
+        "--sl-lock-pts",
+        type=float,
+        default=100.0,
+        help="Points locked in when --sl-manage lock (default 100)",
+    )
     # TP/SL mode
     p.add_argument("--tp", type=float, default=None)
     p.add_argument("--sl", type=float, default=None)
@@ -227,6 +239,13 @@ def _run_forward(
         "3) Forward path (Performance-style on ticks)…\n"
         "   hit   = fav ≥ T within window\n"
         "   clean = hit AND adverse until that moment ≤ mult×T\n"
+        f"   sl_manage = {args.sl_manage}"
+        + (
+            f" (lock {args.sl_lock_pts:g} pts at ½T)"
+            if args.sl_manage == "lock"
+            else (" (BE at ½T)" if args.sl_manage == "be" else "")
+        )
+        + "\n"
     )
 
     # Primary table: multi-T overall
@@ -237,6 +256,8 @@ def _run_forward(
         thresholds=thresholds,
         window_sec=window_sec,
         adverse_mult=args.adverse_mult,
+        sl_manage=args.sl_manage,
+        sl_manage_lock_pts=args.sl_lock_pts,
         price_field=args.signal_price,
     )
 
@@ -279,6 +300,8 @@ def _run_forward(
             thresholds=thresholds,
             window_sec=window_sec,
             adverse_mult=args.adverse_mult,
+            sl_manage=args.sl_manage,
+            sl_manage_lock_pts=args.sl_lock_pts,
             price_field=args.signal_price,
         )
         print(f"\n=== Engine: {kind} ===")
@@ -304,6 +327,8 @@ def _run_forward(
         threshold_pts=t0,
         window_sec=window_sec,
         adverse_mult=args.adverse_mult,
+        sl_manage=args.sl_manage,
+        sl_manage_lock_pts=args.sl_lock_pts,
         price_field=args.signal_price,
     )
     csv_path = out_dir / f"forward_{tag_base}_T{int(t0)}.csv"

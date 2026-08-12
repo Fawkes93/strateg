@@ -93,6 +93,8 @@
         symbol: $("sw-symbol") && $("sw-symbol").value,
         hours: $("sw-hours") && $("sw-hours").value,
         adverse: $("sw-adverse") && $("sw-adverse").value,
+        sl_manage: $("sw-sl-manage") && $("sw-sl-manage").value,
+        sl_lock: $("sw-sl-lock") && $("sw-sl-lock").value,
         topn: $("sw-topn") && $("sw-topn").value,
         thresholds: $("sw-thresholds") && $("sw-thresholds").value,
         pairing: $("sw-pairing") && $("sw-pairing").value,
@@ -508,6 +510,8 @@
   bindSaveOn($("sw-symbol"));
   bindSaveOn($("sw-hours"));
   bindSaveOn($("sw-adverse"));
+  bindSaveOn($("sw-sl-manage"));
+  bindSaveOn($("sw-sl-lock"));
   bindSaveOn($("sw-topn"));
   bindSaveOn($("sw-thresholds"));
 
@@ -529,6 +533,9 @@
       symbol: $("sw-symbol").value,
       hours: Number($("sw-hours").value),
       adverse_mult: Number($("sw-adverse").value) / 100,
+      sl_manage: ($("sw-sl-manage") && $("sw-sl-manage").value) || "off",
+      sl_manage_at_frac: 0.5,
+      sl_manage_lock_pts: Number(($("sw-sl-lock") && $("sw-sl-lock").value) || 100),
       top_n: Number($("sw-topn").value) || 3,
       workers: isFinite(workers) && workers > 0 ? workers : 4,
       thresholds: thr,
@@ -845,7 +852,14 @@
       report.hours +
       "h · top " +
       (report.top_n || 3) +
-      " T by clean% (≥50%)";
+      " T by clean% (≥50%)" +
+      (function () {
+        const mode = report.sl_manage || "off";
+        if (mode === "be") return " · SL ½T→BE";
+        if (mode === "lock")
+          return " · SL ½T→lock +" + (report.sl_manage_lock_pts || 100);
+        return "";
+      })();
 
     updateReportFilters(report);
 
@@ -884,6 +898,7 @@
             "<table class=\"sw-top\"><thead><tr>" +
             "<th>rank</th><th>T</th><th>n</th><th>Clean %</th><th>Hit %</th>" +
             "<th>avg clean dur (min)</th><th>avg fav</th><th>avg adv</th>" +
+            "<th>armed %</th><th>BE/lock %</th><th>avg pts</th>" +
             "</tr></thead><tbody>";
           const topTs = pickThresholdRows(row, report);
           topTs.forEach((t, i) => {
@@ -905,11 +920,17 @@
               fmt(t.avg_max_fav) +
               "</td><td>" +
               fmt(t.avg_max_adv) +
+              "</td><td>" +
+              (t.manage_armed_pct != null ? t.manage_armed_pct + "%" : "—") +
+              "</td><td>" +
+              (t.stopped_manage_pct != null ? t.stopped_manage_pct + "%" : "—") +
+              "</td><td>" +
+              (t.avg_realized_pts != null ? t.avg_realized_pts : "—") +
               "</td></tr>";
           });
           if (!topTs.length) {
             html +=
-              "<tr><td colspan=\"8\" class=\"muted\">" +
+              "<tr><td colspan=\"11\" class=\"muted\">" +
               (reportFilterT
                 ? "no stats for T=" + reportFilterT
                 : "no T with clean% ≥ 50") +
@@ -1090,6 +1111,10 @@
         if (saved.hours && $("sw-hours")) $("sw-hours").value = saved.hours;
         if (saved.adverse != null && $("sw-adverse"))
           $("sw-adverse").value = saved.adverse;
+        if (saved.sl_manage && $("sw-sl-manage"))
+          $("sw-sl-manage").value = saved.sl_manage;
+        if (saved.sl_lock != null && $("sw-sl-lock"))
+          $("sw-sl-lock").value = saved.sl_lock;
         if (saved.topn != null && $("sw-topn")) $("sw-topn").value = saved.topn;
         if (saved.thresholds && $("sw-thresholds"))
           $("sw-thresholds").value = saved.thresholds;

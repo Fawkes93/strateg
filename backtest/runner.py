@@ -24,6 +24,7 @@ from backtest.dukascopy import (
 from backtest.forward import (
     filter_scored_by_kind,
     multi_threshold_report,
+    normalize_sl_manage,
     score_all_alerts,
 )
 from backtest.replay import AlertReplay
@@ -153,6 +154,9 @@ def research_from_ticks(
     thresholds: Optional[List[float]] = None,
     adverse_mult: float = 1.0,
     signal_price: str = "mid",
+    sl_manage: str = "off",
+    sl_manage_at_frac: float = 0.5,
+    sl_manage_lock_pts: float = 100.0,
     signal: Optional[Dict[str, Any]] = None,
     include_detail: bool = True,
     save_json: bool = False,
@@ -234,6 +238,10 @@ def research_from_ticks(
         pct=88.0,
     )
 
+    sl_mode, sl_frac, sl_lock = normalize_sl_manage(
+        sl_manage, sl_manage_at_frac, sl_manage_lock_pts
+    )
+
     scored = score_all_alerts(
         alerts,
         alert_idx,
@@ -242,6 +250,9 @@ def research_from_ticks(
         window_sec=window_sec,
         adverse_mult=adverse_mult,
         price_field=signal_price,
+        sl_manage=sl_mode,
+        sl_manage_at_frac=sl_frac,
+        sl_manage_lock_pts=sl_lock,
         progress_cb=_score_progress,
     )
 
@@ -253,6 +264,9 @@ def research_from_ticks(
         window_sec=window_sec,
         adverse_mult=adverse_mult,
         price_field=signal_price,
+        sl_manage=sl_mode,
+        sl_manage_at_frac=sl_frac,
+        sl_manage_lock_pts=sl_lock,
         scored=scored,
     )
 
@@ -272,6 +286,9 @@ def research_from_ticks(
             window_sec=window_sec,
             adverse_mult=adverse_mult,
             price_field=signal_price,
+            sl_manage=sl_mode,
+            sl_manage_at_frac=sl_frac,
+            sl_manage_lock_pts=sl_lock,
             scored=None,  # recompute from subset (small n per engine)
         )
 
@@ -291,6 +308,9 @@ def research_from_ticks(
             window_sec=window_sec,
             adverse_mult=adverse_mult,
             price_field=signal_price,
+            sl_manage=sl_mode,
+            sl_manage_at_frac=sl_frac,
+            sl_manage_lock_pts=sl_lock,
             scored=sub,
         )
 
@@ -326,6 +346,9 @@ def research_from_ticks(
                     "hit": p.hit,
                     "clean": p.clean,
                     "first_touch": p.first_touch,
+                    "exit": p.exit,
+                    "manage_armed": p.manage_armed,
+                    "realized_pts": round(p.realized_pts, 1),
                     "max_fav": round(p.max_fav_pts, 1),
                     "max_adv": round(p.max_adv_pts, 1),
                     "max_adv_until_hit": round(p.max_adv_until_hit, 1),
@@ -358,6 +381,9 @@ def research_from_ticks(
         "hours": hours,
         "window_sec": window_sec,
         "adverse_mult": adverse_mult,
+        "sl_manage": sl_mode,
+        "sl_manage_at_frac": sl_frac,
+        "sl_manage_lock_pts": sl_lock,
         "thresholds": thr_list,
         "engines": sorted(eng_set),
         "ticks": len(ticks),
@@ -398,6 +424,9 @@ def run_research(
     thresholds: Optional[List[float]] = None,
     adverse_mult: float = 1.0,
     signal_price: str = "mid",
+    sl_manage: str = "off",
+    sl_manage_at_frac: float = 0.5,
+    sl_manage_lock_pts: float = 100.0,
     force_download: bool = False,
     signal: Optional[Dict[str, Any]] = None,
     include_detail: bool = True,
@@ -424,6 +453,9 @@ def run_research(
         thresholds=thresholds,
         adverse_mult=adverse_mult,
         signal_price=signal_price,
+        sl_manage=sl_manage,
+        sl_manage_at_frac=sl_manage_at_frac,
+        sl_manage_lock_pts=sl_manage_lock_pts,
         signal=signal,
         include_detail=include_detail,
         save_json=save_json,
@@ -456,6 +488,11 @@ def top_ts_by_clean(
                 "avg_clean_hit_min": s.get("avg_clean_hit_min"),
                 "avg_max_fav": s.get("avg_max_fav"),
                 "avg_max_adv": s.get("avg_max_adv"),
+                "manage_armed_pct": s.get("manage_armed_pct"),
+                "stopped_init_pct": s.get("stopped_init_pct"),
+                "stopped_manage_pct": s.get("stopped_manage_pct"),
+                "timeout_pct": s.get("timeout_pct"),
+                "avg_realized_pts": s.get("avg_realized_pts"),
             }
         )
     rows.sort(

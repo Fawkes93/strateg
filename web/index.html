@@ -77,6 +77,18 @@
           Opposite max (% of T)
           <input type="number" id="adverse_pct" min="0" step="1" value="100" />
         </label>
+        <label>
+          Factor SL manage
+          <select id="sl_manage" title="After profit reaches half of T, move SL">
+            <option value="off" selected>Off (path analysis)</option>
+            <option value="be">½T → break-even</option>
+            <option value="lock">½T → lock +N pts</option>
+          </select>
+        </label>
+        <label>
+          Lock pts (if lock)
+          <input type="number" id="sl_manage_lock_pts" min="0" step="10" value="100" />
+        </label>
       </div>
 
       <div class="engines">
@@ -111,6 +123,9 @@
       <p class="hint">
         <strong>Hit</strong> = fav ≥ T within look-ahead.
         <strong>Clean</strong> = hit and reverse stayed ≤ opposite% × T until then.
+        <strong>SL manage</strong> (Factor-style): when profit first reaches <em>½T</em>,
+        move the stop to break-even or lock +N pts. The walk then stops if that SL is touched
+        (trade would have been closed). Avg pts = target / −init SL / 0 (BE) / +N (lock) / MTM on timeout.
       </p>
 
       <div class="actions">
@@ -151,6 +166,9 @@
               <th>avg clean dur (min)</th>
               <th>avg fav</th>
               <th>avg adv</th>
+              <th>armed %</th>
+              <th>BE/lock stop %</th>
+              <th>avg pts</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -168,9 +186,11 @@
               <th>Entry</th>
               <th>Hit</th>
               <th>Clean</th>
+              <th>Exit</th>
               <th>Duration (min)</th>
               <th>max fav</th>
               <th>adv until hit</th>
+              <th>pts</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -211,6 +231,18 @@
         <label>
           Opposite % of T
           <input type="number" id="sw-adverse" value="100" min="0" step="1" />
+        </label>
+        <label>
+          Factor SL manage
+          <select id="sw-sl-manage" title="After profit reaches half of T, move SL">
+            <option value="off" selected>Off</option>
+            <option value="be">½T → break-even</option>
+            <option value="lock">½T → lock +N pts</option>
+          </select>
+        </label>
+        <label>
+          Lock pts
+          <input type="number" id="sw-sl-lock" value="100" min="0" step="10" />
         </label>
         <label>
           Top N by clean
@@ -414,7 +446,7 @@
     Research tab = single run. Sweep tab = date ranges × param rows overnight.
   </footer>
 
-  <script src="/static/app.js?v=20260812b"></script>
-  <script src="/static/sweep.js?v=20260812b"></script>
+  <script src="/static/app.js?v=20260812c"></script>
+  <script src="/static/sweep.js?v=20260812c"></script>
 </body>
 </html>

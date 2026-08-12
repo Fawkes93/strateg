@@ -838,6 +838,9 @@ def _run_date_group_job(job: Dict[str, Any]) -> List[Dict[str, Any]]:
     hours = float(job["hours"])
     thresholds = job["thresholds"]
     adverse = float(job["adverse_mult"])
+    sl_manage = job.get("sl_manage") or "off"
+    sl_manage_at_frac = float(job.get("sl_manage_at_frac") or 0.5)
+    sl_manage_lock_pts = float(job.get("sl_manage_lock_pts") or 100.0)
     top_n = int(job["top_n"])
     filters = job.get("filters") or {}
     items = job["items"]
@@ -920,6 +923,9 @@ def _run_date_group_job(job: Dict[str, Any]) -> List[Dict[str, Any]]:
                 hours=hours,
                 thresholds=thresholds,
                 adverse_mult=adverse,
+                sl_manage=sl_manage,
+                sl_manage_at_frac=sl_manage_at_frac,
+                sl_manage_lock_pts=sl_manage_lock_pts,
                 signal=signal,
                 include_detail=False,
                 save_json=False,
@@ -951,6 +957,9 @@ def _pipeline_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> Dict[st
     hours = float(cfg.get("hours") or 6)
     thresholds = cfg.get("thresholds") or [100, 200, 500, 800, 1000, 1200, 1500, 2000]
     adverse = float(cfg.get("adverse_mult") or 1.0)
+    sl_manage = cfg.get("sl_manage") or "off"
+    sl_manage_at_frac = float(cfg.get("sl_manage_at_frac") or 0.5)
+    sl_manage_lock_pts = float(cfg.get("sl_manage_lock_pts") or 100.0)
     filters = cfg.get("filters") or {}
     top_n = int(cfg.get("top_n") or 3)
     workers = int(cfg.get("workers") if cfg.get("workers") is not None else _default_workers())
@@ -1012,6 +1021,9 @@ def _pipeline_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> Dict[st
         return _finalize_report(
             symbol, hours, thresholds, adverse, top_n, filters,
             results_rows, total, workers, cancelled=True,
+            sl_manage=sl_manage,
+            sl_manage_at_frac=sl_manage_at_frac,
+            sl_manage_lock_pts=sl_manage_lock_pts,
         )
 
     # --- Phase 2: replay (group by date; optionally multi-process)
@@ -1027,6 +1039,9 @@ def _pipeline_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> Dict[st
                 "hours": hours,
                 "thresholds": list(thresholds),
                 "adverse_mult": adverse,
+                "sl_manage": sl_manage,
+                "sl_manage_at_frac": sl_manage_at_frac,
+                "sl_manage_lock_pts": sl_manage_lock_pts,
                 "top_n": top_n,
                 "filters": dict(filters or {}),
                 "items": jm["items"],
@@ -1279,6 +1294,9 @@ def _pipeline_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> Dict[st
         total,
         workers,
         cancelled=_cancel.is_set(),
+        sl_manage=sl_manage,
+        sl_manage_at_frac=sl_manage_at_frac,
+        sl_manage_lock_pts=sl_manage_lock_pts,
     )
 
 
@@ -1294,6 +1312,9 @@ def _finalize_report(
     workers: int,
     *,
     cancelled: bool,
+    sl_manage: str = "off",
+    sl_manage_at_frac: float = 0.5,
+    sl_manage_lock_pts: float = 100.0,
 ) -> Dict[str, Any]:
     results_rows.sort(
         key=lambda r: (
@@ -1320,6 +1341,9 @@ def _finalize_report(
         "hours": hours,
         "thresholds": thresholds,
         "adverse_mult": adverse,
+        "sl_manage": sl_manage,
+        "sl_manage_at_frac": sl_manage_at_frac,
+        "sl_manage_lock_pts": sl_manage_lock_pts,
         "top_n": top_n,
         "filters": filters,
         "workers": workers,
@@ -1361,6 +1385,11 @@ def _compact_all_ts(stats_by_t: Dict[str, dict]) -> List[dict]:
                 "avg_clean_hit_min": s.get("avg_clean_hit_min"),
                 "avg_max_fav": s.get("avg_max_fav"),
                 "avg_max_adv": s.get("avg_max_adv"),
+                "manage_armed_pct": s.get("manage_armed_pct"),
+                "stopped_init_pct": s.get("stopped_init_pct"),
+                "stopped_manage_pct": s.get("stopped_manage_pct"),
+                "timeout_pct": s.get("timeout_pct"),
+                "avg_realized_pts": s.get("avg_realized_pts"),
             }
         )
     return rows

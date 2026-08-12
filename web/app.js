@@ -465,6 +465,16 @@
     return Number(v).toFixed(1) + "%";
   }
 
+  function slManageLabel(obj) {
+    const mode = (obj && obj.sl_manage) || "off";
+    if (mode === "be") return " · SL: ½T → BE";
+    if (mode === "lock") {
+      const n = obj.sl_manage_lock_pts != null ? obj.sl_manage_lock_pts : 100;
+      return " · SL: ½T → lock +" + n;
+    }
+    return "";
+  }
+
   /** Time from alert to first touch of T (seconds → minutes). */
   function fmtDuration(sec) {
     if (sec == null || sec === "" || !isFinite(Number(sec))) return "—";
@@ -631,7 +641,7 @@
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${kindLabel(kind)}</td>
-          <td colspan="7" class="muted">no alerts</td>`;
+          <td colspan="10" class="muted">no alerts</td>`;
         tb.appendChild(tr);
         return;
       }
@@ -654,7 +664,10 @@
             dur != null ? dur : "—"
           }</td>
           <td>${s.avg_max_fav != null ? s.avg_max_fav : "—"}</td>
-          <td>${s.avg_max_adv != null ? s.avg_max_adv : "—"}</td>`;
+          <td>${s.avg_max_adv != null ? s.avg_max_adv : "—"}</td>
+          <td>${fmtPct(s.manage_armed_pct)}</td>
+          <td>${fmtPct(s.stopped_manage_pct)}</td>
+          <td>${s.avg_realized_pts != null ? s.avg_realized_pts : "—"}</td>`;
         tb.appendChild(tr);
       });
     });
@@ -831,7 +844,7 @@
 
     if (!filtered.length) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="9" class="muted">No alerts for this type</td>`;
+      tr.innerHTML = `<td colspan="11" class="muted">No alerts for this type</td>`;
       ta.appendChild(tr);
       return;
     }
@@ -847,9 +860,11 @@
         <td>${a.entry != null ? Number(a.entry).toFixed(2) : "—"}</td>
         <td class="${a.hit ? "yes" : "no"}">${a.hit ? "yes" : "no"}</td>
         <td class="${a.clean ? "yes" : "no"}">${a.clean ? "yes" : "no"}</td>
+        <td>${a.exit || "—"}</td>
         <td title="${a.first_hit_sec != null ? (Number(a.first_hit_sec) / 60).toFixed(2) + " min to T" : "did not reach T"}">${dur}</td>
         <td>${a.max_fav}</td>
-        <td>${a.max_adv_until_hit}</td>`;
+        <td>${a.max_adv_until_hit}</td>
+        <td>${a.realized_pts != null ? a.realized_pts : "—"}</td>`;
       ta.appendChild(tr);
     });
   }
@@ -881,6 +896,7 @@
           ")"
         : "") +
       ` · look-ahead ${result.hours}h · opp ≤ ${Math.round((result.adverse_mult || 1) * 100)}% T` +
+      slManageLabel(result) +
       ` · selected T=${Math.round(selectedT)}`;
 
     renderConfigSummary(result);
@@ -963,6 +979,9 @@
       thresholds: multiThresholds(t),
       adverse_mult: isFinite(adversePct) ? adversePct / 100 : 1,
       signal_price: "mid",
+      sl_manage: ($("sl_manage") && $("sl_manage").value) || "off",
+      sl_manage_at_frac: 0.5,
+      sl_manage_lock_pts: Number(($("sl_manage_lock_pts") && $("sl_manage_lock_pts").value) || 100),
       force_download: $("force_download").checked,
       signal: readSignalFromForm(),
     };

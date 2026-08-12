@@ -42,6 +42,9 @@ class JobParams:
     )
     adverse_mult: float = 1.0
     signal_price: str = "mid"
+    sl_manage: str = "off"
+    sl_manage_at_frac: float = 0.5
+    sl_manage_lock_pts: float = 100.0
     force_download: bool = False
     signal: Optional[Dict[str, Any]] = None
 
@@ -113,6 +116,9 @@ def _run_job(params: JobParams) -> None:
             thresholds=params.thresholds,
             adverse_mult=params.adverse_mult,
             signal_price=params.signal_price,
+            sl_manage=params.sl_manage,
+            sl_manage_at_frac=params.sl_manage_at_frac,
+            sl_manage_lock_pts=params.sl_manage_lock_pts,
             force_download=params.force_download,
             signal=params.signal,
             include_detail=True,

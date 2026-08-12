@@ -5,6 +5,12 @@ After an alert at entry price + side:
   - Did favorable excursion reach T points within the next W hours?
   - Was adverse excursion ≤ adverse_limit *before or at* first touch of T?
 
+Optional Factor-style SL manage (`sl_manage`):
+  When fav first reaches `sl_manage_at_frac` × T (default ½T), move the stop to
+  break-even (`be`) or lock in `sl_manage_lock_pts` (default 100). After that the
+  walk for that T stops if the managed stop is touched — the trade would have
+  been closed. Unmanaged (`off`) keeps the original path-analysis semantics.
+
 Hot path optimized: one tick walk per alert covers all T values.
 """
 
@@ -33,6 +39,38 @@ class ForwardPath:
     first_hit_ts: Optional[datetime]
     first_hit_sec: Optional[float]
     first_touch: Optional[str]  # "fav" | "adv" | None
+    # Trade-sim extras (used when sl_manage != off; also filled for off)
+    exit: str = "timeout"  # target | init_sl | manage_sl | timeout
+    manage_armed: bool = False
+    realized_pts: float = 0.0
+
+
+def normalize_sl_manage(
+    sl_manage: Optional[str] = None,
+    sl_manage_at_frac: Optional[float] = 0.5,
+    sl_manage_lock_pts: Optional[float] = 100.0,
+) -> Tuple[str, float, float]:
+    """Return (mode, trigger_frac, lock_pts). mode is off | be | lock."""
+    mode = (sl_manage or "off").strip().lower()
+    if mode in ("be", "breakeven", "break_even", "break-even"):
+        mode = "be"
+    elif mode in ("lock", "lock100", "plus100", "+100"):
+        mode = "lock"
+    else:
+        mode = "off"
+    try:
+        frac = float(sl_manage_at_frac) if sl_manage_at_frac is not None else 0.5
+    except (TypeError, ValueError):
+        frac = 0.5
+    if not (0.0 < frac < 1.0):
+        frac = 0.5
+    try:
+        lock = float(sl_manage_lock_pts) if sl_manage_lock_pts is not None else 100.0
+    except (TypeError, ValueError):
+        lock = 100.0
+    if lock < 0:
+        lock = 0.0
+    return mode, frac, lock
 
 
 def _px(tick: Tick, price_field: str) -> float:
@@ -69,6 +107,9 @@ def walk_forward_ticks(
     price_field: str = "mid",
     ts_arr: Optional[Sequence[float]] = None,
     px_arr: Optional[Sequence[float]] = None,
+    sl_manage: str = "off",
+    sl_manage_at_frac: float = 0.5,
+    sl_manage_lock_pts: float = 100.0,
 ) -> ForwardPath:
     """Single-T walk (used by CLI / thin paths). Prefer walk_forward_multi for UI."""
     paths = walk_forward_multi(
@@ -85,6 +126,9 @@ def walk_forward_ticks(
         price_field=price_field,
         ts_arr=ts_arr,
         px_arr=px_arr,
+        sl_manage=sl_manage,
+        sl_manage_at_frac=sl_manage_at_frac,
+        sl_manage_lock_pts=sl_manage_lock_pts,
     )
     key = str(int(threshold_pts) if float(threshold_pts) == int(threshold_pts) else threshold_pts)
     # multi keys may be int-like strings
@@ -122,6 +166,9 @@ def walk_forward_multi(
     price_field: str = "mid",
     ts_arr: Optional[Sequence[float]] = None,
     px_arr: Optional[Sequence[float]] = None,
+    sl_manage: str = "off",
+    sl_manage_at_frac: float = 0.5,
+    sl_manage_lock_pts: float = 100.0,
 ) -> Dict[str, ForwardPath]:
     """
     One forward walk → stats for every T.
@@ -130,6 +177,10 @@ def walk_forward_multi(
     """
     thr_list = [float(t) for t in thresholds]
     ps = point_size(alert.symbol)
+    mode, arm_frac, lock_pts = normalize_sl_manage(
+        sl_manage, sl_manage_at_frac, sl_manage_lock_pts
+    )
+    manage_on = mode != "off"
 
     def empty(t: float) -> ForwardPath:
         adv = t * float(adverse_mult)
@@ -146,6 +197,9 @@ def walk_forward_multi(
             first_hit_ts=None,
             first_hit_sec=None,
             first_touch=None,
+            exit="timeout",
+            manage_armed=False,
+            realized_pts=0.0,
         )
 
     if start_index >= len(ticks) or ps <= 0 or not thr_list:
@@ -170,16 +224,21 @@ def walk_forward_multi(
 
     # Per-T state
     hit = [False] * n_thr
+    done = [False] * n_thr  # trade closed (target or SL) when manage_on
     max_adv_until = [0.0] * n_thr
     first_hit_sec: List[Optional[float]] = [None] * n_thr
     first_hit_ts: List[Optional[datetime]] = [None] * n_thr
     first_touch: List[Optional[str]] = [None] * n_thr
-    n_hit = 0
+    exit_kind = ["timeout"] * n_thr
+    armed = [False] * n_thr
+    realized = [0.0] * n_thr
+    n_done = 0
 
     run_hi = entry
     run_lo = entry
     max_fav = 0.0
     max_adv = 0.0
+    last_cur_fav = 0.0
     t_end = t0 + float(window_sec)
 
     use_arr = ts_arr is not None and px_arr is not None
@@ -209,26 +268,34 @@ def walk_forward_multi(
         if side_up:
             fav = (run_hi - entry) / ps
             adv = (entry - run_lo) / ps
+            cur_fav = (px - entry) / ps
+            cur_adv = (entry - px) / ps
         else:
             fav = (entry - run_lo) / ps
             adv = (run_hi - entry) / ps
+            cur_fav = (entry - px) / ps
+            cur_adv = (px - entry) / ps
 
         if fav > max_fav:
             max_fav = fav
         if adv > max_adv:
             max_adv = adv
+        last_cur_fav = cur_fav
 
-        # Update every T that has not hit yet
-        if n_hit < n_thr:
-            for k in range(n_thr):
-                if hit[k]:
-                    continue
-                if adv > max_adv_until[k]:
-                    max_adv_until[k] = adv
-                thr = thr_list[k]
-                alim = adv_lims[k]
-                fav_hit = fav + 1e-9 >= thr
-                adv_hit = adv + 1e-9 >= alim
+        if n_done >= n_thr:
+            continue
+
+        for k in range(n_thr):
+            if done[k] or (not manage_on and hit[k]):
+                continue
+            if adv > max_adv_until[k]:
+                max_adv_until[k] = adv
+            thr = thr_list[k]
+            alim = adv_lims[k]
+            fav_hit = fav + 1e-9 >= thr
+            adv_hit = adv + 1e-9 >= alim
+
+            if not manage_on:
                 if first_touch[k] is None:
                     if fav_hit and adv_hit:
                         first_touch[k] = "adv"
@@ -238,15 +305,73 @@ def walk_forward_multi(
                         first_touch[k] = "adv"
                 if fav_hit:
                     hit[k] = True
+                    done[k] = True
                     first_hit_sec[k] = elapsed
                     first_hit_ts[k] = tick_ts
-                    n_hit += 1
+                    exit_kind[k] = "target"
+                    realized[k] = thr
+                    n_done += 1
+                continue
+
+            # --- managed trade sim ---
+            # Arm when running fav first reaches half-T (or configured frac).
+            # If this tick also hits T, take the target (½T is implied).
+            if fav_hit:
+                hit[k] = True
+                done[k] = True
+                first_touch[k] = "fav"
+                first_hit_sec[k] = elapsed
+                first_hit_ts[k] = tick_ts
+                exit_kind[k] = "target"
+                realized[k] = thr
+                if fav + 1e-9 >= arm_frac * thr:
+                    armed[k] = True
+                n_done += 1
+                continue
+
+            if not armed[k] and fav + 1e-9 >= arm_frac * thr:
+                armed[k] = True
+
+            stopped = False
+            if armed[k]:
+                if mode == "be" and cur_fav <= 1e-9:
+                    stopped = True
+                    realized[k] = 0.0
+                elif mode == "lock" and cur_fav <= lock_pts + 1e-9:
+                    stopped = True
+                    realized[k] = lock_pts
+            else:
+                if adv_hit:
+                    stopped = True
+                    realized[k] = -alim
+
+            if stopped:
+                done[k] = True
+                first_touch[k] = "adv"
+                first_hit_sec[k] = elapsed
+                first_hit_ts[k] = tick_ts
+                exit_kind[k] = "manage_sl" if armed[k] else "init_sl"
+                n_done += 1
 
     out: Dict[str, ForwardPath] = {}
     for k, thr in enumerate(thr_list):
         key = str(int(thr) if thr == int(thr) else thr)
         h = hit[k]
-        clean = h and (max_adv_until[k] <= adv_lims[k] + 1e-9)
+        if manage_on:
+            if exit_kind[k] == "timeout":
+                realized[k] = last_cur_fav
+            clean = h  # reached T without being stopped
+        else:
+            clean = h and (max_adv_until[k] <= adv_lims[k] + 1e-9)
+            if h:
+                realized[k] = thr
+            elif first_touch[k] == "adv":
+                # Unmanaged path-analysis: SL was touched but walk kept going.
+                # Realized-if-flattened-at-SL for expectancy comparison.
+                realized[k] = -adv_lims[k]
+            else:
+                realized[k] = last_cur_fav
+                exit_kind[k] = "timeout"
         out[key] = ForwardPath(
             alert=alert,
             threshold_pts=thr,
@@ -260,6 +385,9 @@ def walk_forward_multi(
             first_hit_ts=first_hit_ts[k],
             first_hit_sec=first_hit_sec[k],
             first_touch=first_touch[k],
+            exit=exit_kind[k],
+            manage_armed=armed[k],
+            realized_pts=float(realized[k]),
         )
     return out
 
@@ -289,6 +417,14 @@ def summarize_forward(paths: Sequence[ForwardPath]) -> dict:
         round(avg_clean_sec / 60.0, 1) if avg_clean_sec is not None else None
     )
 
+    armed_n = sum(1 for p in paths if p.manage_armed)
+    init_sl_n = sum(1 for p in paths if p.exit == "init_sl")
+    manage_sl_n = sum(1 for p in paths if p.exit == "manage_sl")
+    timeout_n = sum(1 for p in paths if p.exit == "timeout")
+    avg_real = (
+        round(sum(float(p.realized_pts) for p in paths) / n, 1) if n else 0.0
+    )
+
     return {
         "n": n,
         "hits": hits,
@@ -313,6 +449,15 @@ def summarize_forward(paths: Sequence[ForwardPath]) -> dict:
             round(avg_clean_sec, 1) if avg_clean_sec is not None else None
         ),
         "avg_clean_hit_min": avg_clean_min,
+        "manage_armed": armed_n,
+        "manage_armed_pct": pct(armed_n, n),
+        "stopped_init": init_sl_n,
+        "stopped_init_pct": pct(init_sl_n, n),
+        "stopped_manage": manage_sl_n,
+        "stopped_manage_pct": pct(manage_sl_n, n),
+        "timeout": timeout_n,
+        "timeout_pct": pct(timeout_n, n),
+        "avg_realized_pts": avg_real,
     }
 
 
@@ -335,6 +480,9 @@ def score_all_alerts(
     window_sec: float,
     adverse_mult: float = 1.0,
     price_field: str = "mid",
+    sl_manage: str = "off",
+    sl_manage_at_frac: float = 0.5,
+    sl_manage_lock_pts: float = 100.0,
     progress_cb=None,
 ) -> Dict[str, List[ForwardPath]]:
     """
@@ -359,6 +507,9 @@ def score_all_alerts(
             price_field=price_field,
             ts_arr=ts_arr,
             px_arr=px_arr,
+            sl_manage=sl_manage,
+            sl_manage_at_frac=sl_manage_at_frac,
+            sl_manage_lock_pts=sl_manage_lock_pts,
         )
         for k in keys:
             out[k].append(multi[k])
@@ -377,6 +528,9 @@ def multi_threshold_report(
     window_sec: float,
     adverse_mult: float = 1.0,
     price_field: str = "mid",
+    sl_manage: str = "off",
+    sl_manage_at_frac: float = 0.5,
+    sl_manage_lock_pts: float = 100.0,
     scored: Optional[Dict[str, List[ForwardPath]]] = None,
 ) -> Dict[str, dict]:
     """
@@ -393,7 +547,13 @@ def multi_threshold_report(
             window_sec=window_sec,
             adverse_mult=adverse_mult,
             price_field=price_field,
+            sl_manage=sl_manage,
+            sl_manage_at_frac=sl_manage_at_frac,
+            sl_manage_lock_pts=sl_manage_lock_pts,
         )
+    mode, arm_frac, lock_pts = normalize_sl_manage(
+        sl_manage, sl_manage_at_frac, sl_manage_lock_pts
+    )
     out: Dict[str, dict] = {}
     for t in thresholds:
         key = str(int(t) if float(t) == int(t) else t)
@@ -404,6 +564,9 @@ def multi_threshold_report(
         s["adverse_limit_pts"] = float(t) * float(adverse_mult)
         s["adverse_mult"] = adverse_mult
         s["window_sec"] = window_sec
+        s["sl_manage"] = mode
+        s["sl_manage_at_frac"] = arm_frac
+        s["sl_manage_lock_pts"] = lock_pts
         out[key] = s
     return out
 
@@ -417,6 +580,9 @@ def paths_for_threshold(
     window_sec: float,
     adverse_mult: float = 1.0,
     price_field: str = "mid",
+    sl_manage: str = "off",
+    sl_manage_at_frac: float = 0.5,
+    sl_manage_lock_pts: float = 100.0,
     scored: Optional[Dict[str, List[ForwardPath]]] = None,
 ) -> List[ForwardPath]:
     key = str(
@@ -432,6 +598,9 @@ def paths_for_threshold(
         window_sec=window_sec,
         adverse_mult=adverse_mult,
         price_field=price_field,
+        sl_manage=sl_manage,
+        sl_manage_at_frac=sl_manage_at_frac,
+        sl_manage_lock_pts=sl_manage_lock_pts,
     )
     return scored[key]
 
