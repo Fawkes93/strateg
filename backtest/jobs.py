@@ -91,6 +91,14 @@ def start_job(params: JobParams) -> Dict[str, Any]:
             return {"ok": False, "error": "A job is already running"}
         if is_batch_running():
             return {"ok": False, "error": "Batch sweep is running — wait or use Sweep tab"}
+        from backtest.session_jobs import is_session_running
+
+        if is_session_running():
+            return {"ok": False, "error": "Session clock is running"}
+        from backtest.spike_fade_jobs import is_spike_fade_running
+
+        if is_spike_fade_running():
+            return {"ok": False, "error": "Spike fade is running"}
         _state.params = params
         _state.result = None
         _state.running = True

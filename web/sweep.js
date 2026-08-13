@@ -141,6 +141,8 @@
       const tab = btn.getAttribute("data-tab");
       $("tab-research").classList.toggle("hidden", tab !== "research");
       $("tab-sweep").classList.toggle("hidden", tab !== "sweep");
+      if ($("tab-session")) $("tab-session").classList.toggle("hidden", tab !== "session");
+      if ($("tab-spikefade")) $("tab-spikefade").classList.toggle("hidden", tab !== "spikefade");
       try {
         localStorage.setItem("strateg_tab", tab);
       } catch (e) {}
@@ -1267,8 +1269,9 @@
     // restore last tab
     try {
       const tab = localStorage.getItem("strateg_tab");
-      if (tab === "sweep") {
-        document.querySelector('.main-tab[data-tab="sweep"]').click();
+      if (tab === "sweep" || tab === "session" || tab === "spikefade") {
+        const btn = document.querySelector('.main-tab[data-tab="' + tab + '"]');
+        if (btn) btn.click();
       }
     } catch (e) {}
 

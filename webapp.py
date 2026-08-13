@@ -27,6 +27,17 @@ from backtest.runner import DEFAULT_RESULTS
 from backtest.config import defaults_snapshot
 from backtest.dukascopy import reaktor_symbol
 from backtest.jobs import JobParams, get_state, start_job
+from backtest.session_jobs import (
+    SessionJobParams,
+    get_session_state,
+    start_session_job,
+)
+from backtest.spike_fade_jobs import (
+    SpikeFadeJobParams,
+    get_spike_fade_state,
+    start_spike_fade_job,
+    stop_spike_fade,
+)
 
 WEB_DIR = ROOT / "web"
 app = FastAPI(title="Strateg", version="0.4", docs_url="/docs")
@@ -176,6 +187,103 @@ def batch_load_report(body: LoadReportRequest = LoadReportRequest()):
     if not out.get("ok"):
         raise HTTPException(status_code=409, detail=out.get("error") or "busy")
     out["path"] = str(p)
+    return out
+
+
+class SessionRunRequest(BaseModel):
+    symbol: str = "XAUUSD"
+    date_from: str = "2025-05-01"
+    date_to: str = "2025-08-01"
+    timezone: str = "Europe/Chisinau"
+    min_range_usd: float = 15.0
+    min_body_pts: float = 200.0
+    sl_floor_pts: float = 500.0
+    flatten_hour: int = 12
+    force_download: bool = False
+
+
+@app.get("/api/session")
+def session_status():
+    return get_session_state()
+
+
+@app.post("/api/session/run")
+def session_run(body: SessionRunRequest):
+    params = SessionJobParams(
+        symbol=body.symbol,
+        date_from=body.date_from,
+        date_to=body.date_to,
+        timezone=body.timezone or "Europe/Chisinau",
+        min_range_usd=float(body.min_range_usd),
+        min_body_pts=float(body.min_body_pts),
+        sl_floor_pts=float(body.sl_floor_pts),
+        flatten_hour=int(body.flatten_hour),
+        force_download=bool(body.force_download),
+    )
+    out = start_session_job(params)
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "busy")
+    return out
+
+
+class SpikeFadeRunRequest(BaseModel):
+    symbol: str = "XAUUSD"
+    date_from: str = "2025-05-01"
+    date_to: str = "2025-06-01"
+    window_sec: float = 3.0
+    min_spike_pts: float = 2000.0
+    tp_pts: float = 2000.0
+    sl_pts: float = 2000.0
+    tp_pct: float = 100.0
+    sl_pct: float = 100.0
+    trail_pts: float = 1000.0
+    max_hold_sec: float = 120.0
+    cooldown_sec: float = 30.0
+    weekend_blackout_min: float = 10.0
+    lag_sec: float = 0.0
+    workers: int = 3
+    force_download: bool = False
+
+
+@app.get("/api/spike-fade")
+def spike_fade_status(
+    rows: int = Query(0),
+    limit: int = Query(400),
+):
+    return get_spike_fade_state(include_rows=bool(rows), row_limit=int(limit))
+
+
+@app.post("/api/spike-fade/run")
+def spike_fade_run(body: SpikeFadeRunRequest):
+    params = SpikeFadeJobParams(
+        symbol=body.symbol,
+        date_from=body.date_from,
+        date_to=body.date_to,
+        window_sec=float(body.window_sec),
+        min_spike_pts=float(body.min_spike_pts),
+        tp_pts=float(body.tp_pts),
+        sl_pts=float(body.sl_pts),
+        tp_pct=float(body.tp_pct if body.tp_pct is not None else 100.0),
+        sl_pct=float(body.sl_pct if body.sl_pct is not None else 100.0),
+        trail_pts=float(body.trail_pts),
+        max_hold_sec=float(body.max_hold_sec),
+        cooldown_sec=float(body.cooldown_sec),
+        weekend_blackout_min=float(body.weekend_blackout_min),
+        lag_sec=float(body.lag_sec or 0.0),
+        workers=int(body.workers or 3),
+        force_download=bool(body.force_download),
+    )
+    out = start_spike_fade_job(params)
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "busy")
+    return out
+
+
+@app.post("/api/spike-fade/stop")
+def spike_fade_stop():
+    out = stop_spike_fade()
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "not running")
     return out
 
 

@@ -471,7 +471,10 @@ def save_tick_pack(path: Path, ticks: List[Tick]) -> None:
     tmp.replace(path)
 
 
-def load_tick_pack(path: Path) -> List[Tick]:
+def load_tick_pack(
+    path: Path,
+    progress: Optional[Callable[..., None]] = None,
+) -> List[Tick]:
     """Load ticks written by save_tick_pack."""
     with path.open("rb") as f:
         ver = struct.unpack("<I", f.read(4))[0]
@@ -485,7 +488,8 @@ def load_tick_pack(path: Path) -> List[Tick]:
         unpack = TICK_PACK_STRUCT.unpack
         read = f.read
         rec = TICK_PACK_STRUCT.size
-        for _ in range(n):
+        yield_every = 200_000
+        for i in range(n):
             blob = read(rec)
             if len(blob) < rec:
                 break
@@ -497,6 +501,15 @@ def load_tick_pack(path: Path) -> List[Tick]:
                     ask=ask,
                 )
             )
+            if (i + 1) % yield_every == 0:
+                time.sleep(0.002)  # release GIL so the UI can poll
+                if progress:
+                    progress(
+                        phase="download",
+                        message=f"Unpack pack {i + 1:,}/{n:,}",
+                        ticks=i + 1,
+                        pct=round(5.0 + 40.0 * ((i + 1) / max(n, 1)), 1),
+                    )
         return out
 
 
@@ -505,6 +518,7 @@ def get_cached_pack(
     start: datetime,
     end: datetime,
     pack_dir: Path,
+    progress: Optional[Callable[..., None]] = None,
 ) -> Optional[List[Tick]]:
     """Memory first, then disk pack. None if missing."""
     key = pack_key(symbol, start, end)
@@ -513,9 +527,18 @@ def get_cached_pack(
     path = pack_path(pack_dir, symbol, start, end)
     if not path.exists() or path.stat().st_size < 16:
         return None
-    ticks = load_tick_pack(path)
+    ticks = load_tick_pack(path, progress=progress)
     _MEM_PACKS[key] = ticks
     return ticks
+
+
+def drop_cached_pack(
+    symbol: str,
+    start: datetime,
+    end: datetime,
+) -> None:
+    """Free a month pack from RAM after we finish scanning it."""
+    _MEM_PACKS.pop(pack_key(symbol, start, end), None)
 
 
 def store_cached_pack(

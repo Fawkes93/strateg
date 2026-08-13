@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Strateg — local forward research</title>
-  <link rel="stylesheet" href="/static/app.css?v=20260812a" />
+  <link rel="stylesheet" href="/static/app.css?v=20260813n" />
 </head>
 <body>
   <header class="top">
@@ -20,6 +20,8 @@
   <nav class="main-tabs" role="tablist">
     <button type="button" class="main-tab active" data-tab="research">Research</button>
     <button type="button" class="main-tab" data-tab="sweep">Sweep (overnight)</button>
+    <button type="button" class="main-tab" data-tab="session">Session clock</button>
+    <button type="button" class="main-tab" data-tab="spikefade">Spike fade</button>
   </nav>
 
   <!-- ========== RESEARCH TAB (unchanged flow) ========== -->
@@ -442,11 +444,256 @@
     </section>
   </div>
 
+  <!-- ========== SESSION CLOCK TAB ========== -->
+  <div id="tab-session" class="tab-panel hidden">
+    <section class="card pipeline">
+      <h2>Moldova H1 clock</h2>
+      <ol>
+        <li>Direction from first of <strong>6am → 5am → 4am</strong> H1 with range ≥ $15 and a real body (Europe/Chisinau).</li>
+        <li>Enter at <strong>07:00</strong> local, same direction as that bar.</li>
+        <li>Stop from the <strong>5am</strong> high/low, at least 500 pts.</li>
+        <li>At <strong>09:00</strong> close if not red; if red, wait for <strong>breakeven</strong> or SL or <strong>12:00</strong> flatten.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>Parameters</h2>
+      <div class="grid">
+        <label>
+          Symbol
+          <select id="sc-symbol">
+            <option value="XAUUSD" selected>XAUUSD (gold)</option>
+          </select>
+        </label>
+        <label>
+          From (local date)
+          <input type="date" id="sc-from" value="2025-05-01" />
+        </label>
+        <label>
+          To (exclusive)
+          <input type="date" id="sc-to" value="2025-08-01" />
+        </label>
+        <label>
+          Timezone
+          <input type="text" id="sc-tz" value="Europe/Chisinau" />
+        </label>
+        <label>
+          Min H−L ($)
+          <input type="number" id="sc-min-range" value="15" min="0" step="1" />
+        </label>
+        <label>
+          Min body (pts)
+          <input type="number" id="sc-min-body" value="200" min="0" step="10" />
+        </label>
+        <label>
+          SL floor (pts)
+          <input type="number" id="sc-sl-floor" value="500" min="0" step="50" />
+        </label>
+        <label>
+          Flatten hour
+          <input type="number" id="sc-flatten" value="12" min="9" max="23" />
+        </label>
+      </div>
+      <p class="hint">
+        Dates are Moldova calendar days. Only <strong>3am–12pm local</strong> hours
+        are loaded (not full days). Fill is mid. One trade per weekday. Weekends skipped.
+      </p>
+      <div class="actions">
+        <button type="button" class="primary" id="sc-run">Run session backtest</button>
+        <label class="chk force">
+          <input type="checkbox" id="sc-force" /> Force re-download
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Progress</h2>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="sc-progress-bar" style="width:0%"></div>
+      </div>
+      <p class="progress-msg" id="sc-progress-msg">Idle</p>
+    </section>
+
+    <section class="card" id="sc-results-card">
+      <h2>Results</h2>
+      <p class="muted" id="sc-meta">No run yet.</p>
+      <div class="hero-grid" id="sc-hero"></div>
+      <h3>Trades</h3>
+      <div class="table-wrap">
+        <table id="sc-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Side</th>
+              <th>Def hour</th>
+              <th>Range $</th>
+              <th>Entry</th>
+              <th>SL</th>
+              <th>SL pts</th>
+              <th>Exit</th>
+              <th>Reason</th>
+              <th>Pts</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- ========== SPIKE FADE TAB ========== -->
+  <div id="tab-spikefade" class="tab-panel hidden">
+    <section class="card pipeline">
+      <h2>Fade a 1–3s spike</h2>
+      <ol>
+        <li>If price moves <strong>≥ 2000 pts in ≤ 3 seconds</strong>, enter the <em>other</em> way (optionally after 1–2s lag).</li>
+        <li>Take profit and hard stop are a <strong>% of that spike</strong> (100% = fade the whole move). Set % to 0 to use fixed pts instead.</li>
+        <li>After +1000 pts, trail 1000 behind the best price (at worst breakeven).</li>
+        <li>Flatten after <strong>2 minutes</strong> if still open. Skip the first <strong>10 min after weekend reopen</strong> (Sun 22:00 UTC).</li>
+      </ol>
+      <p class="hint">
+        Full-day ticks (all hours), not Session’s 3am–12pm slice. Mid fill — live will be worse.
+        <strong>A year is scanned one month at a time</strong> so RAM and the progress bar stay alive.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Parameters</h2>
+      <div class="grid">
+        <label>
+          Symbol
+          <select id="sf-symbol">
+            <option value="XAUUSD" selected>XAUUSD (gold)</option>
+          </select>
+        </label>
+        <label>
+          From (UTC)
+          <input type="date" id="sf-from" value="2025-05-01" />
+        </label>
+        <label>
+          To (exclusive)
+          <input type="date" id="sf-to" value="2025-06-01" />
+        </label>
+        <label>
+          Window (sec)
+          <input type="number" id="sf-window" value="3" min="1" max="5" step="0.5" />
+        </label>
+        <label>
+          Min spike (pts)
+          <input type="number" id="sf-min" value="2000" min="100" step="100" />
+        </label>
+        <label>
+          TP (% of spike)
+          <input type="number" id="sf-tp-pct" value="100" min="0" max="400" step="5"
+            title="Take profit as % of the detected spike. 100 = fade the whole spike. 0 = use TP pts." />
+        </label>
+        <label>
+          SL (% of spike)
+          <input type="number" id="sf-sl-pct" value="100" min="0" max="400" step="5"
+            title="Hard stop as % of the detected spike. 100 = same size as the spike. 0 = use SL pts." />
+        </label>
+        <label>
+          TP (pts if % = 0)
+          <input type="number" id="sf-tp" value="2000" min="100" step="100"
+            title="Used only when TP % is 0." />
+        </label>
+        <label>
+          SL (pts if % = 0)
+          <input type="number" id="sf-sl" value="2000" min="100" step="100"
+            title="Used only when SL % is 0." />
+        </label>
+        <label>
+          Trail (pts)
+          <input type="number" id="sf-trail" value="1000" min="0" step="100" />
+        </label>
+        <label>
+          Max hold (sec)
+          <input type="number" id="sf-hold" value="120" min="10" step="10" />
+        </label>
+        <label>
+          Cooldown (sec)
+          <input type="number" id="sf-cd" value="30" min="0" step="5" />
+        </label>
+        <label>
+          Weekend skip (min)
+          <input type="number" id="sf-wknd" value="10" min="0" step="1" />
+        </label>
+        <label>
+          Fill lag
+          <select id="sf-lag" title="Wait this long after detect, then fill at the later price">
+            <option value="0" selected>0 s (instant)</option>
+            <option value="1">1 second</option>
+            <option value="2">2 seconds</option>
+          </select>
+        </label>
+        <label>
+          Workers
+          <input type="number" id="sf-workers" value="3" min="1" max="6" step="1"
+            title="Parallel months (separate processes). 3 is a good default." />
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" class="primary" id="sf-run">Run spike fade</button>
+        <button type="button" class="secondary" id="sf-stop" disabled>Stop</button>
+        <label class="chk force">
+          <input type="checkbox" id="sf-force" /> Force re-download
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="sf-progress-head">
+        <h2>Progress</h2>
+        <span class="sw-elapsed" id="sf-elapsed" title="Elapsed wall time">—</span>
+      </div>
+      <div class="sf-overall">
+        <div class="sf-overall-top">
+          <span class="sf-overall-label">All months</span>
+          <span class="sf-overall-pct" id="sf-overall-pct">0%</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar" id="sf-progress-bar" style="width:0%"></div>
+        </div>
+      </div>
+      <p class="progress-msg" id="sf-progress-msg">Idle</p>
+      <div class="sf-lanes" id="sf-lanes" hidden></div>
+    </section>
+
+    <section class="card">
+      <h2>Results</h2>
+      <p class="muted" id="sf-meta">No run yet.</p>
+      <div class="hero-grid" id="sf-hero"></div>
+      <h3>Trades</h3>
+      <div class="table-wrap">
+        <table id="sf-table">
+          <thead>
+            <tr>
+              <th class="sf-sort is-on" data-sort="time">Time (UTC) <span class="dir">▲</span></th>
+              <th>Side</th>
+              <th>Spike</th>
+              <th>Pts</th>
+              <th>TP</th>
+              <th>SL</th>
+              <th>Entry</th>
+              <th>Exit</th>
+              <th class="sf-sort" data-sort="dur">Dur (min) <span class="dir"></span></th>
+              <th class="sf-sort" data-sort="reason">Reason <span class="dir"></span></th>
+              <th>P/L pts</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
   <footer class="foot">
-    Research tab = single run. Sweep tab = date ranges × param rows overnight.
+    Research = alerts. Sweep = grid. Session clock = 7am Moldova. Spike fade = 1–3s fade.
   </footer>
 
-  <script src="/static/app.js?v=20260812c"></script>
-  <script src="/static/sweep.js?v=20260812c"></script>
+  <script src="/static/app.js?v=20260813b"></script>
+  <script src="/static/sweep.js?v=20260813b"></script>
+  <script src="/static/session.js?v=20260813b"></script>
+  <script src="/static/spike_fade.js?v=20260813n"></script>
 </body>
 </html>

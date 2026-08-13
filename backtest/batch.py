@@ -578,6 +578,14 @@ def start_batch(cfg: Dict[str, Any]) -> Dict[str, Any]:
             return {"ok": False, "error": "Batch already running"}
         if is_job_running():
             return {"ok": False, "error": "Single research is running — wait for it"}
+        from backtest.session_jobs import is_session_running
+
+        if is_session_running():
+            return {"ok": False, "error": "Session clock is running"}
+        from backtest.spike_fade_jobs import is_spike_fade_running
+
+        if is_spike_fade_running():
+            return {"ok": False, "error": "Spike fade is running"}
         items = build_work_items(cfg)
         _cancel.clear()
         _state.running = True

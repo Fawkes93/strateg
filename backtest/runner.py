@@ -83,7 +83,7 @@ def load_ticks(
             hours_done=0,
             pct=2.0,
         )
-        packed = get_cached_pack(symbol_duka, start, end, pack_dir)
+        packed = get_cached_pack(symbol_duka, start, end, pack_dir, progress=prog)
         if packed is not None:
             ticks = packed
             prog(
@@ -209,6 +209,9 @@ def research_from_ticks(
     for i, t in enumerate(ticks):
         eng.on_tick(t, i)
         if i % step == 0 or i == n - 1:
+            import time
+
+            time.sleep(0.003)
             pct = 55.0 + 30.0 * ((i + 1) / n)
             prog(
                 replay_ticks_done=i + 1,
