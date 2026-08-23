@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local Strateg research UI — single run + overnight sweep."""
+"""Local Strateg research UI — single run + overnight sweep + overnight break."""
 
 from __future__ import annotations
 
@@ -38,9 +38,14 @@ from backtest.spike_fade_jobs import (
     start_spike_fade_job,
     stop_spike_fade,
 )
+from backtest.overnight_jobs import (
+    OvernightJobParams,
+    get_overnight_state,
+    start_overnight_job,
+)
 
 WEB_DIR = ROOT / "web"
-app = FastAPI(title="Strateg", version="0.4", docs_url="/docs")
+app = FastAPI(title="Strateg", version="0.5", docs_url="/docs")
 
 
 class RunRequest(BaseModel):
@@ -284,6 +289,85 @@ def spike_fade_stop():
     out = stop_spike_fade()
     if not out.get("ok"):
         raise HTTPException(status_code=409, detail=out.get("error") or "not running")
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Overnight Break (Asia range + EMA / higher-close entry)
+# ---------------------------------------------------------------------------
+
+
+class OvernightRunRequest(BaseModel):
+    symbol: str = "XAUUSD"
+    date_from: str = "2025-05-01"
+    date_to: str = "2025-08-01"
+    asia_start_hour: int = 0
+    asia_end_hour: int = 7
+    min_asia_range_pts: float = 300.0
+    min_break_pts_above: float = 200.0
+    min_break_pts_below: float = 200.0
+    max_break_candles_after: int = 8
+    pullback_mode: str = "required"  # off | required | preferred
+    ema_period: int = 21
+    max_wait_candles: int = 8
+    timeout_action: str = "skip"
+    use_higher_close: bool = True
+    sl_mode: str = "asia_opposite"
+    sl_fixed_pts: float = 500.0
+    sl_range_mult: float = 1.0
+    tp_mode: str = "range_mult"
+    tp_fixed_pts: float = 1000.0
+    tp_range_mult: float = 1.5
+    tp_r_mult: float = 2.0
+    trail_arm_pts: float = 400.0
+    trail_pts: float = 250.0
+    max_hold_hours: float = 10.0
+    flatten_hour: int = 18
+    one_trade_per_day: bool = True
+    side_filter: str = "both"
+    force_download: bool = False
+
+
+@app.get("/api/overnight")
+def overnight_status():
+    return get_overnight_state()
+
+
+@app.post("/api/overnight/run")
+def overnight_run(body: OvernightRunRequest):
+    params = OvernightJobParams(
+        symbol=body.symbol,
+        date_from=body.date_from,
+        date_to=body.date_to,
+        asia_start_hour=int(body.asia_start_hour),
+        asia_end_hour=int(body.asia_end_hour),
+        min_asia_range_pts=float(body.min_asia_range_pts),
+        min_break_pts_above=float(body.min_break_pts_above),
+        min_break_pts_below=float(body.min_break_pts_below),
+        max_break_candles_after=int(body.max_break_candles_after),
+        pullback_mode=str(body.pullback_mode or "required"),
+        ema_period=int(body.ema_period),
+        max_wait_candles=int(body.max_wait_candles),
+        timeout_action=str(body.timeout_action or "skip"),
+        use_higher_close=bool(body.use_higher_close),
+        sl_mode=str(body.sl_mode or "asia_opposite"),
+        sl_fixed_pts=float(body.sl_fixed_pts),
+        sl_range_mult=float(body.sl_range_mult),
+        tp_mode=str(body.tp_mode or "range_mult"),
+        tp_fixed_pts=float(body.tp_fixed_pts),
+        tp_range_mult=float(body.tp_range_mult),
+        tp_r_mult=float(body.tp_r_mult),
+        trail_arm_pts=float(body.trail_arm_pts),
+        trail_pts=float(body.trail_pts),
+        max_hold_hours=float(body.max_hold_hours),
+        flatten_hour=int(body.flatten_hour),
+        one_trade_per_day=bool(body.one_trade_per_day),
+        side_filter=str(body.side_filter or "both"),
+        force_download=bool(body.force_download),
+    )
+    out = start_overnight_job(params)
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "busy")
     return out
 
 
