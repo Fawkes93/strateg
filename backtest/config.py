@@ -221,6 +221,9 @@ def point_size(symbol: str) -> float:
         return float(cfg["point_size"])
     if "XAU" in symbol or "GOLD" in symbol:
         return 0.01
+    if "BTC" in symbol:
+        # Same as XAU: 1 pt = $0.01. A $100 BTC rip = 10_000 pts.
+        return 0.01
     return 0.00001
 
 

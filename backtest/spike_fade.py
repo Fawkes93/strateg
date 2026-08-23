@@ -28,6 +28,10 @@ class FadeParams:
     tp_pct: float = 100.0  # % of this spike; 0 = use tp_pts
     sl_pct: float = 100.0  # % of this spike; 0 = use sl_pts
     trail_pts: float = 1000.0
+    trail_arm_pts: float = 0.0  # 0 = arm when fav reaches trail_pts
+    confirm_pts: float = 0.0  # wait for this much bounce from the extreme; 0 = off
+    confirm_timeout_sec: float = 5.0  # drop the signal if no bounce in time
+    max_extreme_age_sec: float = 0.0  # 0 = off; only fire if window hi/lo printed this recently
     max_hold_sec: float = 120.0
     cooldown_sec: float = 30.0
     weekend_blackout_min: float = 10.0
@@ -92,6 +96,9 @@ def _detect(
     window_sec: float,
     hi: float,
     lo: float,
+    max_extreme_age_sec: float = 0.0,
+    hi_ts: float = 0.0,
+    lo_ts: float = 0.0,
 ):
     if len(window) < 2 or ps <= 0:
         return None
@@ -103,10 +110,24 @@ def _detect(
     up = (hi - ref) / ps
     down = (ref - lo) / ps
     if up >= down and up + 1e-9 >= min_pts:
-        return "UP", up, span, last
-    if down > up and down + 1e-9 >= min_pts:
-        return "DOWN", down, span, last
-    return None
+        side, spike, extreme, ext_ts = "UP", up, hi, hi_ts
+    elif down > up and down + 1e-9 >= min_pts:
+        side, spike, extreme, ext_ts = "DOWN", down, lo, lo_ts
+    else:
+        return None
+    if max_extreme_age_sec > 1e-12 and last_ts - ext_ts > max_extreme_age_sec + 1e-12:
+        return None
+    return side, spike, span, last, extreme
+
+
+def _retraced(side: str, extreme: float, px: float, confirm_pts: float, ps: float) -> bool:
+    """True when price has bounced `confirm_pts` from the spike extreme toward the fade."""
+    if confirm_pts <= 1e-12:
+        return True
+    need = float(confirm_pts) * ps
+    if side == "UP":  # dump → long; extreme is the low
+        return px + 1e-12 >= extreme + need
+    return px - 1e-12 <= extreme - need
 
 
 def run_spike_fade(
@@ -129,6 +150,12 @@ def run_spike_fade(
     tp_pct = float(params.tp_pct if params.tp_pct is not None else 0.0)
     sl_pct = float(params.sl_pct if params.sl_pct is not None else 0.0)
     trail_pts = float(params.trail_pts)
+    arm_pts = float(params.trail_arm_pts or 0.0)
+    if arm_pts <= 1e-12:
+        arm_pts = trail_pts
+    confirm_pts = float(params.confirm_pts or 0.0)
+    confirm_timeout = max(0.5, float(params.confirm_timeout_sec or 5.0))
+    max_ext_age = float(params.max_extreme_age_sec or 0.0)
 
     def levels(side: str, fill_px: float, spike: float) -> Tuple[float, float, float, float]:
         tp_off = target_pts(tp_pct, spike, tp_fixed)
@@ -148,16 +175,19 @@ def run_spike_fade(
     best_fav = 0.0
     entry_epoch = 0.0
     cooldown_until = 0.0
+    suppress_until = 0.0
     win_hi = float("-inf")
     win_lo = float("inf")
+    win_hi_ts = 0.0
+    win_lo_ts = 0.0
     n = len(ticks)
     last_yield = time.monotonic()
 
     def close_trade(tr: FadeTrade, ts: datetime, px: float, reason: str) -> None:
         nonlocal open_t, best_fav, cooldown_until
         pts = _fav_pts(tr.side, tr.entry, px, ps)
-        if reason == "trail" and pts < 0:
-            pts = 0.0  # trail arms at BE; don’t report a tiny negative from tick noise
+        if reason == "trail" and pts < 0 and arm_pts + 1e-9 >= trail_pts:
+            pts = 0.0  # default trail arms at BE; skip tick-noise reds
         tr.exit_ts = ts.isoformat()
         tr.exit = round(px, 5)
         tr.exit_reason = reason
@@ -180,21 +210,30 @@ def run_spike_fade(
         epoch = ts.timestamp()
         px = t.mid
         dq.append((epoch, px))
-        if px > win_hi:
+        if px >= win_hi:
             win_hi = px
-        if px < win_lo:
+            win_hi_ts = epoch
+        if px <= win_lo:
             win_lo = px
+            win_lo_ts = epoch
         cutoff = epoch - window_sec
         popped = False
         while dq and dq[0][0] < cutoff:
             dq.popleft()
             popped = True
         if popped and dq:
-            prices = [p for _, p in dq]
-            win_hi = max(prices)
-            win_lo = min(prices)
+            win_hi, win_lo = float("-inf"), float("inf")
+            win_hi_ts = win_lo_ts = 0.0
+            for e, p in dq:
+                if p >= win_hi:
+                    win_hi = p
+                    win_hi_ts = e
+                if p <= win_lo:
+                    win_lo = p
+                    win_lo_ts = e
         elif not dq:
             win_hi, win_lo = float("-inf"), float("inf")
+            win_hi_ts = win_lo_ts = 0.0
 
         if open_t is not None:
             fav = _fav_pts(open_t.side, open_t.entry, px, ps)
@@ -204,13 +243,13 @@ def run_spike_fade(
             if open_t.side == "UP":
                 hit_tp = px + 1e-12 >= open_t.tp
                 hit_hard = px <= open_t.sl_init + 1e-12
-                trail_on = best_fav + 1e-9 >= trail_pts
+                trail_on = best_fav + 1e-9 >= arm_pts
                 trail_px = (open_t.entry + best_fav * ps) - trail_pts * ps
                 hit_trail = trail_on and px <= trail_px + 1e-12
             else:
                 hit_tp = px - 1e-12 <= open_t.tp
                 hit_hard = px >= open_t.sl_init - 1e-12
-                trail_on = best_fav + 1e-9 >= trail_pts
+                trail_on = best_fav + 1e-9 >= arm_pts
                 trail_px = (open_t.entry - best_fav * ps) + trail_pts * ps
                 hit_trail = trail_on and px >= trail_px - 1e-12
 
@@ -223,7 +262,16 @@ def run_spike_fade(
             elif held + 1e-9 >= hold_sec:
                 close_trade(open_t, ts, px, "timeout")
         elif pending is not None:
-            if epoch + 1e-12 >= float(pending["fill_at"]):
+            if epoch > float(pending["deadline"]) + 1e-12:
+                pending = None
+                suppress_until = epoch + window_sec
+            elif epoch + 1e-12 >= float(pending["fill_at"]) and _retraced(
+                pending["side"],
+                float(pending["extreme"]),
+                px,
+                confirm_pts,
+                ps,
+            ):
                 fill_px = px
                 side = pending["side"]
                 spike = float(pending["spike_pts"])
@@ -246,12 +294,27 @@ def run_spike_fade(
                 entry_epoch = epoch
                 pending = None
         else:
-            if epoch >= cooldown_until and not weekend_reopen_blackout(ts, blackout_min):
-                hit = _detect(dq, ps, min_pts, window_sec, win_hi, win_lo)
+            if (
+                epoch >= cooldown_until
+                and epoch >= suppress_until
+                and not weekend_reopen_blackout(ts, blackout_min)
+            ):
+                hit = _detect(
+                    dq,
+                    ps,
+                    min_pts,
+                    window_sec,
+                    win_hi,
+                    win_lo,
+                    max_ext_age,
+                    win_hi_ts,
+                    win_lo_ts,
+                )
                 if hit is not None:
-                    spike_dir, spike_pts, span, last_px = hit
+                    spike_dir, spike_pts, span, last_px, extreme = hit
                     side = "DOWN" if spike_dir == "UP" else "UP"
-                    if lag_sec <= 1e-12:
+                    wait = lag_sec > 1e-12 or confirm_pts > 1e-12
+                    if not wait:
                         tp, sl, tp_off, sl_off = levels(side, last_px, spike_pts)
                         open_t = FadeTrade(
                             entry_ts=ts.isoformat(),
@@ -272,11 +335,13 @@ def run_spike_fade(
                     else:
                         pending = {
                             "fill_at": epoch + lag_sec,
+                            "deadline": epoch + lag_sec + confirm_timeout,
                             "side": side,
                             "spike_dir": spike_dir,
                             "spike_pts": round(spike_pts, 1),
                             "span": round(span, 3),
                             "detect_px": round(last_px, 5),
+                            "extreme": extreme,
                         }
 
         now = time.monotonic()

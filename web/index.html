@@ -577,7 +577,7 @@
         </label>
         <label>
           Window (sec)
-          <input type="number" id="sf-window" value="3" min="1" max="5" step="0.5" />
+          <input type="number" id="sf-window" value="3" min="1" max="120" step="0.5" />
         </label>
         <label>
           Min spike (pts)
@@ -605,7 +605,23 @@
         </label>
         <label>
           Trail (pts)
-          <input type="number" id="sf-trail" value="1000" min="0" step="100" />
+          <input type="number" id="sf-trail" value="1000" min="0" step="100"
+            title="Distance the trail sits behind the best price once armed." />
+        </label>
+        <label>
+          Trail arm (pts)
+          <input type="number" id="sf-arm" value="0" min="0" step="50"
+            title="Favorite pts before the trail turns on. 0 = same as Trail (old behaviour: arms at +trail, i.e. BE)." />
+        </label>
+        <label>
+          Confirm bounce (pts)
+          <input type="number" id="sf-confirm" value="0" min="0" step="50"
+            title="After the spike, wait until price bounces this many pts off the extreme before filling. 0 = enter on detect/lag only. Drops the signal if no bounce within a few seconds." />
+        </label>
+        <label>
+          Max extreme age (sec)
+          <input type="number" id="sf-age" value="0" min="0" max="60" step="0.5"
+            title="Only fire if the window high/low printed this recently. 0 = off. Stops a long window from fading a spike that already happened 8–50s ago." />
         </label>
         <label>
           Max hold (sec)
@@ -697,7 +713,7 @@
   <script src="/static/app.js?v=20260813b"></script>
   <script src="/static/sweep.js?v=20260813b"></script>
   <script src="/static/session.js?v=20260813b"></script>
-  <script src="/static/spike_fade.js?v=20260813n"></script>
+  <script src="/static/spike_fade.js?v=20260814a"></script>
   <script src="/static/overnight.js?v=20260823a"></script>
 </body>
 </html>

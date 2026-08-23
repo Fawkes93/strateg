@@ -242,6 +242,10 @@ class SpikeFadeRunRequest(BaseModel):
     tp_pct: float = 100.0
     sl_pct: float = 100.0
     trail_pts: float = 1000.0
+    trail_arm_pts: float = 0.0
+    confirm_pts: float = 0.0
+    confirm_timeout_sec: float = 5.0
+    max_extreme_age_sec: float = 0.0
     max_hold_sec: float = 120.0
     cooldown_sec: float = 30.0
     weekend_blackout_min: float = 10.0
@@ -271,6 +275,10 @@ def spike_fade_run(body: SpikeFadeRunRequest):
         tp_pct=float(body.tp_pct if body.tp_pct is not None else 100.0),
         sl_pct=float(body.sl_pct if body.sl_pct is not None else 100.0),
         trail_pts=float(body.trail_pts),
+        trail_arm_pts=float(body.trail_arm_pts or 0.0),
+        confirm_pts=float(body.confirm_pts or 0.0),
+        confirm_timeout_sec=float(body.confirm_timeout_sec or 5.0),
+        max_extreme_age_sec=float(body.max_extreme_age_sec or 0.0),
         max_hold_sec=float(body.max_hold_sec),
         cooldown_sec=float(body.cooldown_sec),
         weekend_blackout_min=float(body.weekend_blackout_min),

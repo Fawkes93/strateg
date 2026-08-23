@@ -181,6 +181,107 @@ def test_lag_fills_later_price():
     assert t["exit_reason"] == "tp"
 
 
+def test_confirm_skips_if_no_bounce():
+    t0 = datetime(2026, 5, 6, 10, 0, tzinfo=timezone.utc)
+    seq = [(0, 3300.0), (2.0, 3280.0), (4.0, 3280.0), (8.0, 3280.0)]
+    res = run_spike_fade(
+        ticks_from(t0, seq),
+        symbol="XAU/USD",
+        params=FadeParams(
+            confirm_pts=200,
+            confirm_timeout_sec=3,
+            cooldown_sec=0,
+            lag_sec=0,
+        ),
+    )
+    assert res["trades"] == 0
+
+
+def test_confirm_enters_after_bounce():
+    t0 = datetime(2026, 5, 6, 10, 0, tzinfo=timezone.utc)
+    # Dump 2000 to 3280, bounce 200 pts to 3282 → long there, then TP +2000.
+    seq = [(0, 3300.0), (2.0, 3280.0), (3.0, 3282.0)]
+    for i in range(1, 25):
+        seq.append((3.0 + i * 0.2, 3282.0 + i))
+    res = run_spike_fade(
+        ticks_from(t0, seq),
+        symbol="XAU/USD",
+        params=FadeParams(confirm_pts=200, cooldown_sec=0, lag_sec=0),
+    )
+    assert res["trades"] == 1
+    t = res["rows"][0]
+    assert t["side"] == "UP"
+    assert abs(t["entry"] - 3282.0) < 1e-6
+    assert t["exit_reason"] == "tp"
+
+
+def test_max_extreme_age_skips_stale_high():
+    """15s bag still holds a dump from 10s ago — age=2 must refuse it."""
+    from collections import deque
+
+    from backtest.spike_fade import _detect
+
+    dq = deque(
+        [
+            (0.0, 3300.0),
+            (2.0, 3280.0),  # low printed here
+            (4.0, 3285.0),
+            (12.0, 3285.0),
+        ]
+    )
+    assert (
+        _detect(dq, 0.01, 400, 15.0, 3300.0, 3280.0, 2.0, hi_ts=0.0, lo_ts=2.0) is None
+    )
+    # same bag, gate off → still a dump
+    hit = _detect(dq, 0.01, 400, 15.0, 3300.0, 3280.0, 0.0, hi_ts=0.0, lo_ts=2.0)
+    assert hit is not None
+    assert hit[0] == "DOWN"
+
+
+def test_max_extreme_age_fires_while_extreme_is_live():
+    t0 = datetime(2025, 4, 16, 10, 0, tzinfo=timezone.utc)
+    seq = [(0.0, 3300.0), (1.5, 3280.0), (2.0, 3279.5)]
+    for i in range(1, 20):
+        seq.append((2.0 + i * 0.2, 3279.5 + i * 2))
+    res = run_spike_fade(
+        ticks_from(t0, seq),
+        symbol="XAU/USD",
+        params=FadeParams(
+            window_sec=15,
+            min_spike_pts=400,
+            max_extreme_age_sec=2,
+            tp_pts=2000,
+            sl_pts=2000,
+            cooldown_sec=0,
+            lag_sec=0,
+            max_hold_sec=30,
+        ),
+    )
+    assert res["trades"] == 1
+    assert res["rows"][0]["side"] == "UP"
+
+
+def test_trail_arm_later_than_distance():
+    t0 = datetime(2026, 5, 6, 10, 0, tzinfo=timezone.utc)
+    seq = [(0, 3300.0), (2.0, 3280.0)]  # long 3280
+    seq.append((4.0, 3290.0))  # +1000 — not armed if arm=1500
+    seq.append((5.0, 3295.0))  # +1500 — trail at 3290
+    seq.append((6.0, 3289.0))  # through trail
+    res = run_spike_fade(
+        ticks_from(t0, seq),
+        symbol="XAU/USD",
+        params=FadeParams(
+            trail_pts=500,
+            trail_arm_pts=1500,
+            cooldown_sec=0,
+        ),
+    )
+    assert res["trades"] == 1
+    t = res["rows"][0]
+    assert t["exit_reason"] == "trail"
+    assert t["pts"] > 0
+
+
 def test_target_pts_percent_and_fixed():
     assert target_pts(100, 2500, 2000) == 2500
     assert target_pts(50, 2000, 2000) == 1000

@@ -47,6 +47,10 @@ class SpikeFadeJobParams:
     tp_pct: float = 100.0
     sl_pct: float = 100.0
     trail_pts: float = 1000.0
+    trail_arm_pts: float = 0.0
+    confirm_pts: float = 0.0
+    confirm_timeout_sec: float = 5.0
+    max_extreme_age_sec: float = 0.0
     max_hold_sec: float = 120.0
     cooldown_sec: float = 30.0
     weekend_blackout_min: float = 10.0
@@ -409,6 +413,10 @@ def _run(params: SpikeFadeJobParams) -> None:
             tp_pct=float(params.tp_pct if params.tp_pct is not None else 100.0),
             sl_pct=float(params.sl_pct if params.sl_pct is not None else 100.0),
             trail_pts=float(params.trail_pts),
+            trail_arm_pts=float(params.trail_arm_pts or 0.0),
+            confirm_pts=float(params.confirm_pts or 0.0),
+            confirm_timeout_sec=float(params.confirm_timeout_sec or 5.0),
+            max_extreme_age_sec=float(getattr(params, "max_extreme_age_sec", 0.0) or 0.0),
             max_hold_sec=float(params.max_hold_sec),
             cooldown_sec=float(params.cooldown_sec),
             weekend_blackout_min=float(params.weekend_blackout_min),
