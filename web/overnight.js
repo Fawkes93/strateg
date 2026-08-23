@@ -3,6 +3,231 @@
   let pollTimer = null;
   let wasRunning = false;
 
+  // ----- inject tab button + panel if missing (keeps index.html unchanged) -----
+  function ensureTab() {
+    const nav = document.querySelector(".main-tabs");
+    if (nav && !document.querySelector('.main-tab[data-tab="overnight"]')) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "main-tab";
+      btn.setAttribute("data-tab", "overnight");
+      btn.textContent = "Overnight break";
+      nav.appendChild(btn);
+    }
+
+    if ($("tab-overnight")) return;
+
+    const panel = document.createElement("div");
+    panel.id = "tab-overnight";
+    panel.className = "tab-panel hidden";
+    panel.innerHTML = `
+    <section class="card pipeline">
+      <h2>Asia range breakout (Bucharest)</h2>
+      <ol>
+        <li>Lock the Asia high/low in <strong>Europe/Bucharest</strong> (default 00:00–07:00).</li>
+        <li>First completed 15m close outside the range by min break pts = break signal.</li>
+        <li>Entry = first of: <em>EMA touch</em> or <em>higher/lower close resume</em> during the wait window (or break close if pullback = off).</li>
+        <li>No partial TP. Trail arms after profit, then trails. Flatten at local hour.</li>
+      </ol>
+      <p class="hint">
+        Mid fill. One trade per day by default. Skips days with no valid break / no pullback (required mode).
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Parameters</h2>
+      <div class="grid">
+        <label>Symbol
+          <select id="ob-symbol"><option value="XAUUSD" selected>XAUUSD (gold)</option></select>
+        </label>
+        <label>From (local date)
+          <input type="date" id="ob-from" value="2025-05-01" />
+        </label>
+        <label>To (exclusive)
+          <input type="date" id="ob-to" value="2025-08-01" />
+        </label>
+        <label>Asia start hour
+          <input type="number" id="ob-asia-start" value="0" min="0" max="23" />
+        </label>
+        <label>Asia end hour
+          <input type="number" id="ob-asia-end" value="7" min="1" max="23" />
+        </label>
+        <label>Min Asia range (pts)
+          <input type="number" id="ob-min-asia" value="300" min="0" step="50" />
+        </label>
+        <label>Min break above (pts)
+          <input type="number" id="ob-break-up" value="200" min="0" step="50" />
+        </label>
+        <label>Min break below (pts)
+          <input type="number" id="ob-break-dn" value="200" min="0" step="50" />
+        </label>
+        <label>Max break candles after Asia
+          <input type="number" id="ob-max-break-candles" value="8" min="1" max="20" />
+        </label>
+        <label>Pullback mode
+          <select id="ob-pullback-mode">
+            <option value="required" selected>required (EMA or higher-close)</option>
+            <option value="preferred">preferred (timeout action)</option>
+            <option value="off">off (enter on break close)</option>
+          </select>
+        </label>
+        <label>EMA period (15m)
+          <input type="number" id="ob-ema" value="21" min="5" max="100" />
+        </label>
+        <label>Max wait candles
+          <input type="number" id="ob-max-wait" value="8" min="1" max="20" />
+        </label>
+        <label>Timeout action (preferred)
+          <select id="ob-timeout">
+            <option value="skip" selected>skip</option>
+            <option value="market">market</option>
+            <option value="worst">worst</option>
+          </select>
+        </label>
+        <label class="chk">Higher/lower close resume
+          <input type="checkbox" id="ob-higher-close" checked />
+        </label>
+        <label>Side filter
+          <select id="ob-side">
+            <option value="both" selected>both</option>
+            <option value="long">long only</option>
+            <option value="short">short only</option>
+          </select>
+        </label>
+        <label>SL mode
+          <select id="ob-sl-mode">
+            <option value="asia_opposite" selected>asia opposite</option>
+            <option value="fixed">fixed pts</option>
+            <option value="range_width">range × mult</option>
+          </select>
+        </label>
+        <label>SL fixed (pts)
+          <input type="number" id="ob-sl-fixed" value="500" min="50" step="50" />
+        </label>
+        <label>SL range mult
+          <input type="number" id="ob-sl-range-mult" value="1" min="0.1" step="0.1" />
+        </label>
+        <label>TP mode
+          <select id="ob-tp-mode">
+            <option value="range_mult" selected>range × mult</option>
+            <option value="fixed">fixed pts</option>
+            <option value="r_mult">R multiple</option>
+          </select>
+        </label>
+        <label>TP fixed (pts)
+          <input type="number" id="ob-tp-fixed" value="1000" min="50" step="50" />
+        </label>
+        <label>TP range mult
+          <input type="number" id="ob-tp-range-mult" value="1.5" min="0.1" step="0.1" />
+        </label>
+        <label>TP R mult
+          <input type="number" id="ob-tp-r-mult" value="2" min="0.5" step="0.1" />
+        </label>
+        <label>Trail arm (pts profit)
+          <input type="number" id="ob-trail-arm" value="400" min="0" step="50" />
+        </label>
+        <label>Trail distance (pts)
+          <input type="number" id="ob-trail" value="250" min="0" step="50" />
+        </label>
+        <label>Max hold (hours)
+          <input type="number" id="ob-max-hold" value="10" min="1" max="24" step="0.5" />
+        </label>
+        <label>Flatten hour (Bucharest)
+          <input type="number" id="ob-flatten" value="18" min="8" max="23" />
+        </label>
+        <label class="chk">One trade per day
+          <input type="checkbox" id="ob-one-per-day" checked />
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" class="primary" id="ob-run">Run overnight break</button>
+        <label class="chk force">
+          <input type="checkbox" id="ob-force" /> Force re-download
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Progress</h2>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="ob-progress-bar" style="width:0%"></div>
+      </div>
+      <p class="progress-msg" id="ob-progress-msg">Idle</p>
+    </section>
+
+    <section class="card" id="ob-results-card">
+      <h2>Results</h2>
+      <p class="muted" id="ob-meta">No run yet.</p>
+      <div class="hero-grid" id="ob-hero"></div>
+      <h3>Trades</h3>
+      <div class="table-wrap">
+        <table id="ob-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Side</th>
+              <th>Asia range</th>
+              <th>Entry reason</th>
+              <th>Entry</th>
+              <th>SL pts</th>
+              <th>TP pts</th>
+              <th>Exit</th>
+              <th>Reason</th>
+              <th>Trail</th>
+              <th>Max fav</th>
+              <th>Pts</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>`;
+
+    const foot = document.querySelector("footer.foot");
+    if (foot) {
+      foot.parentNode.insertBefore(panel, foot);
+    } else {
+      document.body.appendChild(panel);
+    }
+
+    // extend footer hint
+    if (foot && foot.textContent.indexOf("Overnight") < 0) {
+      foot.textContent += " Overnight break = Asia range + EMA/higher-close.";
+    }
+  }
+
+  // Tab visibility: work with existing sweep.js handlers
+  function wireTabs() {
+    document.querySelectorAll(".main-tab").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.getAttribute("data-tab");
+        const panel = $("tab-overnight");
+        if (panel) panel.classList.toggle("hidden", tab !== "overnight");
+        // when opening overnight, hide other known panels
+        if (tab === "overnight") {
+          ["tab-research", "tab-sweep", "tab-session", "tab-spikefade"].forEach((id) => {
+            const el = $(id);
+            if (el) el.classList.add("hidden");
+          });
+          document.querySelectorAll(".main-tab").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          try {
+            localStorage.setItem("strateg_tab", "overnight");
+          } catch (e) {}
+        }
+      });
+    });
+
+    // restore last tab
+    try {
+      const tab = localStorage.getItem("strateg_tab");
+      if (tab === "overnight") {
+        const btn = document.querySelector('.main-tab[data-tab="overnight"]');
+        if (btn) btn.click();
+      }
+    } catch (e) {}
+  }
+
   function heroItem(label, value) {
     return (
       '<div class="hero"><div class="k">' +
@@ -128,7 +353,8 @@
     }
   }
 
-  if ($("ob-run")) {
+  function wireRun() {
+    if (!$("ob-run")) return;
     $("ob-run").addEventListener("click", async () => {
       const body = {
         symbol: $("ob-symbol").value,
@@ -185,5 +411,9 @@
     });
   }
 
+  // bootstrap
+  ensureTab();
+  wireTabs();
+  wireRun();
   poll();
 })();
