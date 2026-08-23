@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Strateg — local forward research</title>
-  <link rel="stylesheet" href="/static/app.css?v=20260813n" />
+  <link rel="stylesheet" href="/static/app.css?v=20260823a" />
 </head>
 <body>
   <header class="top">
@@ -22,6 +22,7 @@
     <button type="button" class="main-tab" data-tab="sweep">Sweep (overnight)</button>
     <button type="button" class="main-tab" data-tab="session">Session clock</button>
     <button type="button" class="main-tab" data-tab="spikefade">Spike fade</button>
+    <!-- Overnight break tab button is injected by overnight.js -->
   </nav>
 
   <!-- ========== RESEARCH TAB (unchanged flow) ========== -->
@@ -274,7 +275,7 @@
       </div>
       <p class="hint muted">
         <strong>Speed:</strong> ticks load once per date range, then all param variants
-        replay on that pack. Workers &gt; 1 run date groups (or split variants) in parallel
+        replay on that pack. Workers > 1 run date groups (or split variants) in parallel
         processes — uses more CPU cores. Stop still finishes the current worker jobs.
       </p>
       <p class="hint muted">
@@ -687,6 +688,8 @@
     </section>
   </div>
 
+  <!-- Overnight break panel is injected by overnight.js -->
+
   <footer class="foot">
     Research = alerts. Sweep = grid. Session clock = 7am Moldova. Spike fade = 1–3s fade.
   </footer>
@@ -695,5 +698,6 @@
   <script src="/static/sweep.js?v=20260813b"></script>
   <script src="/static/session.js?v=20260813b"></script>
   <script src="/static/spike_fade.js?v=20260813n"></script>
+  <script src="/static/overnight.js?v=20260823a"></script>
 </body>
 </html>
