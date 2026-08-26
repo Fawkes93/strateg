@@ -1,7 +1,92 @@
 (function () {
   const $ = (id) => document.getElementById(id);
+  const STORAGE_KEY = "strateg_overnight_v1";
   let pollTimer = null;
   let wasRunning = false;
+  let saveTimer = null;
+
+  const FORM_IDS = [
+    "ob-symbol",
+    "ob-from",
+    "ob-to",
+    "ob-asia-start",
+    "ob-asia-end",
+    "ob-min-asia",
+    "ob-break-up",
+    "ob-break-dn",
+    "ob-max-break-candles",
+    "ob-pullback-mode",
+    "ob-ema",
+    "ob-max-wait",
+    "ob-timeout",
+    "ob-higher-close",
+    "ob-side",
+    "ob-sl-mode",
+    "ob-sl-fixed",
+    "ob-sl-range-mult",
+    "ob-tp-mode",
+    "ob-tp-fixed",
+    "ob-tp-range-mult",
+    "ob-tp-r-mult",
+    "ob-trail-arm",
+    "ob-trail",
+    "ob-max-hold",
+    "ob-flatten",
+    "ob-one-per-day",
+    "ob-force",
+  ];
+
+  function saveForm() {
+    try {
+      const cfg = {};
+      FORM_IDS.forEach(function (id) {
+        const el = $(id);
+        if (!el) return;
+        cfg[id] = el.type === "checkbox" ? !!el.checked : el.value;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+    } catch (e) {
+      console.warn("overnight save failed", e);
+    }
+  }
+
+  function scheduleSave() {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveForm, 200);
+  }
+
+  function loadForm() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const cfg = JSON.parse(raw);
+      FORM_IDS.forEach(function (id) {
+        const el = $(id);
+        if (!el || cfg[id] == null) return;
+        if (el.type === "checkbox") el.checked = !!cfg[id];
+        else el.value = cfg[id];
+      });
+    } catch (e) {
+      console.warn("overnight load failed", e);
+    }
+  }
+
+  function bindFormPersist() {
+    FORM_IDS.forEach(function (id) {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener("change", scheduleSave);
+      el.addEventListener("input", scheduleSave);
+    });
+  }
+
+  function syncPullbackControls() {
+    const mode = $("ob-pullback-mode") && $("ob-pullback-mode").value;
+    const resume = $("ob-higher-close");
+    const timeout = $("ob-timeout");
+    if (resume) resume.disabled = mode === "ema" || mode === "off";
+    if (timeout) timeout.disabled = mode !== "preferred";
+  }
 
   // ----- inject tab button + panel if missing (keeps index.html unchanged) -----
   function ensureTab() {
@@ -26,7 +111,7 @@
       <ol>
         <li>Lock the Asia high/low in <strong>Europe/Bucharest</strong> (default 00:00–07:00).</li>
         <li>First completed 15m close outside the range by min break pts = break signal.</li>
-        <li>Entry = first of: <em>EMA touch</em> or <em>higher/lower close resume</em> during the wait window (or break close if pullback = off).</li>
+        <li>Entry = first of: <em>EMA touch</em> or <em>higher/lower close resume</em> during the wait window (EMA-only skips the resume; break close if pullback = off).</li>
         <li>No partial TP. Trail arms after profit, then trails. Flatten at local hour.</li>
       </ol>
       <p class="hint">
@@ -67,6 +152,7 @@
         <label>Pullback mode
           <select id="ob-pullback-mode">
             <option value="required" selected>required (EMA or higher-close)</option>
+            <option value="ema">ema only (touch or skip)</option>
             <option value="preferred">preferred (timeout action)</option>
             <option value="off">off (enter on break close)</option>
           </select>
@@ -144,6 +230,10 @@
         <label class="chk force">
           <input type="checkbox" id="ob-force" /> Force re-download
         </label>
+        <p class="table-note">
+          Same dates reuse the tick pack (RAM + disk). Leave force off when you are only
+          changing strategy params.
+        </p>
       </div>
     </section>
 
@@ -159,7 +249,14 @@
       <h2>Results</h2>
       <p class="muted" id="ob-meta">No run yet.</p>
       <div class="hero-grid" id="ob-hero"></div>
+      <p class="table-note" id="ob-skip-breakdown"></p>
       <h3>Trades</h3>
+      <p class="table-note">
+        Entry = EMA touch, higher/lower close resume, or break close.
+        Hover <strong>Decision</strong> for the full wait / EMA / close-vs-prev line.
+        Max adv = worst mid against the trade after entry.
+        Adv/SL = how much of the stop was used.
+      </p>
       <div class="table-wrap">
         <table id="ob-table">
           <thead>
@@ -167,15 +264,53 @@
               <th>Date</th>
               <th>Side</th>
               <th>Asia range</th>
-              <th>Entry reason</th>
+              <th>Break pts</th>
               <th>Entry</th>
+              <th>Wait</th>
+              <th>EMA</th>
+              <th>Decision</th>
+              <th>Fill</th>
+              <th>SL</th>
               <th>SL pts</th>
+              <th>Opp peak</th>
+              <th>Max adv</th>
+              <th>Adv/SL</th>
+              <th>Max fav</th>
               <th>TP pts</th>
               <th>Exit</th>
               <th>Reason</th>
               <th>Trail</th>
-              <th>Max fav</th>
               <th>Pts</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <h3>Skipped / failed days</h3>
+      <p class="table-note">
+        Every day that did not produce a trade, with the same decision factors
+        (wait / EMA closest / best close vs prev). Opp peak after a break is from
+        the break close until flatten.
+      </p>
+      <div class="table-wrap">
+        <table id="ob-skips">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Reason</th>
+              <th>Side</th>
+              <th>Asia range</th>
+              <th>Break</th>
+              <th>Wait</th>
+              <th>EMA</th>
+              <th>Closest EMA</th>
+              <th>Best resume</th>
+              <th>Decision</th>
+              <th>Opp peak</th>
+              <th>Max adv</th>
+              <th>Max fav</th>
+              <th>Above Asia</th>
+              <th>Below Asia</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -228,6 +363,28 @@
     } catch (e) {}
   }
 
+  const SKIP_REASONS = {
+    no_candles: "No 15m candles",
+    thin_asia: "Asia window too thin",
+    asia_too_small: "Asia range below min",
+    no_break: "No close outside Asia",
+    side_filter: "Side filtered",
+    no_entry_tick: "No tick at entry",
+    no_pullback: "No EMA / close resume in wait",
+    no_pullback_timeout: "Pullback timeout (skip)",
+    no_entry: "No entry",
+    past_flatten: "Past flatten hour",
+  };
+
+  const ENTRY_LABELS = {
+    ema_touch: "EMA touch",
+    higher_close: "Higher close resume",
+    lower_close: "Lower close resume",
+    break_close: "Break close",
+    timeout_market: "Timeout market",
+    timeout_worst: "Timeout worst",
+  };
+
   function heroItem(label, value) {
     return (
       '<div class="hero"><div class="k">' +
@@ -238,14 +395,152 @@
     );
   }
 
+  function dash(v) {
+    return v == null || v === "" ? "—" : v;
+  }
+
+  function pointSize(symbol) {
+    const s = String(symbol || "").toUpperCase();
+    if (s.indexOf("XAU") >= 0 || s.indexOf("GOLD") >= 0 || s.indexOf("BTC") >= 0) {
+      return 0.01;
+    }
+    return 0.00001;
+  }
+
+  function oppPeakPrice(row, symbol) {
+    if (row.max_adv_price != null) return row.max_adv_price;
+    const pts = row.max_adv_pts;
+    const entry = row.entry != null ? row.entry : row.break_price;
+    if (pts == null || entry == null || !row.side) return null;
+    const ps = pointSize(symbol);
+    if (row.side === "UP") return Math.round((entry - pts * ps) * 1e5) / 1e5;
+    if (row.side === "DOWN") return Math.round((entry + pts * ps) * 1e5) / 1e5;
+    return null;
+  }
+
+  function advSlPct(row) {
+    if (row.max_adv_pts == null || row.sl_pts == null || !(row.sl_pts > 0)) return null;
+    return Math.round((100 * row.max_adv_pts) / row.sl_pts);
+  }
+
+  function skipLabel(code) {
+    return SKIP_REASONS[code] || code || "—";
+  }
+
+  function entryLabel(row) {
+    if (row.entry_label) return row.entry_label;
+    if (row.entry_reason === "higher_close" && row.side === "DOWN") {
+      return "Lower close resume";
+    }
+    return ENTRY_LABELS[row.entry_reason] || row.entry_reason || "—";
+  }
+
+  function waitCell(row) {
+    if (row.wait_i == null && row.wait_n == null) return "—";
+    const i = row.wait_i == null ? "—" : row.wait_i;
+    const n = row.wait_n == null ? "—" : row.wait_n;
+    return i + "/" + n;
+  }
+
+  function decisionCell(row) {
+    return row.decision || entryLabel(row);
+  }
+
+  function escapeAttr(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;");
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function decisionTdHtml(text) {
+    const t = text == null || text === "" ? "—" : String(text);
+    if (t === "—") return '<td class="ob-decision">—</td>';
+    return (
+      '<td class="ob-decision" data-full="' +
+      escapeAttr(t) +
+      '">' +
+      escapeHtml(t) +
+      "</td>"
+    );
+  }
+
+  function hideObTip() {
+    const el = document.getElementById("ob-flytip");
+    if (el) el.remove();
+  }
+
+  function showObTip(td) {
+    hideObTip();
+    const full = td && td.getAttribute("data-full");
+    if (!full) return;
+    const tip = document.createElement("div");
+    tip.id = "ob-flytip";
+    tip.className = "ob-flytip";
+    const lines = full.split(" · ").filter(Boolean);
+    tip.innerHTML =
+      '<div class="k">Decision</div>' +
+      lines.map(function (p) {
+        return "<div>" + escapeHtml(p) + "</div>";
+      }).join("");
+    document.body.appendChild(tip);
+    const r = td.getBoundingClientRect();
+    const tw = tip.offsetWidth;
+    const th = tip.offsetHeight;
+    let left = r.left;
+    let top = r.bottom + 6;
+    if (left + tw > window.innerWidth - 8) left = window.innerWidth - tw - 8;
+    if (left < 8) left = 8;
+    if (top + th > window.innerHeight - 8) top = Math.max(8, r.top - th - 6);
+    tip.style.left = left + "px";
+    tip.style.top = top + "px";
+  }
+
+  function wireDecisionTips() {
+    const card = $("ob-results-card");
+    if (!card || card.dataset.tipWired) return;
+    card.dataset.tipWired = "1";
+    let current = null;
+    card.addEventListener("pointerover", function (e) {
+      const td = e.target.closest && e.target.closest("td.ob-decision");
+      if (!td || !td.getAttribute("data-full")) return;
+      if (td === current) return;
+      current = td;
+      showObTip(td);
+    });
+    card.addEventListener("pointerout", function (e) {
+      const td = e.target.closest && e.target.closest("td.ob-decision");
+      if (!td) return;
+      const to = e.relatedTarget;
+      if (to && td.contains(to)) return;
+      if (current === td) current = null;
+      hideObTip();
+    });
+    card.querySelectorAll(".table-wrap").forEach(function (w) {
+      w.addEventListener("scroll", hideObTip);
+    });
+    window.addEventListener("scroll", hideObTip, true);
+  }
+
   function render(result) {
     const meta = $("ob-meta");
     const hero = $("ob-hero");
+    const breakdown = $("ob-skip-breakdown");
     const tb = $("ob-table") && $("ob-table").querySelector("tbody");
+    const sb = $("ob-skips") && $("ob-skips").querySelector("tbody");
     if (!result) {
       if (meta) meta.textContent = "No run yet.";
       if (hero) hero.innerHTML = "";
+      if (breakdown) breakdown.textContent = "";
       if (tb) tb.innerHTML = "";
+      if (sb) sb.innerHTML = "";
       return;
     }
     if (meta) {
@@ -274,46 +569,140 @@
         heroItem("Avg loss", result.avg_loss_pts) +
         heroItem("Skipped", result.skipped);
     }
-    if (!tb) return;
-    tb.innerHTML = "";
-    const rows = result.rows || [];
-    if (!rows.length) {
-      tb.innerHTML =
-        '<tr><td colspan="12" class="muted">No trades in this window</td></tr>';
+    if (breakdown) {
+      const entries = result.entries || {};
+      const entryParts = Object.keys(entries)
+        .sort()
+        .map(function (k) {
+          return entryLabel({ entry_reason: k }) + " " + entries[k];
+        });
+      const reasons = result.skip_reasons || {};
+      const skipParts = Object.keys(reasons)
+        .sort()
+        .map(function (k) {
+          return skipLabel(k) + " " + reasons[k];
+        });
+      const bits = [];
+      if (entryParts.length) bits.push("Entries: " + entryParts.join(" · "));
+      if (skipParts.length) bits.push("Skip reasons: " + skipParts.join(" · "));
+      breakdown.textContent = bits.join("  |  ");
+    }
+    if (tb) {
+      tb.innerHTML = "";
+      const rows = result.rows || [];
+      if (!rows.length) {
+        tb.innerHTML =
+          '<tr><td colspan="20" class="muted">No trades in this window</td></tr>';
+      } else {
+        rows.forEach(function (t) {
+          const tr = document.createElement("tr");
+          const ptsClass = t.pts > 0 ? "yes" : t.pts < 0 ? "no" : "";
+          const pct = advSlPct(t);
+          const pctClass =
+            pct == null ? "" : pct >= 80 ? "no" : pct >= 40 ? "ob-warn" : "";
+          const entryClass =
+            t.entry_reason === "ema_touch"
+              ? "yes"
+              : t.entry_reason === "higher_close" || t.entry_reason === "lower_close"
+                ? "ob-warn"
+                : "";
+          tr.innerHTML =
+            "<td>" +
+            t.local_date +
+            "</td><td>" +
+            t.side +
+            "</td><td>" +
+            dash(t.asia_range_pts) +
+            "</td><td>" +
+            dash(t.break_pts) +
+            '</td><td class="' +
+            entryClass +
+            '">' +
+            entryLabel(t) +
+            "</td><td>" +
+            waitCell(t) +
+            "</td><td>" +
+            dash(t.ema) +
+            "</td>" +
+            decisionTdHtml(decisionCell(t)) +
+            "<td>" +
+            dash(t.entry) +
+            "</td><td>" +
+            dash(t.sl) +
+            "</td><td>" +
+            dash(t.sl_pts) +
+            "</td><td>" +
+            dash(oppPeakPrice(t, result.symbol)) +
+            '</td><td class="ob-adv">' +
+            dash(t.max_adv_pts) +
+            '</td><td class="' +
+            pctClass +
+            '">' +
+            (pct == null ? "—" : pct + "%") +
+            "</td><td>" +
+            dash(t.max_fav_pts) +
+            "</td><td>" +
+            dash(t.tp_pts) +
+            "</td><td>" +
+            dash(t.exit) +
+            "</td><td>" +
+            dash(t.exit_reason) +
+            "</td><td>" +
+            (t.trail_armed ? "Y" : "") +
+            '</td><td class="' +
+            ptsClass +
+            '">' +
+            t.pts +
+            "</td>";
+          tb.appendChild(tr);
+        });
+      }
+    }
+    if (!sb) return;
+    sb.innerHTML = "";
+    const skips = result.skips || [];
+    if (!skips.length) {
+      sb.innerHTML =
+        '<tr><td colspan="15" class="muted">No skipped days in this window</td></tr>';
       return;
     }
-    rows.forEach(function (t) {
+    skips.forEach(function (s) {
       const tr = document.createElement("tr");
-      const ptsClass = t.pts > 0 ? "yes" : t.pts < 0 ? "no" : "";
+      tr.className = "ob-skip";
+      const waitTxt = waitCell(s);
       tr.innerHTML =
         "<td>" +
-        t.local_date +
+        dash(s.local_date) +
+        '</td><td class="ob-warn">' +
+        skipLabel(s.reason) +
         "</td><td>" +
-        t.side +
+        dash(s.side) +
         "</td><td>" +
-        t.asia_range_pts +
+        dash(s.asia_range_pts) +
         "</td><td>" +
-        (t.entry_reason || "—") +
+        dash(s.break_price) +
         "</td><td>" +
-        t.entry +
+        waitTxt +
         "</td><td>" +
-        t.sl_pts +
+        dash(s.ema) +
         "</td><td>" +
-        t.tp_pts +
+        dash(s.closest_ema_pts) +
         "</td><td>" +
-        (t.exit != null ? t.exit : "—") +
+        dash(s.best_resume_pts) +
+        "</td>" +
+        decisionTdHtml(s.decision || s.detail) +
+        "<td>" +
+        dash(oppPeakPrice(s, result.symbol)) +
+        '</td><td class="ob-adv">' +
+        dash(s.max_adv_pts) +
         "</td><td>" +
-        (t.exit_reason || "—") +
+        dash(s.max_fav_pts) +
         "</td><td>" +
-        (t.trail_armed ? "Y" : "") +
+        dash(s.max_above_asia_pts) +
         "</td><td>" +
-        (t.max_fav_pts != null ? t.max_fav_pts : "—") +
-        '</td><td class="' +
-        ptsClass +
-        '">' +
-        t.pts +
+        dash(s.max_below_asia_pts) +
         "</td>";
-      tb.appendChild(tr);
+      sb.appendChild(tr);
     });
   }
 
@@ -386,6 +775,7 @@
         side_filter: $("ob-side").value,
         force_download: $("ob-force") && $("ob-force").checked,
       };
+      saveForm();
       $("ob-run").disabled = true;
       $("ob-progress-msg").textContent = "Starting…";
       try {
@@ -413,6 +803,12 @@
 
   // bootstrap
   ensureTab();
+  loadForm();
+  bindFormPersist();
+  syncPullbackControls();
+  const modeEl = $("ob-pullback-mode");
+  if (modeEl) modeEl.addEventListener("change", syncPullbackControls);
+  wireDecisionTips();
   wireTabs();
   wireRun();
   poll();

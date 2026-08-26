@@ -315,7 +315,7 @@ class OvernightRunRequest(BaseModel):
     min_break_pts_above: float = 200.0
     min_break_pts_below: float = 200.0
     max_break_candles_after: int = 8
-    pullback_mode: str = "required"  # off | required | preferred
+    pullback_mode: str = "required"  # off | required | ema | preferred
     ema_period: int = 21
     max_wait_candles: int = 8
     timeout_action: str = "skip"

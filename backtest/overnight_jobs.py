@@ -6,19 +6,25 @@ import json
 import threading
 import traceback
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import date, datetime, timezone
+from typing import Any, Dict, List, Optional
 
 from backtest.batch import is_batch_running
 from backtest.dukascopy import (
-    DEFAULT_DOWNLOAD_WORKERS,
     fetch_hours_parallel,
     hour_range,
     parse_ymd,
     reaktor_symbol,
 )
-from backtest.overnight_break import OvernightParams, OvernightSkip, OvernightTrade, run_overnight, summarize_overnight
-from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS
+from backtest.overnight_break import (
+    OvernightParams,
+    OvernightSkip,
+    OvernightTrade,
+    asia_window_start_utc,
+    run_overnight,
+    summarize_overnight,
+)
+from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS, load_ticks
 
 
 @dataclass
@@ -46,7 +52,7 @@ class OvernightJobParams:
     min_break_pts_below: float = 200.0
     max_break_candles_after: int = 8
     # Pullback
-    pullback_mode: str = "required"  # off | required | preferred
+    pullback_mode: str = "required"  # off | required | ema | preferred
     ema_period: int = 21
     max_wait_candles: int = 8
     timeout_action: str = "skip"
@@ -134,44 +140,63 @@ def start_overnight_job(params: OvernightJobParams) -> Dict[str, Any]:
     return {"ok": True, "message": "Overnight break started"}
 
 
+def _prepend_asia_lookback(
+    ticks: List,
+    params: OvernightJobParams,
+    op: OvernightParams,
+    progress,
+) -> List:
+    """Prefix hours from local Asia open to UTC date_from so the first day is complete.
+
+    Leaves the month tick pack key unchanged; extra hours come from .bi5 cache.
+    """
+    utc_from = parse_ymd(params.date_from)
+    asia_start = asia_window_start_utc(
+        date.fromisoformat(params.date_from),
+        op.timezone,
+        op.asia_start_hour,
+        op.asia_end_hour,
+    )
+    if asia_start >= utc_from:
+        return ticks
+    hours = hour_range(asia_start, utc_from)
+    if not hours:
+        return ticks
+    prefix = fetch_hours_parallel(
+        params.symbol,
+        hours,
+        cache_dir=DEFAULT_CACHE,
+        force=params.force_download,
+        progress=progress,
+    )
+    prefix = [t for t in prefix if t.ts < utc_from]
+    prefix.sort(key=lambda t: t.ts)
+    if not prefix:
+        return ticks
+    return prefix + list(ticks)
+
+
 def _run(params: OvernightJobParams) -> None:
     try:
-        start = parse_ymd(params.date_from)
-        end = parse_ymd(params.date_to)
-        hours = hour_range(start, end)
         _set_progress(
             phase="download",
-            message=f"Load {len(hours)} hours…",
-            pct=5.0,
+            message="Load ticks (pack cache, then disk hours)…",
+            pct=2.0,
         )
 
         def dl_prog(**kwargs: Any) -> None:
-            done = int(kwargs.get("hours_done") or 0)
-            total = int(kwargs.get("hours_total") or max(len(hours), 1))
-            pct = 5.0 + 55.0 * (done / max(total, 1))
+            ticks_n = int(kwargs.get("ticks") or kwargs.get("ticks_done") or 0)
+            pct = kwargs.get("pct")
+            if pct is None:
+                done = int(kwargs.get("hours_done") or 0)
+                total = int(kwargs.get("hours_total") or 1)
+                pct = 5.0 + 55.0 * (done / max(total, 1))
             _set_progress(
-                pct=round(min(60.0, pct), 1),
-                ticks=int(kwargs.get("ticks") or 0),
-                message=str(
-                    kwargs.get("message") or f"Hour {done}/{total}"
-                ),
+                phase="download",
+                pct=round(min(60.0, float(pct)), 1),
+                ticks=ticks_n,
+                message=str(kwargs.get("message") or "Loading ticks…"),
             )
-
-        ticks = fetch_hours_parallel(
-            params.symbol,
-            hours,
-            cache_dir=DEFAULT_CACHE,
-            force=params.force_download,
-            max_workers=DEFAULT_DOWNLOAD_WORKERS,
-            progress=dl_prog,
-        )
-        ticks.sort(key=lambda t: t.ts)
-        _set_progress(
-            phase="replay",
-            message=f"Build 15m + walk {len(ticks):,} ticks…",
-            ticks=len(ticks),
-            pct=65.0,
-        )
 
         op = OvernightParams(
             timezone="Europe/Bucharest",
@@ -200,6 +225,20 @@ def _run(params: OvernightJobParams) -> None:
             one_trade_per_day=bool(params.one_trade_per_day),
             side_filter=str(params.side_filter or "both"),
         )
+        ticks = load_ticks(
+            symbol=params.symbol,
+            date_from=params.date_from,
+            date_to=params.date_to,
+            force_download=params.force_download,
+            progress=dl_prog,
+        )
+        ticks = _prepend_asia_lookback(ticks, params, op, dl_prog)
+        _set_progress(
+            phase="replay",
+            message=f"Build 15m + walk {len(ticks):,} ticks…",
+            ticks=len(ticks),
+            pct=65.0,
+        )
         raw = run_overnight(ticks, symbol=params.symbol, params=op)
 
         d0, d1 = params.date_from, params.date_to
@@ -210,7 +249,12 @@ def _run(params: OvernightJobParams) -> None:
             r for r in (raw.get("skips") or []) if d0 <= r["local_date"] < d1
         ]
         trades = [OvernightTrade(**{k: r[k] for k in OvernightTrade.__dataclass_fields__ if k in r}) for r in trade_rows]
-        skips = [OvernightSkip(**r) for r in skip_rows]
+        skips = [
+            OvernightSkip(
+                **{k: r[k] for k in OvernightSkip.__dataclass_fields__ if k in r}
+            )
+            for r in skip_rows
+        ]
         result = summarize_overnight(
             trades,
             skips,

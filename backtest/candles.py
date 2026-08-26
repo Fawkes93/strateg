@@ -155,9 +155,15 @@ class Candle:
 
 
 class CandleBuilder:
-    def __init__(self, timeframe_minutes: int = 15, max_completed: int = 80):
+    def __init__(
+        self,
+        timeframe_minutes: int = 15,
+        max_completed: int = 80,
+        skip_ignored: bool = True,
+    ):
         self.timeframe_minutes = timeframe_minutes
         self.max_completed = max_completed
+        self.skip_ignored = skip_ignored
         self.current_candle: Optional[Candle] = None
         self.completed_candles: List[Candle] = []
 
@@ -168,8 +174,11 @@ class CandleBuilder:
         candle_end = candle_start + timedelta(minutes=self.timeframe_minutes)
         return candle_start, candle_end
 
+    def _drop(self, open_time: Optional[datetime]) -> bool:
+        return self.skip_ignored and is_candle_ignored(open_time)
+
     def _append_completed(self, candle: Candle) -> None:
-        if is_candle_ignored(candle.open_time):
+        if self._drop(candle.open_time):
             return
         self.completed_candles.append(candle)
         if len(self.completed_candles) > self.max_completed:
@@ -185,12 +194,12 @@ class CandleBuilder:
             self.current_candle.is_closed = True
             candidate = self.current_candle
             self.current_candle = None
-            if not is_candle_ignored(candidate.open_time):
+            if not self._drop(candidate.open_time):
                 self._append_completed(candidate)
                 closed = candidate
 
         open_time, close_time = self._get_candle_bounds(timestamp)
-        if is_candle_ignored(open_time):
+        if self._drop(open_time):
             return closed
 
         if self.current_candle is None:

@@ -7,6 +7,7 @@ Bucharest time Asia window → first 15m close outside with min break pts
 Entry modes:
   off       : enter on break candle close
   required  : must get EMA touch or higher-close resume within max wait, else skip
+  ema       : must get EMA touch within max wait (ignore close resume), else skip
   preferred : try pullback; on timeout enter at market (or skip / worst)
 
 No partial take-profit.
@@ -38,7 +39,7 @@ class OvernightParams:
     max_break_candles_after: int = 8  # how many closed 15m after Asia end still count as first break
     require_close_outside: bool = True
     # Pullback / entry
-    pullback_mode: str = "required"  # off | required | preferred
+    pullback_mode: str = "required"  # off | required | ema | preferred
     ema_period: int = 21
     ema_tf_min: int = 15
     max_wait_candles: int = 8  # 15m candles after break
@@ -58,6 +59,29 @@ class OvernightParams:
     flatten_hour: int = 18  # local hour hard flatten
     one_trade_per_day: bool = True
     side_filter: str = "both"  # both | long | short
+
+
+def _resume_enabled(params: OvernightParams) -> bool:
+    if params.pullback_mode in ("off", "ema"):
+        return False
+    return bool(params.use_higher_close)
+
+
+def asia_window_start_utc(
+    local_day: date,
+    timezone_name: str = "Europe/Bucharest",
+    asia_start_hour: int = 0,
+    asia_end_hour: int = 7,
+) -> datetime:
+    """UTC instant of the Asia window open for `local_day`.
+
+    Bucharest 00:00 is 21:00 UTC the previous evening in summer, 22:00 in winter.
+    If start > end the window wraps midnight and begins the previous local evening.
+    """
+    tz = ZoneInfo(timezone_name)
+    day = local_day - timedelta(days=1) if asia_start_hour > asia_end_hour else local_day
+    local_open = datetime.combine(day, time(asia_start_hour, 0), tzinfo=tz)
+    return local_open.astimezone(timezone.utc)
 
 
 @dataclass
@@ -85,12 +109,45 @@ class OvernightTrade:
     trail_armed: bool = False
     max_fav_pts: float = 0.0
     max_adv_pts: float = 0.0
+    max_fav_price: Optional[float] = None
+    max_adv_price: Optional[float] = None  # worst mid against the trade (opp peak)
+    # Decision factors (why this entry)
+    entry_label: str = ""
+    wait_i: Optional[int] = None  # 1-based wait candle; 0 = break close
+    wait_n: Optional[int] = None
+    ema: Optional[float] = None
+    prev_close: Optional[float] = None
+    signal_close: Optional[float] = None
+    break_pts: Optional[float] = None
+    entry_vs_ema_pts: Optional[float] = None
+    close_vs_prev_pts: Optional[float] = None
+    same_bar_ema: bool = False
+    decision: str = ""
 
 
 @dataclass
 class OvernightSkip:
     local_date: str
     reason: str
+    side: Optional[str] = None
+    asia_high: Optional[float] = None
+    asia_low: Optional[float] = None
+    asia_range_pts: Optional[float] = None
+    break_price: Optional[float] = None
+    max_fav_pts: Optional[float] = None
+    max_adv_pts: Optional[float] = None
+    max_fav_price: Optional[float] = None
+    max_adv_price: Optional[float] = None  # opposite-direction peak after break
+    max_above_asia_pts: Optional[float] = None
+    max_below_asia_pts: Optional[float] = None
+    wait_i: Optional[int] = None
+    wait_n: Optional[int] = None
+    ema: Optional[float] = None
+    closest_ema_pts: Optional[float] = None  # >0 = never touched, 0/neg = would have
+    best_resume_pts: Optional[float] = None  # best close vs prev in trade direction
+    break_pts: Optional[float] = None
+    decision: Optional[str] = None
+    detail: Optional[str] = None
 
 
 def _local(ts: datetime, tz: ZoneInfo) -> datetime:
@@ -125,6 +182,243 @@ def _fav_pts(side: str, entry: float, px: float, ps: float) -> float:
 
 def _adv_pts(side: str, entry: float, px: float, ps: float) -> float:
     return -_fav_pts(side, entry, px, ps)
+
+
+def _round_or_none(v: Optional[float], nd: int) -> Optional[float]:
+    if v is None:
+        return None
+    return round(float(v), nd)
+
+
+def entry_label(reason: str) -> str:
+    return {
+        "ema_touch": "EMA touch",
+        "higher_close": "Higher close resume",
+        "lower_close": "Lower close resume",
+        "break_close": "Break close",
+        "timeout_market": "Timeout market",
+        "timeout_worst": "Timeout worst",
+    }.get(reason, reason or "—")
+
+
+def _fmt_px(x: Optional[float]) -> str:
+    if x is None:
+        return "—"
+    return f"{x:.2f}"
+
+
+def _decision_line(
+    *,
+    reason: str,
+    side: str,
+    wait_i: Optional[int],
+    wait_n: Optional[int],
+    ema: Optional[float],
+    prev_close: Optional[float],
+    signal_close: Optional[float],
+    entry: Optional[float],
+    break_pts: Optional[float],
+    entry_vs_ema_pts: Optional[float],
+    close_vs_prev_pts: Optional[float],
+    same_bar_ema: bool,
+    pullback_mode: str,
+    closest_ema_pts: Optional[float] = None,
+    best_resume_pts: Optional[float] = None,
+    use_higher_close: bool = True,
+) -> str:
+    parts: List[str] = [entry_label(reason)]
+    if wait_n is not None:
+        wi = wait_i if wait_i is not None else 0
+        parts.append(f"wait {wi}/{wait_n}")
+    if break_pts is not None:
+        edge = "Asia high" if side == "UP" else "Asia low"
+        parts.append(f"break +{break_pts:.0f} pts vs {edge}")
+    if reason in ("higher_close", "lower_close"):
+        cmp = ">" if side == "UP" else "<"
+        extra = (
+            f"({close_vs_prev_pts:+.0f} pts)"
+            if close_vs_prev_pts is not None
+            else ""
+        )
+        if prev_close is not None and signal_close is not None:
+            parts.append(
+                f"close {_fmt_px(signal_close)} {cmp} prev {_fmt_px(prev_close)} {extra}".strip()
+            )
+        if same_bar_ema:
+            parts.append("EMA also touched this bar (close wins)")
+        elif ema is not None:
+            parts.append(f"EMA {_fmt_px(ema)}")
+    elif reason == "ema_touch":
+        rel = (
+            f"({entry_vs_ema_pts:+.0f} pts vs EMA)"
+            if entry_vs_ema_pts is not None
+            else ""
+        )
+        parts.append(
+            f"EMA {_fmt_px(ema)} fill {_fmt_px(entry)} {rel}".strip()
+        )
+        if close_vs_prev_pts is not None:
+            parts.append(f"bar close vs prev {close_vs_prev_pts:+.0f} pts")
+    elif reason == "break_close":
+        parts.append(f"pullback {pullback_mode}")
+    elif reason.startswith("timeout"):
+        if closest_ema_pts is None:
+            parts.append("EMA not ready")
+        else:
+            parts.append(f"closest to EMA {closest_ema_pts:+.0f} pts")
+        if not use_higher_close:
+            parts.append("close resume off")
+        elif best_resume_pts is None:
+            parts.append("no close to compare")
+        else:
+            parts.append(f"best close vs prev {best_resume_pts:+.0f} pts")
+    return " · ".join(p for p in parts if p)
+
+
+def _skip_decision(
+    *,
+    reason: str,
+    wait_n: Optional[int],
+    waited: Optional[int],
+    ema: Optional[float],
+    closest_ema_pts: Optional[float],
+    best_resume_pts: Optional[float],
+    use_higher_close: bool,
+    break_pts: Optional[float],
+    side: Optional[str],
+) -> str:
+    parts: List[str] = []
+    if wait_n is not None:
+        parts.append(f"wait {waited or 0}/{wait_n}")
+    if break_pts is not None and side:
+        edge = "Asia high" if side == "UP" else "Asia low"
+        parts.append(f"break +{break_pts:.0f} pts vs {edge}")
+    if reason in ("no_pullback", "no_pullback_timeout"):
+        if ema is None and closest_ema_pts is None:
+            parts.append("EMA not ready")
+        elif closest_ema_pts is None:
+            parts.append(f"EMA {_fmt_px(ema)} · no tick scan")
+        elif closest_ema_pts > 1e-9:
+            parts.append(
+                f"no EMA touch (closest {closest_ema_pts:.0f} pts away, EMA {_fmt_px(ema)})"
+            )
+        else:
+            parts.append(
+                f"EMA would have touched ({closest_ema_pts:.0f} pts, EMA {_fmt_px(ema)})"
+            )
+        if not use_higher_close:
+            parts.append("close resume off")
+        elif best_resume_pts is None:
+            parts.append("no close to compare")
+        elif best_resume_pts <= 1e-9:
+            parts.append(f"no close resume (best {best_resume_pts:+.0f} pts vs prev)")
+        else:
+            parts.append(f"best close vs prev {best_resume_pts:+.0f} pts")
+        if wait_n is not None and (waited or 0) == 0:
+            parts.append("no wait candles after break (Asia window already full)")
+    return " · ".join(parts) if parts else ""
+
+
+def _mk_skip(
+    day: date,
+    reason: str,
+    *,
+    side: Optional[str] = None,
+    asia_high: Optional[float] = None,
+    asia_low: Optional[float] = None,
+    asia_range_pts: Optional[float] = None,
+    break_price: Optional[float] = None,
+    max_fav_pts: Optional[float] = None,
+    max_adv_pts: Optional[float] = None,
+    max_fav_price: Optional[float] = None,
+    max_adv_price: Optional[float] = None,
+    max_above_asia_pts: Optional[float] = None,
+    max_below_asia_pts: Optional[float] = None,
+    wait_i: Optional[int] = None,
+    wait_n: Optional[int] = None,
+    ema: Optional[float] = None,
+    closest_ema_pts: Optional[float] = None,
+    best_resume_pts: Optional[float] = None,
+    break_pts: Optional[float] = None,
+    decision: Optional[str] = None,
+    detail: Optional[str] = None,
+) -> OvernightSkip:
+    return OvernightSkip(
+        local_date=day.isoformat(),
+        reason=reason,
+        side=side,
+        asia_high=_round_or_none(asia_high, 5),
+        asia_low=_round_or_none(asia_low, 5),
+        asia_range_pts=_round_or_none(asia_range_pts, 1),
+        break_price=_round_or_none(break_price, 5),
+        max_fav_pts=_round_or_none(max_fav_pts, 1),
+        max_adv_pts=_round_or_none(max_adv_pts, 1),
+        max_fav_price=_round_or_none(max_fav_price, 5),
+        max_adv_price=_round_or_none(max_adv_price, 5),
+        max_above_asia_pts=_round_or_none(max_above_asia_pts, 1),
+        max_below_asia_pts=_round_or_none(max_below_asia_pts, 1),
+        wait_i=wait_i,
+        wait_n=wait_n,
+        ema=_round_or_none(ema, 5),
+        closest_ema_pts=_round_or_none(closest_ema_pts, 1),
+        best_resume_pts=_round_or_none(best_resume_pts, 1),
+        break_pts=_round_or_none(break_pts, 1),
+        decision=decision,
+        detail=detail,
+    )
+
+
+def _asia_extensions(
+    candles: Sequence[Candle],
+    asia_high: float,
+    asia_low: float,
+    ps: float,
+) -> Tuple[Optional[float], Optional[float]]:
+    """Pts beyond Asia high / below Asia low (negative = never reached that side)."""
+    if not candles:
+        return None, None
+    hi = max(c.high for c in candles)
+    lo = min(c.low for c in candles)
+    return round((hi - asia_high) / ps, 1), round((asia_low - lo) / ps, 1)
+
+
+def _excursion_from(
+    ticks: Sequence[Tick],
+    start_index: int,
+    *,
+    side: str,
+    entry: float,
+    ps: float,
+    tz: ZoneInfo,
+    flatten_local: datetime,
+    max_hold_hours: float,
+) -> Tuple[float, float, float, float]:
+    """
+    Walk ticks after start until flatten / max hold.
+    Returns max_fav_pts, max_adv_pts, fav_peak_px, adv_peak_px.
+    """
+    max_fav = 0.0
+    max_adv = 0.0
+    best_px = entry
+    worst_px = entry
+    if start_index < 0 or start_index >= len(ticks):
+        return max_fav, max_adv, best_px, worst_px
+    hold_deadline = ticks[start_index].ts + timedelta(hours=float(max_hold_hours))
+    for i in range(start_index + 1, len(ticks)):
+        t = ticks[i]
+        loc = _local(t.ts, tz)
+        px = _mid(t)
+        fav = _fav_pts(side, entry, px, ps)
+        adv = _adv_pts(side, entry, px, ps)
+        if fav > max_fav:
+            max_fav = fav
+            best_px = px
+        if adv > max_adv:
+            max_adv = adv
+            worst_px = px
+        if loc >= flatten_local or t.ts >= hold_deadline:
+            break
+    return max_fav, max_adv, best_px, worst_px
 
 
 def _hit_level(side: str, px: float, level: float, is_sl: bool) -> bool:
@@ -192,16 +486,17 @@ def _simulate_from_entry(
     ps: float,
     tz: ZoneInfo,
     flatten_local: datetime,
-) -> Tuple[str, datetime, float, float, bool, float, float]:
+) -> Tuple[str, datetime, float, float, bool, float, float, float, float]:
     """
     Walk ticks after fill.
-    Returns (reason, exit_ts, exit_px, pts, trail_armed, max_fav, max_adv).
+    Returns (reason, exit_ts, exit_px, pts, trail_armed, max_fav, max_adv, best_px, worst_px).
     """
     trail_armed = False
     trail_level: Optional[float] = None
     max_fav = 0.0
     max_adv = 0.0
     best_px = entry
+    worst_px = entry
     last_ts = ticks[start_index].ts
     last_px = entry
     hold_deadline = ticks[start_index].ts + timedelta(hours=float(params.max_hold_hours))
@@ -219,11 +514,12 @@ def _simulate_from_entry(
             best_px = px
         if adv > max_adv:
             max_adv = adv
+            worst_px = px
 
         # Hard flatten
         if loc >= flatten_local or t.ts >= hold_deadline:
             pts = _fav_pts(side, entry, px, ps)
-            return "flatten", t.ts, px, pts, trail_armed, max_fav, max_adv
+            return "flatten", t.ts, px, pts, trail_armed, max_fav, max_adv, best_px, worst_px
 
         # Trail arm
         if params.trail_arm_pts > 0 and not trail_armed and fav >= params.trail_arm_pts:
@@ -241,25 +537,25 @@ def _simulate_from_entry(
                     trail_level = new_trail
                 if px <= trail_level + 1e-12:
                     pts = _fav_pts(side, entry, trail_level, ps)
-                    return "trail", t.ts, trail_level, pts, True, max_fav, max_adv
+                    return "trail", t.ts, trail_level, pts, True, max_fav, max_adv, best_px, worst_px
             else:
                 new_trail = best_px + params.trail_pts * ps
                 if new_trail < trail_level:
                     trail_level = new_trail
                 if px >= trail_level - 1e-12:
                     pts = _fav_pts(side, entry, trail_level, ps)
-                    return "trail", t.ts, trail_level, pts, True, max_fav, max_adv
+                    return "trail", t.ts, trail_level, pts, True, max_fav, max_adv, best_px, worst_px
 
         # Fixed SL / TP
         if _hit_level(side, px, sl, is_sl=True):
             pts = _fav_pts(side, entry, sl, ps)
-            return "sl", t.ts, sl, pts, trail_armed, max_fav, max_adv
+            return "sl", t.ts, sl, pts, trail_armed, max_fav, max_adv, best_px, worst_px
         if _hit_level(side, px, tp, is_sl=False):
             pts = _fav_pts(side, entry, tp, ps)
-            return "tp", t.ts, tp, pts, trail_armed, max_fav, max_adv
+            return "tp", t.ts, tp, pts, trail_armed, max_fav, max_adv, best_px, worst_px
 
     pts = _fav_pts(side, entry, last_px, ps)
-    return "timeout", last_ts, last_px, pts, trail_armed, max_fav, max_adv
+    return "timeout", last_ts, last_px, pts, trail_armed, max_fav, max_adv, best_px, worst_px
 
 
 def run_overnight(
@@ -275,7 +571,7 @@ def run_overnight(
     if ps <= 0 or not ticks:
         return _empty_result(params, symbol=sym, ticks=len(ticks or []))
 
-    builder = CandleBuilder(timeframe_minutes=15, max_completed=200)
+    builder = CandleBuilder(timeframe_minutes=15, max_completed=200, skip_ignored=False)
     completed: List[Candle] = []
 
     # Pre-build all 15m candles from ticks
@@ -316,7 +612,7 @@ def run_overnight(
 
         day_candles = by_day[day]
         if not day_candles:
-            skips.append(OvernightSkip(day.isoformat(), "no_candles"))
+            skips.append(_mk_skip(day, "no_candles"))
             continue
 
         # Asia window candles (open_time local hour in [start, end))
@@ -341,22 +637,34 @@ def run_overnight(
                     if _local(c.open_time, tz).hour < params.asia_end_hour
                 ]
         if len(asia_candles) < 2:
-            skips.append(OvernightSkip(day.isoformat(), "thin_asia"))
+            skips.append(
+                _mk_skip(day, "thin_asia", detail=f"{len(asia_candles)} candles")
+            )
             continue
 
         asia_high = max(c.high for c in asia_candles)
         asia_low = min(c.low for c in asia_candles)
         asia_range_pts = (asia_high - asia_low) / ps
         if asia_range_pts < params.min_asia_range_pts:
-            skips.append(OvernightSkip(day.isoformat(), "asia_too_small"))
+            skips.append(
+                _mk_skip(
+                    day,
+                    "asia_too_small",
+                    asia_high=asia_high,
+                    asia_low=asia_low,
+                    asia_range_pts=asia_range_pts,
+                )
+            )
             continue
 
-        # Candles after Asia end that can still produce the first break
-        post_asia = [
+        flatten_local = _at_local(day, params.flatten_hour, 0, tz)
+        after_asia = [
             c
             for c in day_candles
             if _local(c.open_time, tz).hour >= params.asia_end_hour
-        ][: params.max_break_candles_after]
+        ]
+        # Candles after Asia end that can still produce the first break
+        post_asia = after_asia[: params.max_break_candles_after]
 
         break_candle: Optional[Candle] = None
         side: Optional[str] = None
@@ -382,15 +690,82 @@ def run_overnight(
                     break_candle, side = c, "DOWN"
                     break
 
+        above_asia, below_asia = _asia_extensions(after_asia, asia_high, asia_low, ps)
+
+        def skip_break(reason: str, **extra: Any) -> OvernightSkip:
+            fav = adv = fav_px = adv_px = None
+            bp = extra.get("break_pts")
+            if break_candle is not None and side is not None:
+                ref = break_candle.close
+                idx = find_tick_index(break_candle.close_time)
+                fav, adv, fav_px, adv_px = _excursion_from(
+                    ticks,
+                    idx,
+                    side=side,
+                    entry=ref,
+                    ps=ps,
+                    tz=tz,
+                    flatten_local=flatten_local,
+                    max_hold_hours=params.max_hold_hours,
+                )
+                if bp is None:
+                    if side == "UP":
+                        bp = (break_candle.close - asia_high) / ps
+                    else:
+                        bp = (asia_low - break_candle.close) / ps
+            if extra.get("decision") is None:
+                extra["decision"] = _skip_decision(
+                    reason=reason,
+                    wait_n=extra.get("wait_n"),
+                    waited=extra.get("waited"),
+                    ema=extra.get("ema"),
+                    closest_ema_pts=extra.get("closest_ema_pts"),
+                    best_resume_pts=extra.get("best_resume_pts"),
+                    use_higher_close=_resume_enabled(params),
+                    break_pts=bp,
+                    side=side,
+                )
+            waited = extra.pop("waited", None)
+            extra.pop("break_pts", None)
+            if extra.get("wait_i") is None and waited is not None:
+                extra["wait_i"] = waited
+            return _mk_skip(
+                day,
+                reason,
+                side=side,
+                asia_high=asia_high,
+                asia_low=asia_low,
+                asia_range_pts=asia_range_pts,
+                break_price=break_candle.close if break_candle is not None else None,
+                max_fav_pts=fav,
+                max_adv_pts=adv,
+                max_fav_price=fav_px,
+                max_adv_price=adv_px,
+                max_above_asia_pts=above_asia,
+                max_below_asia_pts=below_asia,
+                break_pts=bp,
+                **extra,
+            )
+
         if break_candle is None or side is None:
-            skips.append(OvernightSkip(day.isoformat(), "no_break"))
+            skips.append(
+                _mk_skip(
+                    day,
+                    "no_break",
+                    asia_high=asia_high,
+                    asia_low=asia_low,
+                    asia_range_pts=asia_range_pts,
+                    max_above_asia_pts=above_asia,
+                    max_below_asia_pts=below_asia,
+                )
+            )
             continue
 
         if params.side_filter == "long" and side != "UP":
-            skips.append(OvernightSkip(day.isoformat(), "side_filter"))
+            skips.append(skip_break("side_filter"))
             continue
         if params.side_filter == "short" and side != "DOWN":
-            skips.append(OvernightSkip(day.isoformat(), "side_filter"))
+            skips.append(skip_break("side_filter"))
             continue
 
         # --- Entry logic ---
@@ -398,94 +773,138 @@ def run_overnight(
         entry_px: Optional[float] = None
         entry_reason = "break_close"
         entry_idx = find_tick_index(break_candle.close_time)
+        if side == "UP":
+            break_pts = (break_candle.close - asia_high) / ps
+        else:
+            break_pts = (asia_low - break_candle.close) / ps
+
+        wait_i: Optional[int] = 0
+        wait_n: Optional[int] = None
+        ema_at: Optional[float] = None
+        prev_at: Optional[float] = None
+        sig_close: Optional[float] = None
+        same_bar_ema = False
+        closest_ema_pts: Optional[float] = None
+        best_resume_pts: Optional[float] = None
+        waited = 0
 
         if params.pullback_mode == "off":
             # Enter at break candle close (or first tick after)
             if entry_idx >= n:
-                skips.append(OvernightSkip(day.isoformat(), "no_entry_tick"))
+                skips.append(skip_break("no_entry_tick", break_pts=break_pts))
                 continue
             entry_ts = ticks[entry_idx].ts
             entry_px = _mid(ticks[entry_idx])
             entry_reason = "break_close"
+            wait_i = 0
+            wait_n = 0
         else:
-            # Wait window for EMA or higher-close
             wait_candles = post_asia[
                 post_asia.index(break_candle) + 1 : post_asia.index(break_candle)
                 + 1
                 + params.max_wait_candles
             ]
-            # Need enough history for EMA
-            hist_closes = [c.close for c in completed if c.close_time <= break_candle.close_time]
+            wait_n = len(wait_candles)
             found = False
+            ema_val: Optional[float] = None
             worst_px = _mid(ticks[entry_idx]) if entry_idx < n else break_candle.close
 
-            for wc in wait_candles:
-                # Update EMA with closes up to previous candle
+            for wi, wc in enumerate(wait_candles, start=1):
+                waited = wi
                 closes_for_ema = [
-                    c.close for c in completed if c.close_time < wc.open_time
+                    c.close for c in completed if c.open_time < wc.open_time
                 ]
-                ema_val = _ema(closes_for_ema[-params.ema_period * 2 :], params.ema_period)
+                ema_val = _ema(
+                    closes_for_ema[-params.ema_period * 2 :], params.ema_period
+                )
+                prev_close = closes_for_ema[-1] if closes_for_ema else None
 
-                # Higher / lower close resume
-                if params.use_higher_close and len(closes_for_ema) >= 1:
-                    prev_close = closes_for_ema[-1]
-                    if side == "UP" and wc.close > prev_close + 1e-12:
-                        # resume strength
-                        idx = find_tick_index(wc.close_time)
-                        if idx < n:
-                            entry_ts = ticks[idx].ts
-                            entry_px = _mid(ticks[idx])
-                            entry_reason = "higher_close"
-                            entry_idx = idx
-                            found = True
-                            break
-                    if side == "DOWN" and wc.close < prev_close - 1e-12:
-                        idx = find_tick_index(wc.close_time)
-                        if idx < n:
-                            entry_ts = ticks[idx].ts
-                            entry_px = _mid(ticks[idx])
-                            entry_reason = "higher_close"  # same label, direction handled by side
-                            entry_idx = idx
-                            found = True
-                            break
+                resume_hit = False
+                resume_pts: Optional[float] = None
+                if _resume_enabled(params) and prev_close is not None:
+                    if side == "UP":
+                        resume_pts = (wc.close - prev_close) / ps
+                        resume_hit = wc.close > prev_close + 1e-12
+                    else:
+                        resume_pts = (prev_close - wc.close) / ps
+                        resume_hit = wc.close < prev_close - 1e-12
+                    if best_resume_pts is None or resume_pts > best_resume_pts:
+                        best_resume_pts = resume_pts
 
-                # EMA touch during this candle (scan ticks of the candle)
+                ema_touched = False
+                ema_touch_idx: Optional[int] = None
+                ema_touch_px: Optional[float] = None
                 if ema_val is not None:
                     c_start = find_tick_index(wc.open_time)
                     c_end = find_tick_index(wc.close_time)
                     for ti in range(c_start, min(c_end + 1, n)):
                         px = _mid(ticks[ti])
                         if side == "UP":
+                            dist = (px - ema_val) / ps
                             worst_px = min(worst_px, px)
                             if px <= ema_val + 1e-9:
-                                entry_ts = ticks[ti].ts
-                                entry_px = px
-                                entry_reason = "ema_touch"
-                                entry_idx = ti
-                                found = True
-                                break
+                                ema_touched = True
+                                if ema_touch_idx is None:
+                                    ema_touch_idx = ti
+                                    ema_touch_px = px
                         else:
+                            dist = (ema_val - px) / ps
                             worst_px = max(worst_px, px)
                             if px >= ema_val - 1e-9:
-                                entry_ts = ticks[ti].ts
-                                entry_px = px
-                                entry_reason = "ema_touch"
-                                entry_idx = ti
-                                found = True
-                                break
-                    if found:
+                                ema_touched = True
+                                if ema_touch_idx is None:
+                                    ema_touch_idx = ti
+                                    ema_touch_px = px
+                        if closest_ema_pts is None or dist < closest_ema_pts:
+                            closest_ema_pts = dist
+
+                if resume_hit:
+                    idx = find_tick_index(wc.close_time)
+                    if idx < n:
+                        entry_ts = ticks[idx].ts
+                        entry_px = _mid(ticks[idx])
+                        entry_reason = (
+                            "higher_close" if side == "UP" else "lower_close"
+                        )
+                        entry_idx = idx
+                        wait_i = wi
+                        ema_at = ema_val
+                        prev_at = prev_close
+                        sig_close = wc.close
+                        same_bar_ema = ema_touched
+                        found = True
                         break
 
+                if ema_touched and ema_touch_idx is not None and ema_touch_px is not None:
+                    entry_ts = ticks[ema_touch_idx].ts
+                    entry_px = ema_touch_px
+                    entry_reason = "ema_touch"
+                    entry_idx = ema_touch_idx
+                    wait_i = wi
+                    ema_at = ema_val
+                    prev_at = prev_close
+                    sig_close = wc.close
+                    found = True
+                    break
+
+            skip_diag = dict(
+                wait_n=wait_n,
+                waited=waited,
+                ema=ema_val if wait_candles else None,
+                closest_ema_pts=closest_ema_pts,
+                best_resume_pts=best_resume_pts,
+                break_pts=break_pts,
+            )
+
             if not found:
-                if params.pullback_mode == "required":
-                    skips.append(OvernightSkip(day.isoformat(), "no_pullback"))
+                if params.pullback_mode in ("required", "ema"):
+                    skips.append(skip_break("no_pullback", **skip_diag))
                     continue
-                # preferred → timeout action
                 if params.timeout_action == "skip":
-                    skips.append(OvernightSkip(day.isoformat(), "no_pullback_timeout"))
+                    skips.append(skip_break("no_pullback_timeout", **skip_diag))
                     continue
                 if entry_idx >= n:
-                    skips.append(OvernightSkip(day.isoformat(), "no_entry_tick"))
+                    skips.append(skip_break("no_entry_tick", **skip_diag))
                     continue
                 if params.timeout_action == "worst":
                     entry_px = worst_px
@@ -494,21 +913,74 @@ def run_overnight(
                     entry_px = _mid(ticks[entry_idx])
                     entry_reason = "timeout_market"
                 entry_ts = ticks[entry_idx].ts
+                wait_i = waited
+                ema_at = skip_diag["ema"]
 
         if entry_ts is None or entry_px is None:
-            skips.append(OvernightSkip(day.isoformat(), "no_entry"))
+            skips.append(skip_break("no_entry"))
             continue
+
+        close_vs_prev_pts: Optional[float] = None
+        if prev_at is not None and sig_close is not None:
+            if side == "UP":
+                close_vs_prev_pts = (sig_close - prev_at) / ps
+            else:
+                close_vs_prev_pts = (prev_at - sig_close) / ps
+        entry_vs_ema_pts: Optional[float] = None
+        if ema_at is not None:
+            if side == "UP":
+                entry_vs_ema_pts = (entry_px - ema_at) / ps
+            else:
+                entry_vs_ema_pts = (ema_at - entry_px) / ps
+        decision = _decision_line(
+            reason=entry_reason,
+            side=side,
+            wait_i=wait_i,
+            wait_n=wait_n,
+            ema=ema_at,
+            prev_close=prev_at,
+            signal_close=sig_close,
+            entry=entry_px,
+            break_pts=break_pts,
+            entry_vs_ema_pts=entry_vs_ema_pts,
+            close_vs_prev_pts=close_vs_prev_pts,
+            same_bar_ema=same_bar_ema,
+            pullback_mode=params.pullback_mode,
+            closest_ema_pts=closest_ema_pts,
+            best_resume_pts=best_resume_pts,
+            use_higher_close=_resume_enabled(params),
+        )
 
         sl, tp, sl_pts, tp_pts = _compute_sl_tp(
             side, entry_px, asia_high, asia_low, params, ps
         )
 
-        flatten_local = _at_local(day, params.flatten_hour, 0, tz)
         if _local(entry_ts, tz) >= flatten_local:
-            skips.append(OvernightSkip(day.isoformat(), "past_flatten"))
+            skips.append(
+                skip_break(
+                    "past_flatten",
+                    wait_n=wait_n,
+                    waited=waited,
+                    ema=ema_at,
+                    closest_ema_pts=closest_ema_pts,
+                    best_resume_pts=best_resume_pts,
+                    break_pts=break_pts,
+                    decision=decision + " · past flatten",
+                )
+            )
             continue
 
-        reason, exit_ts, exit_px, pts, trail_armed, max_fav, max_adv = _simulate_from_entry(
+        (
+            reason,
+            exit_ts,
+            exit_px,
+            pts,
+            trail_armed,
+            max_fav,
+            max_adv,
+            best_px,
+            worst_px,
+        ) = _simulate_from_entry(
             ticks,
             entry_idx,
             side=side,
@@ -535,6 +1007,17 @@ def run_overnight(
                 entry_ts=entry_ts.isoformat(),
                 entry=round(entry_px, 5),
                 entry_reason=entry_reason,
+                entry_label=entry_label(entry_reason),
+                wait_i=wait_i,
+                wait_n=wait_n,
+                ema=_round_or_none(ema_at, 5),
+                prev_close=_round_or_none(prev_at, 5),
+                signal_close=_round_or_none(sig_close, 5),
+                break_pts=_round_or_none(break_pts, 1),
+                entry_vs_ema_pts=_round_or_none(entry_vs_ema_pts, 1),
+                close_vs_prev_pts=_round_or_none(close_vs_prev_pts, 1),
+                same_bar_ema=same_bar_ema,
+                decision=decision,
                 sl=round(sl, 5),
                 tp=round(tp, 5),
                 sl_pts=round(sl_pts, 1),
@@ -546,6 +1029,8 @@ def run_overnight(
                 trail_armed=trail_armed,
                 max_fav_pts=round(max_fav, 1),
                 max_adv_pts=round(max_adv, 1),
+                max_fav_price=round(best_px, 5),
+                max_adv_price=round(worst_px, 5),
             )
         )
         traded_days.add(day)
