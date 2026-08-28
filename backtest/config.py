@@ -136,7 +136,7 @@ DEFAULT_IMPULSE_RETRACE_EUR = {
     "retrace_fractions": [0.50, 0.75],
     "min_pullback_points": 5,
     "max_retrace_depth": 0.85,
-    "max_retrace_age_sec": 120,
+    "max_retrace_age_sec": 900,  # 15 min; 120s is gold-speed, FX retraces slower
     "hold_sec": 2,
     "cooldown_min": 30,
     "require_quiet": False,
@@ -396,6 +396,12 @@ def apply_overrides(
             CANDLE_LOOKBACK = int(lb)
     if filters.get("display_tz"):
         DISPLAY_TZ = str(filters["display_tz"])
+        try:
+            from backtest import candles as _candles
+
+            _candles._ZONE = None
+        except Exception:
+            pass
     if "candle_ignore_enabled" in filters and filters["candle_ignore_enabled"] is not None:
         CANDLE_IGNORE["enabled"] = bool(filters["candle_ignore_enabled"])
     if filters.get("candle_ignore_local_hour_start") is not None:

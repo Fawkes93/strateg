@@ -44,6 +44,7 @@
           <select id="symbol">
             <option value="XAUUSD" selected>XAUUSD (gold)</option>
             <option value="EURUSD">EURUSD</option>
+            <option value="BTCUSD">BTCUSD</option>
           </select>
         </label>
         <label>
@@ -220,7 +221,9 @@
         <label>
           Symbol
           <select id="sw-symbol">
-            <option value="XAUUSD" selected>XAUUSD</option>
+            <option value="XAUUSD" selected>XAUUSD (gold)</option>
+            <option value="EURUSD">EURUSD</option>
+            <option value="BTCUSD">BTCUSD</option>
           </select>
         </label>
         <label>
@@ -267,16 +270,14 @@
           <select id="sw-workers">
             <option value="1">1 (serial, max tick reuse)</option>
             <option value="2">2</option>
-            <option value="4" selected>4 (default)</option>
-            <option value="6">6</option>
-            <option value="8">8</option>
+            <option value="4" selected>4</option>
           </select>
         </label>
       </div>
       <p class="hint muted">
         <strong>Speed:</strong> ticks load once per date range, then all param variants
-        replay on that pack. Workers > 1 run date groups (or split variants) in parallel
-        processes — uses more CPU cores. Stop still finishes the current worker jobs.
+        replay on that pack. Workers &gt; 1 run *different date ranges* in parallel
+        (one month stays one process — no variant split). Stop kills workers.
       </p>
       <p class="hint muted">
         <strong>Together (default):</strong> 3 range mults + spike win 60,90 →

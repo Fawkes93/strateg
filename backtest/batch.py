@@ -3,8 +3,8 @@ Overnight parameter sweep: date ranges × experiment rows per alert type.
 
 Speed:
   - Group by date range → load ticks once, replay all param variants
-  - Optional multi-process workers across date-range groups (and split large
-    single-range jobs so multiple cores stay busy)
+  - Optional multi-process workers across date-range groups only
+    (never split one date's variants — one tick load per month)
 """
 
 from __future__ import annotations
@@ -23,13 +23,8 @@ from multiprocessing import Manager
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from backtest.config import (
-    DEFAULT_IMPULSE_RETRACE_XAU,
-    DEFAULT_RANGE_WICK_XAU,
-    DEFAULT_RANGE_XAU,
-    DEFAULT_SPIKE_NEO_XAU,
-    DEFAULT_SPIKE_XAU,
-)
+from backtest.config import _base_for_symbol
+from backtest.dukascopy import reaktor_symbol
 from backtest.runner import (
     DEFAULT_RESULTS,
     load_ticks,
@@ -649,13 +644,22 @@ def _run_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> None:
             _state.running = False
 
 
-def _item_signal(item: Dict[str, Any], filters: Dict[str, Any]) -> Dict[str, Any]:
+def _item_signal(
+    item: Dict[str, Any],
+    filters: Dict[str, Any],
+    symbol: str = "XAUUSD",
+) -> Dict[str, Any]:
+    # Must seed the *selected* symbol. XAU point_size=0.01 on EURUSD
+    # makes a 5-pip move look like 0.5 points → zero alerts.
+    base_r, base_s, base_n, base_ir, base_rw = _base_for_symbol(
+        reaktor_symbol(symbol)
+    )
     signal = {
-        "range": dict(DEFAULT_RANGE_XAU),
-        "spike": dict(DEFAULT_SPIKE_XAU),
-        "spike_neo": dict(DEFAULT_SPIKE_NEO_XAU),
-        "impulse_retrace": dict(DEFAULT_IMPULSE_RETRACE_XAU),
-        "range_wick": dict(DEFAULT_RANGE_WICK_XAU),
+        "range": base_r,
+        "spike": base_s,
+        "spike_neo": base_n,
+        "impulse_retrace": base_ir,
+        "range_wick": base_rw,
         "filters": dict(filters or {}),
     }
     if item.get("range"):
@@ -806,32 +810,13 @@ def _split_for_workers(
     workers: int,
 ) -> List[Dict[str, Any]]:
     """
-    Build process jobs. Always chunk large date groups so:
-      - cores stay busy
-      - jobs finish often enough for the progress bar to move
-    Same-date items stay in a job → one pack load per job.
+    One process job per date range. All variants for that range stay together
+    so ticks load once. Workers only run *different months* in parallel.
     """
-    workers = max(1, int(workers))
-    jobs: List[Dict[str, Any]] = []
-
-    for df, dt, group_items in date_groups:
-        n = len(group_items)
-        if n <= 1 or workers == 1:
-            jobs.append({"date_from": df, "date_to": dt, "items": list(group_items)})
-            continue
-        # ~workers chunks per date, but never more items-per-job than 4 so
-        # a month of 36 variants becomes ~9 jobs of 4 (progress every few runs)
-        n_chunks = min(n, max(workers, (n + 3) // 4))
-        base = n // n_chunks
-        rem = n % n_chunks
-        idx = 0
-        for c in range(n_chunks):
-            take = base + (1 if c < rem else 0)
-            chunk = group_items[idx : idx + take]
-            idx += take
-            if chunk:
-                jobs.append({"date_from": df, "date_to": dt, "items": chunk})
-    return jobs
+    return [
+        {"date_from": df, "date_to": dt, "items": list(group_items)}
+        for df, dt, group_items in date_groups
+    ]
 
 
 def _run_date_group_job(job: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -896,7 +881,7 @@ def _run_date_group_job(job: Dict[str, Any]) -> List[Dict[str, Any]]:
 
     for vi, item in enumerate(items):
         engines = list(item.get("engines") or ["candle", "spike"])
-        signal = _item_signal(item, filters)
+        signal = _item_signal(item, filters, symbol)
         label = str(item.get("label") or "")
         emit(
             "item_start",
@@ -955,8 +940,8 @@ def _run_date_group_job(job: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 def _default_workers() -> int:
     n = os.cpu_count() or 2
-    # Leave a core free for UI / OS; cap at 6 for RAM (tick packs are large)
-    return max(1, min(6, n - 1 if n > 2 else n))
+    # Cap at 4 — each process copies the tick pack (tight on 8GB, but usable).
+    return max(1, min(4, n))
 
 
 def _pipeline_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -971,7 +956,7 @@ def _pipeline_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> Dict[st
     filters = cfg.get("filters") or {}
     top_n = int(cfg.get("top_n") or 3)
     workers = int(cfg.get("workers") if cfg.get("workers") is not None else _default_workers())
-    workers = max(1, min(16, workers))
+    workers = max(1, min(4, workers))
 
     results_rows: List[Dict[str, Any]] = []
     total = len(items)
@@ -1109,7 +1094,7 @@ def _pipeline_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> Dict[st
                 if _cancel.is_set():
                     break
                 engines = list(item.get("engines") or ["candle", "spike"])
-                signal = _item_signal(item, filters)
+                signal = _item_signal(item, filters, symbol)
                 label = item.get("label") or ""
                 i_local = completed
 
@@ -1364,7 +1349,7 @@ def _finalize_report(
         "defaults_note": "Partial experiment rows merge onto Reaktor XAU defaults",
         "speed_note": (
             "Ticks loaded once per date range; "
-            f"{workers} process worker(s) for parallel date groups / split variants"
+            f"{workers} process worker(s) for parallel date groups (no variant split)"
         ),
     }
 
@@ -1403,63 +1388,70 @@ def _compact_all_ts(stats_by_t: Dict[str, dict]) -> List[dict]:
     return rows
 
 
-def batch_param_schema() -> Dict[str, Any]:
-    """UI helper: short names + defaults."""
+def batch_param_schema(symbol: str = "XAUUSD") -> Dict[str, Any]:
+    """UI helper: short names + defaults for the selected symbol."""
+    r, s, n, ir, rw = _base_for_symbol(reaktor_symbol(symbol))
+    fracs = ir.get("retrace_fractions") or [0.5, 0.75]
+    if isinstance(fracs, (list, tuple)):
+        fracs_s = ",".join(str(x) for x in fracs)
+    else:
+        fracs_s = str(fracs)
     return {
+        "symbol": reaktor_symbol(symbol),
         "range_fields": [
-            {"short": "mult", "full": "range_mult", "default": DEFAULT_RANGE_XAU["range_mult"]},
-            {"short": "min_dir", "full": "min_directed_points", "default": DEFAULT_RANGE_XAU["min_directed_points"]},
-            {"short": "min_body", "full": "min_body_points", "default": DEFAULT_RANGE_XAU["min_body_points"]},
-            {"short": "hold", "full": "hold_sec", "default": DEFAULT_RANGE_XAU["hold_sec"]},
-            {"short": "struct", "full": "structure_break_lookback", "default": DEFAULT_RANGE_XAU["structure_break_lookback"]},
-            {"short": "buf", "full": "breakout_buffer_points", "default": DEFAULT_RANGE_XAU["breakout_buffer_points"]},
-            {"short": "cd", "full": "cooldown_min", "default": DEFAULT_RANGE_XAU["cooldown_min"]},
-            {"short": "lb", "full": "lookback", "default": DEFAULT_RANGE_XAU["lookback"]},
+            {"short": "mult", "full": "range_mult", "default": r["range_mult"]},
+            {"short": "min_dir", "full": "min_directed_points", "default": r["min_directed_points"]},
+            {"short": "min_body", "full": "min_body_points", "default": r["min_body_points"]},
+            {"short": "hold", "full": "hold_sec", "default": r["hold_sec"]},
+            {"short": "struct", "full": "structure_break_lookback", "default": r["structure_break_lookback"]},
+            {"short": "buf", "full": "breakout_buffer_points", "default": r["breakout_buffer_points"]},
+            {"short": "cd", "full": "cooldown_min", "default": r["cooldown_min"]},
+            {"short": "lb", "full": "lookback", "default": r["lookback"]},
         ],
         "spike_fields": [
-            {"short": "min", "full": "min_points", "default": DEFAULT_SPIKE_XAU["min_points"]},
-            {"short": "win", "full": "window_sec", "default": DEFAULT_SPIKE_XAU["window_sec"]},
-            {"short": "cd", "full": "cooldown_min", "default": DEFAULT_SPIKE_XAU["cooldown_min"]},
-            {"short": "rel", "full": "relative_mult", "default": DEFAULT_SPIKE_XAU["relative_mult"]},
-            {"short": "rel_n", "full": "relative_lookback", "default": DEFAULT_SPIKE_XAU["relative_lookback"]},
-            {"short": "rel_on", "full": "relative_enabled", "default": DEFAULT_SPIKE_XAU["relative_enabled"]},
+            {"short": "min", "full": "min_points", "default": s["min_points"]},
+            {"short": "win", "full": "window_sec", "default": s["window_sec"]},
+            {"short": "cd", "full": "cooldown_min", "default": s["cooldown_min"]},
+            {"short": "rel", "full": "relative_mult", "default": s["relative_mult"]},
+            {"short": "rel_n", "full": "relative_lookback", "default": s["relative_lookback"]},
+            {"short": "rel_on", "full": "relative_enabled", "default": s["relative_enabled"]},
         ],
         "spike_neo_fields": [
-            {"short": "comp_n", "full": "compression_lookback", "default": DEFAULT_SPIKE_NEO_XAU["compression_lookback"]},
-            {"short": "comp_swing", "full": "compression_swing_max_points", "default": DEFAULT_SPIKE_NEO_XAU["compression_swing_max_points"]},
-            {"short": "comp_size", "full": "compression_size_max_ratio", "default": DEFAULT_SPIKE_NEO_XAU["compression_size_max_ratio"]},
-            {"short": "exp_n", "full": "expansion_lookback", "default": DEFAULT_SPIKE_NEO_XAU["expansion_lookback"]},
-            {"short": "exp_min", "full": "expansion_mult_min", "default": DEFAULT_SPIKE_NEO_XAU["expansion_mult_min"]},
-            {"short": "exp_max", "full": "expansion_mult_max", "default": DEFAULT_SPIKE_NEO_XAU["expansion_mult_max"]},
-            {"short": "min_form", "full": "min_forming_points", "default": DEFAULT_SPIKE_NEO_XAU["min_forming_points"]},
-            {"short": "struct_n", "full": "structure_lookback", "default": DEFAULT_SPIKE_NEO_XAU["structure_lookback"]},
-            {"short": "break", "full": "break_min_points", "default": DEFAULT_SPIKE_NEO_XAU["break_min_points"]},
-            {"short": "hold", "full": "hold_sec", "default": DEFAULT_SPIKE_NEO_XAU["hold_sec"]},
-            {"short": "cd", "full": "cooldown_min", "default": DEFAULT_SPIKE_NEO_XAU["cooldown_min"]},
+            {"short": "comp_n", "full": "compression_lookback", "default": n["compression_lookback"]},
+            {"short": "comp_swing", "full": "compression_swing_max_points", "default": n["compression_swing_max_points"]},
+            {"short": "comp_size", "full": "compression_size_max_ratio", "default": n["compression_size_max_ratio"]},
+            {"short": "exp_n", "full": "expansion_lookback", "default": n["expansion_lookback"]},
+            {"short": "exp_min", "full": "expansion_mult_min", "default": n["expansion_mult_min"]},
+            {"short": "exp_max", "full": "expansion_mult_max", "default": n["expansion_mult_max"]},
+            {"short": "min_form", "full": "min_forming_points", "default": n["min_forming_points"]},
+            {"short": "struct_n", "full": "structure_lookback", "default": n["structure_lookback"]},
+            {"short": "break", "full": "break_min_points", "default": n["break_min_points"]},
+            {"short": "hold", "full": "hold_sec", "default": n["hold_sec"]},
+            {"short": "cd", "full": "cooldown_min", "default": n["cooldown_min"]},
         ],
         "impulse_retrace_fields": [
-            {"short": "look", "full": "impulse_lookback", "default": DEFAULT_IMPULSE_RETRACE_XAU["impulse_lookback"]},
-            {"short": "min_imp", "full": "min_impulse_points", "default": DEFAULT_IMPULSE_RETRACE_XAU["min_impulse_points"]},
-            {"short": "ext_n", "full": "extreme_recent_bars", "default": DEFAULT_IMPULSE_RETRACE_XAU["extreme_recent_bars"]},
-            {"short": "fracs", "full": "retrace_fractions", "default": "0.5,0.75"},
-            {"short": "min_pull", "full": "min_pullback_points", "default": DEFAULT_IMPULSE_RETRACE_XAU["min_pullback_points"]},
-            {"short": "max_depth", "full": "max_retrace_depth", "default": DEFAULT_IMPULSE_RETRACE_XAU["max_retrace_depth"]},
-            {"short": "max_age", "full": "max_retrace_age_sec", "default": DEFAULT_IMPULSE_RETRACE_XAU["max_retrace_age_sec"]},
-            {"short": "hold", "full": "hold_sec", "default": DEFAULT_IMPULSE_RETRACE_XAU["hold_sec"]},
-            {"short": "cd", "full": "cooldown_min", "default": DEFAULT_IMPULSE_RETRACE_XAU["cooldown_min"]},
-            {"short": "quiet", "full": "require_quiet", "default": DEFAULT_IMPULSE_RETRACE_XAU["require_quiet"]},
-            {"short": "quiet_n", "full": "quiet_lookback", "default": DEFAULT_IMPULSE_RETRACE_XAU["quiet_lookback"]},
-            {"short": "quiet_sw", "full": "quiet_swing_max_points", "default": DEFAULT_IMPULSE_RETRACE_XAU["quiet_swing_max_points"]},
+            {"short": "look", "full": "impulse_lookback", "default": ir["impulse_lookback"]},
+            {"short": "min_imp", "full": "min_impulse_points", "default": ir["min_impulse_points"]},
+            {"short": "ext_n", "full": "extreme_recent_bars", "default": ir["extreme_recent_bars"]},
+            {"short": "fracs", "full": "retrace_fractions", "default": fracs_s},
+            {"short": "min_pull", "full": "min_pullback_points", "default": ir["min_pullback_points"]},
+            {"short": "max_depth", "full": "max_retrace_depth", "default": ir["max_retrace_depth"]},
+            {"short": "max_age", "full": "max_retrace_age_sec", "default": ir["max_retrace_age_sec"]},
+            {"short": "hold", "full": "hold_sec", "default": ir["hold_sec"]},
+            {"short": "cd", "full": "cooldown_min", "default": ir["cooldown_min"]},
+            {"short": "quiet", "full": "require_quiet", "default": ir["require_quiet"]},
+            {"short": "quiet_n", "full": "quiet_lookback", "default": ir["quiet_lookback"]},
+            {"short": "quiet_sw", "full": "quiet_swing_max_points", "default": ir["quiet_swing_max_points"]},
         ],
         "range_wick_fields": [
-            {"short": "mult", "full": "range_mult", "default": DEFAULT_RANGE_WICK_XAU["range_mult"]},
-            {"short": "min_dir", "full": "min_directed_points", "default": DEFAULT_RANGE_WICK_XAU["min_directed_points"]},
-            {"short": "min_body", "full": "min_body_points", "default": DEFAULT_RANGE_WICK_XAU["min_body_points"]},
-            {"short": "hold", "full": "hold_sec", "default": DEFAULT_RANGE_WICK_XAU["hold_sec"]},
-            {"short": "struct", "full": "structure_break_lookback", "default": DEFAULT_RANGE_WICK_XAU["structure_break_lookback"]},
-            {"short": "buf", "full": "breakout_buffer_points", "default": DEFAULT_RANGE_WICK_XAU["breakout_buffer_points"]},
-            {"short": "cd", "full": "cooldown_min", "default": DEFAULT_RANGE_WICK_XAU["cooldown_min"]},
-            {"short": "lb", "full": "lookback", "default": DEFAULT_RANGE_WICK_XAU["lookback"]},
+            {"short": "mult", "full": "range_mult", "default": rw["range_mult"]},
+            {"short": "min_dir", "full": "min_directed_points", "default": rw["min_directed_points"]},
+            {"short": "min_body", "full": "min_body_points", "default": rw["min_body_points"]},
+            {"short": "hold", "full": "hold_sec", "default": rw["hold_sec"]},
+            {"short": "struct", "full": "structure_break_lookback", "default": rw["structure_break_lookback"]},
+            {"short": "buf", "full": "breakout_buffer_points", "default": rw["breakout_buffer_points"]},
+            {"short": "cd", "full": "cooldown_min", "default": rw["cooldown_min"]},
+            {"short": "lb", "full": "lookback", "default": rw["lookback"]},
         ],
-        "hint": "Comma-separate values to expand. Empty table = 0 runs. Wick = legacy wick-latched range (source candle_wick).",
+        "hint": "Comma-separate values to expand. Empty table = 0 runs. Wick = legacy wick-latched range (source candle_wick). EURUSD: 1 pt = 0.1 pip (T=50 is 5 pips).",
     }

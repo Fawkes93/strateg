@@ -342,12 +342,14 @@ def evaluate_impulse_retrace(
         and bool(cfg.get("enabled", True))
     )
 
-    # Impulse key for monitor de-dupe (stable while same swing)
+    # Impulse key in integer MT points (not price decimals).
+    # round(extreme, 2) is fine for XAU ($0.01) but is 100 pips on EURUSD,
+    # so the age clock never reset and max_retrace_age_sec killed every fire.
+    scale = ps if ps > 0 else 1e-5
     impulse_key = (
         side,
-        round(base, 5),
-        # Round extreme coarsely so trailing a few ticks doesn't reset alerted set
-        round(extreme, 2),
+        int(round(base / scale)),
+        int(round(extreme / scale)),
     )
 
     open_time = getattr(forming, "open_time", None)

@@ -7,11 +7,13 @@ UTC buckets; optional local-hour ignore window.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from datetime import datetime, timedelta, timezone, tzinfo
+from typing import List, Optional, Union
 from zoneinfo import ZoneInfo
 
 from backtest import config
+
+TzLike = Union[tzinfo, ZoneInfo]
 
 
 def to_utc(timestamp: Optional[datetime] = None) -> datetime:
@@ -22,16 +24,29 @@ def to_utc(timestamp: Optional[datetime] = None) -> datetime:
     return timestamp.astimezone(timezone.utc)
 
 
-_ZONE: Optional[ZoneInfo] = None
+def resolve_zone(name: Optional[str]) -> TzLike:
+    """
+    IANA zone, or datetime.timezone.utc.
+
+    Windows has no system tz database unless the `tzdata` package is installed.
+    ZoneInfo('UTC') raises ZoneInfoNotFoundError there — never use it as a fallback.
+    """
+    key = (name or "").strip() or "UTC"
+    if key.upper() in ("UTC", "GMT", "Z", "ETC/UTC"):
+        return timezone.utc
+    try:
+        return ZoneInfo(key)
+    except Exception:
+        return timezone.utc
 
 
-def _display_zone() -> ZoneInfo:
+_ZONE: Optional[TzLike] = None
+
+
+def _display_zone() -> TzLike:
     global _ZONE
     if _ZONE is None:
-        try:
-            _ZONE = ZoneInfo(config.DISPLAY_TZ)
-        except Exception:
-            _ZONE = ZoneInfo("UTC")
+        _ZONE = resolve_zone(getattr(config, "DISPLAY_TZ", None))
     return _ZONE
 
 
@@ -97,10 +112,7 @@ def market_open_blackout(when: Optional[datetime] = None) -> Optional[str]:
         return None
 
     tz_s = str(cfg.get("open_tz") or "Europe/Bucharest").strip()
-    try:
-        tz = ZoneInfo(tz_s)
-    except Exception:
-        tz = ZoneInfo("Europe/Bucharest")
+    tz = resolve_zone(tz_s)
 
     when_utc = to_utc(when)
     local = when_utc.astimezone(tz)

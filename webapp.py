@@ -74,7 +74,7 @@ class BatchRequest(BaseModel):
     )
     adverse_mult: float = 1.0
     top_n: int = 3
-    workers: int = 4  # process workers for parallel date groups / split variants
+    workers: int = 4  # process workers; backend caps at 4
     test_range: bool = True
     test_spike: bool = True
     test_spike_neo: bool = False
@@ -104,8 +104,8 @@ def signal_defaults(symbol: str = Query("XAUUSD")):
 
 
 @app.get("/api/batch/schema")
-def batch_schema():
-    return batch_param_schema()
+def batch_schema(symbol: str = Query("XAUUSD")):
+    return batch_param_schema(symbol)
 
 
 @app.get("/api/job")

@@ -510,6 +510,33 @@
   bindSaveOn($("sw-pairing"));
   bindSaveOn($("sw-workers"));
   bindSaveOn($("sw-symbol"));
+  if ($("sw-symbol")) {
+    $("sw-symbol").addEventListener("change", async () => {
+      try {
+        const r = await fetch(
+          "/api/batch/schema?symbol=" + encodeURIComponent($("sw-symbol").value)
+        );
+        schema = await r.json();
+        document.querySelectorAll(".exp-cell").forEach((inp) => {
+          const short = inp.dataset.short;
+          const fields = [].concat(
+            schema.range_fields || [],
+            schema.spike_fields || [],
+            schema.spike_neo_fields || [],
+            schema.impulse_retrace_fields || [],
+            schema.range_wick_fields || []
+          );
+          const f = fields.find((x) => x.short === short);
+          if (f) {
+            inp.placeholder = String(f.default);
+            inp.title = f.full + " (default " + f.default + "). Comma-sep to expand.";
+          }
+        });
+      } catch (e) {
+        console.warn("schema refresh failed", e);
+      }
+    });
+  }
   bindSaveOn($("sw-hours"));
   bindSaveOn($("sw-adverse"));
   bindSaveOn($("sw-sl-manage"));
@@ -1056,7 +1083,8 @@
   async function init() {
     const saved = loadForm();
     try {
-      const r = await fetch("/api/batch/schema");
+      const sym0 = (saved && saved.symbol) || ($("sw-symbol") && $("sw-symbol").value) || "XAUUSD";
+      const r = await fetch("/api/batch/schema?symbol=" + encodeURIComponent(sym0));
       schema = await r.json();
       $("sw-range-hint").textContent =
         "Short names: " +

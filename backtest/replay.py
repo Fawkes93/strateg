@@ -216,10 +216,7 @@ class AlertReplay:
             skip_full = False
             if forming is not None and self._range_condition_since is None:
                 cfg = config.THRESHOLDS.get(self.symbol) or {}
-                ps = float(
-                    (config.SPIKE_CONFIG.get(self.symbol) or {}).get("point_size")
-                    or 0.01
-                )
+                ps = float(config.point_size(self.symbol))
                 min_need = max(
                     float(cfg.get("min_directed_points") or 0),
                     float(cfg.get("min_body_points") or 0),
