@@ -13,6 +13,7 @@ from backtest.overnight_break import (
     _mk_skip,
     asia_window_start_utc,
     entry_label,
+    late_short_blocked,
     run_overnight,
     summarize_overnight,
     trail_arm_for_range,
@@ -334,13 +335,13 @@ def test_wait1_resume_uses_break_close_not_prior_bar():
     assert skips[0]["reason"] == "no_pullback"
 
 
-def _utc_down_break_ticks(*wait_ohlcs):
+def _utc_down_break_ticks(*wait_ohlcs, asia_high=3320.0):
     start = datetime(2025, 5, 6, 0, 0, tzinfo=timezone.utc)
     wait1 = wait_ohlcs[0] if wait_ohlcs else (3296.0, 3298.0, 3294.0, 3296.0)
     overrides = {
         datetime(2025, 5, 6, 4, 0, tzinfo=timezone.utc): (
             3310.0,
-            3320.0,
+            asia_high,
             3308.0,
             3315.0,
         ),
@@ -591,3 +592,86 @@ def test_summarize_overnight_by_month():
     assert months["2025-07"]["skipped"] == 1
     assert out["trades"] == 3
     assert out["sum_pts"] == 170.0
+
+
+def test_late_short_blocked_helper():
+    p = OvernightParams(skip_late_short_wait=7, skip_late_short_asia_pts=3000.0)
+    assert late_short_blocked(p, "DOWN", 7, 1500.0)
+    assert late_short_blocked(p, "DOWN", 8, 2999.0)
+    assert not late_short_blocked(p, "DOWN", 6, 1500.0)
+    assert not late_short_blocked(p, "UP", 8, 1500.0)
+    assert not late_short_blocked(p, "DOWN", 7, 3000.0)
+    off = OvernightParams(skip_late_short_wait=0, skip_late_short_asia_pts=3000.0)
+    assert not late_short_blocked(off, "DOWN", 8, 500.0)
+    any_asia = OvernightParams(skip_late_short_wait=7, skip_late_short_asia_pts=0.0)
+    assert late_short_blocked(any_asia, "DOWN", 7, 9000.0)
+
+
+def _wait7_ema_down_ticks(asia_high=3320.0):
+    quiet = (3296.0, 3298.0, 3294.0, 3296.0)
+    touch = (3296.0, 3320.0, 3294.0, 3308.0)
+    return _utc_down_break_ticks(
+        quiet, quiet, quiet, quiet, quiet, quiet, touch, asia_high=asia_high
+    )
+
+
+def test_late_short_skips_wait7_on_small_asia():
+    ticks = _wait7_ema_down_ticks(asia_high=3320.0)
+    params = OvernightParams(
+        timezone="UTC",
+        pullback_mode="required",
+        use_higher_close=False,
+        ema_period=21,
+        min_asia_range_pts=300.0,
+        min_break_pts_below=200.0,
+        min_break_pts_above=200.0,
+        max_wait_candles=8,
+        skip_late_short_wait=7,
+        skip_late_short_asia_pts=3000.0,
+    )
+    out = run_overnight(ticks, symbol="XAU/USD", params=params)
+    assert out["trades"] == 0
+    skips = [s for s in out["skips"] if s.get("side") == "DOWN"]
+    assert skips and skips[0]["reason"] == "late_short"
+
+
+def test_late_short_still_enters_on_large_asia():
+    ticks = _wait7_ema_down_ticks(asia_high=3355.0)
+    params = OvernightParams(
+        timezone="UTC",
+        pullback_mode="required",
+        use_higher_close=False,
+        ema_period=21,
+        min_asia_range_pts=300.0,
+        min_break_pts_below=200.0,
+        min_break_pts_above=200.0,
+        max_wait_candles=8,
+        skip_late_short_wait=7,
+        skip_late_short_asia_pts=3000.0,
+    )
+    out = run_overnight(ticks, symbol="XAU/USD", params=params)
+    assert out["trades"] == 1
+    assert out["rows"][0]["side"] == "DOWN"
+    assert out["rows"][0]["entry_reason"] == "ema_touch"
+    assert out["rows"][0]["wait_i"] == 7
+    assert out["rows"][0]["asia_range_pts"] >= 3000.0
+
+
+def test_late_short_off_enters_wait7():
+    ticks = _wait7_ema_down_ticks(asia_high=3320.0)
+    params = OvernightParams(
+        timezone="UTC",
+        pullback_mode="required",
+        use_higher_close=False,
+        ema_period=21,
+        min_asia_range_pts=300.0,
+        min_break_pts_below=200.0,
+        min_break_pts_above=200.0,
+        max_wait_candles=8,
+        skip_late_short_wait=0,
+        skip_late_short_asia_pts=3000.0,
+    )
+    out = run_overnight(ticks, symbol="XAU/USD", params=params)
+    assert out["trades"] == 1
+    assert out["rows"][0]["wait_i"] == 7
+    assert out["rows"][0]["entry_reason"] == "ema_touch"

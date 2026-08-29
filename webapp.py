@@ -322,6 +322,8 @@ class OvernightRunRequest(BaseModel):
     timeout_action: str = "skip"
     use_higher_close: bool = True
     resume_closes: int = 1
+    skip_late_short_wait: int = 7
+    skip_late_short_asia_pts: float = 3000.0
     sl_mode: str = "asia_opposite"
     sl_fixed_pts: float = 500.0
     sl_range_mult: float = 1.0
@@ -364,6 +366,8 @@ def overnight_run(body: OvernightRunRequest):
         timeout_action=str(body.timeout_action or "skip"),
         use_higher_close=bool(body.use_higher_close),
         resume_closes=max(1, int(body.resume_closes or 1)),
+        skip_late_short_wait=max(0, int(body.skip_late_short_wait or 0)),
+        skip_late_short_asia_pts=float(body.skip_late_short_asia_pts or 0.0),
         sl_mode=str(body.sl_mode or "asia_opposite"),
         sl_fixed_pts=float(body.sl_fixed_pts),
         sl_range_mult=float(body.sl_range_mult),

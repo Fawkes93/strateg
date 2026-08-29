@@ -72,6 +72,8 @@ class OvernightJobParams:
     timeout_action: str = "skip"
     use_higher_close: bool = True
     resume_closes: int = 1
+    skip_late_short_wait: int = 7
+    skip_late_short_asia_pts: float = 3000.0
     # Risk
     sl_mode: str = "asia_opposite"
     sl_fixed_pts: float = 500.0
@@ -555,6 +557,8 @@ def _run(params: OvernightJobParams) -> None:
             timeout_action=str(params.timeout_action or "skip"),
             use_higher_close=bool(params.use_higher_close),
             resume_closes=max(1, int(params.resume_closes or 1)),
+            skip_late_short_wait=max(0, int(params.skip_late_short_wait or 0)),
+            skip_late_short_asia_pts=float(params.skip_late_short_asia_pts or 0.0),
             sl_mode=str(params.sl_mode or "asia_opposite"),
             sl_fixed_pts=float(params.sl_fixed_pts),
             sl_range_mult=float(params.sl_range_mult),

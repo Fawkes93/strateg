@@ -21,6 +21,8 @@
     "ob-timeout",
     "ob-higher-close",
     "ob-resume-closes",
+    "ob-late-short-wait",
+    "ob-late-short-asia",
     "ob-side",
     "ob-sl-mode",
     "ob-sl-fixed",
@@ -195,6 +197,14 @@
         </label>
         <label>Resume closes
           <input type="number" id="ob-resume-closes" value="1" min="1" max="8" step="1" />
+        </label>
+        <label>Skip late short wait ≥
+          <input type="number" id="ob-late-short-wait" value="7" min="0" max="20" step="1"
+            title="Skip DOWN entries from this wait bar onward. 0 = off." />
+        </label>
+        <label>Skip late short if Asia &lt; (pts)
+          <input type="number" id="ob-late-short-asia" value="3000" min="0" step="100"
+            title="Only skip late shorts when Asia range is below this. 0 = any Asia size." />
         </label>
         <label>Side filter
           <select id="ob-side">
@@ -431,6 +441,7 @@
     no_entry_tick: "No tick at entry",
     no_pullback: "No EMA / close resume in wait",
     no_pullback_timeout: "Pullback timeout (skip)",
+    late_short: "Late short on small/medium Asia",
     no_entry: "No entry",
     past_flatten: "Past flatten hour",
   };
@@ -961,6 +972,8 @@
         timeout_action: $("ob-timeout").value,
         use_higher_close: $("ob-higher-close") && $("ob-higher-close").checked,
         resume_closes: Math.max(1, Number($("ob-resume-closes") && $("ob-resume-closes").value) || 1),
+        skip_late_short_wait: Math.max(0, Number($("ob-late-short-wait") && $("ob-late-short-wait").value) || 0),
+        skip_late_short_asia_pts: Number(($("ob-late-short-asia") && $("ob-late-short-asia").value) || 0),
         sl_mode: $("ob-sl-mode").value,
         sl_fixed_pts: Number($("ob-sl-fixed").value),
         sl_range_mult: Number($("ob-sl-range-mult").value),

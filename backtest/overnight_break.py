@@ -53,6 +53,10 @@ class OvernightParams:
     timeout_action: str = "skip"  # skip | market | worst  (only for preferred)
     use_higher_close: bool = True  # higher/lower close resume during wait
     resume_closes: int = 1  # consecutive directional closes required (1 = current)
+    # Skip DOWN entries from this wait bar onward when Asia is below the cap.
+    # skip_late_short_wait 0 = off. skip_late_short_asia_pts 0 = any Asia size.
+    skip_late_short_wait: int = 7
+    skip_late_short_asia_pts: float = 3000.0
     # Risk
     sl_mode: str = "asia_opposite"  # fixed | asia_opposite | range_width
     sl_fixed_pts: float = 500.0
@@ -87,6 +91,24 @@ def _resume_enabled(params: OvernightParams) -> bool:
 
 def _resume_need(params: OvernightParams) -> int:
     return max(1, int(params.resume_closes or 1))
+
+
+def late_short_blocked(
+    params: OvernightParams,
+    side: str,
+    wait_i: int,
+    asia_range_pts: float,
+) -> bool:
+    """True when a short EMA/resume fill should be ignored (late + small Asia)."""
+    min_wait = int(params.skip_late_short_wait or 0)
+    if min_wait <= 0 or side != "DOWN":
+        return False
+    if int(wait_i) < min_wait:
+        return False
+    cap = float(params.skip_late_short_asia_pts or 0.0)
+    if cap > 0 and float(asia_range_pts) >= cap:
+        return False
+    return True
 
 
 def trail_arm_for_range(params: OvernightParams, asia_range_pts: float) -> float:
@@ -888,6 +910,7 @@ def run_overnight(
             ]
             wait_n = len(wait_candles)
             found = False
+            blocked_late_short = False
             ema_val: Optional[float] = None
             worst_px = _mid(ticks[entry_idx]) if entry_idx < n else break_candle.close
             resume_need = _resume_need(params)
@@ -943,7 +966,13 @@ def run_overnight(
                         if closest_ema_pts is None or dist < closest_ema_pts:
                             closest_ema_pts = dist
 
-                if resume_hit:
+                late_block = late_short_blocked(
+                    params, side, wi, asia_range_pts
+                )
+                if late_block and (resume_hit or ema_touched):
+                    blocked_late_short = True
+
+                if resume_hit and not late_block:
                     idx = find_tick_index(wc.close_time)
                     if idx < n:
                         entry_ts = ticks[idx].ts
@@ -960,7 +989,12 @@ def run_overnight(
                         found = True
                         break
 
-                if ema_touched and ema_touch_idx is not None and ema_touch_px is not None:
+                if (
+                    ema_touched
+                    and ema_touch_idx is not None
+                    and ema_touch_px is not None
+                    and not late_block
+                ):
                     entry_ts = ticks[ema_touch_idx].ts
                     entry_px = ema_touch_px
                     entry_reason = "ema_touch"
@@ -984,6 +1018,9 @@ def run_overnight(
             )
 
             if not found:
+                if blocked_late_short:
+                    skips.append(skip_break("late_short", **skip_diag))
+                    continue
                 if params.pullback_mode == "required":
                     skips.append(skip_break("no_pullback", **skip_diag))
                     continue
