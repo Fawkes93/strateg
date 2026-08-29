@@ -20,6 +20,7 @@
     "ob-max-wait",
     "ob-timeout",
     "ob-higher-close",
+    "ob-resume-closes",
     "ob-side",
     "ob-sl-mode",
     "ob-sl-fixed",
@@ -28,11 +29,14 @@
     "ob-tp-fixed",
     "ob-tp-range-mult",
     "ob-tp-r-mult",
+    "ob-trail-arm-mode",
     "ob-trail-arm",
+    "ob-trail-arm-cap",
     "ob-trail",
     "ob-max-hold",
     "ob-flatten",
     "ob-one-per-day",
+    "ob-workers",
     "ob-force",
   ];
 
@@ -66,6 +70,11 @@
         if (el.type === "checkbox") el.checked = !!cfg[id];
         else el.value = cfg[id];
       });
+      // Removed pullback mode "ema" (= required + resume off).
+      if (cfg["ob-pullback-mode"] === "ema") {
+        if ($("ob-pullback-mode")) $("ob-pullback-mode").value = "required";
+        if ($("ob-higher-close")) $("ob-higher-close").checked = false;
+      }
     } catch (e) {
       console.warn("overnight load failed", e);
     }
@@ -83,9 +92,21 @@
   function syncPullbackControls() {
     const mode = $("ob-pullback-mode") && $("ob-pullback-mode").value;
     const resume = $("ob-higher-close");
+    const resumeCloses = $("ob-resume-closes");
     const timeout = $("ob-timeout");
-    if (resume) resume.disabled = mode === "ema" || mode === "off";
+    if (resume) resume.disabled = mode === "off";
+    if (resumeCloses) {
+      resumeCloses.disabled = mode === "off" || (resume && !resume.checked);
+    }
     if (timeout) timeout.disabled = mode !== "preferred";
+  }
+
+  function syncTrailArmControls() {
+    const mode = $("ob-trail-arm-mode") && $("ob-trail-arm-mode").value;
+    const fixed = $("ob-trail-arm");
+    const cap = $("ob-trail-arm-cap");
+    if (fixed) fixed.disabled = mode === "asia";
+    if (cap) cap.disabled = mode !== "asia";
   }
 
   // ----- inject tab button + panel if missing (keeps index.html unchanged) -----
@@ -111,8 +132,8 @@
       <ol>
         <li>Lock the Asia high/low in <strong>Europe/Bucharest</strong> (default 00:00–07:00).</li>
         <li>First completed 15m close outside the range by min break pts = break signal.</li>
-        <li>Entry = first of: <em>EMA touch</em> or <em>higher/lower close resume</em> during the wait window (EMA-only skips the resume; break close if pullback = off).</li>
-        <li>No partial TP. Trail arms after profit, then trails. Flatten at local hour.</li>
+        <li>Entry = first of: <em>EMA touch</em> or <em>higher/lower close resume</em> during the wait window (resume closes = consecutive directional closes; uncheck resume for EMA-only; break close if pullback = off).</li>
+        <li>No partial TP. Trail arms after a profit threshold (fixed pts, or Asia range with a cap), then trails. Flatten at local hour.</li>
       </ol>
       <p class="hint">
         Mid fill. One trade per day by default. Skips days with no valid break / no pullback (required mode).
@@ -152,7 +173,6 @@
         <label>Pullback mode
           <select id="ob-pullback-mode">
             <option value="required" selected>required (EMA or higher-close)</option>
-            <option value="ema">ema only (touch or skip)</option>
             <option value="preferred">preferred (timeout action)</option>
             <option value="off">off (enter on break close)</option>
           </select>
@@ -172,6 +192,9 @@
         </label>
         <label class="chk">Higher/lower close resume
           <input type="checkbox" id="ob-higher-close" checked />
+        </label>
+        <label>Resume closes
+          <input type="number" id="ob-resume-closes" value="1" min="1" max="8" step="1" />
         </label>
         <label>Side filter
           <select id="ob-side">
@@ -209,8 +232,17 @@
         <label>TP R mult
           <input type="number" id="ob-tp-r-mult" value="2" min="0.5" step="0.1" />
         </label>
+        <label>Trail arm mode
+          <select id="ob-trail-arm-mode">
+            <option value="fixed" selected>fixed pts</option>
+            <option value="asia">Asia range (capped)</option>
+          </select>
+        </label>
         <label>Trail arm (pts profit)
           <input type="number" id="ob-trail-arm" value="400" min="0" step="50" />
+        </label>
+        <label>Trail arm cap (pts)
+          <input type="number" id="ob-trail-arm-cap" value="2000" min="0" step="50" />
         </label>
         <label>Trail distance (pts)
           <input type="number" id="ob-trail" value="250" min="0" step="50" />
@@ -224,9 +256,14 @@
         <label class="chk">One trade per day
           <input type="checkbox" id="ob-one-per-day" checked />
         </label>
+        <label>Workers
+          <input type="number" id="ob-workers" value="3" min="1" max="6" step="1"
+            title="Parallel months (separate processes). Each worker holds one month of ticks." />
+        </label>
       </div>
       <div class="actions">
         <button type="button" class="primary" id="ob-run">Run overnight break</button>
+        <button type="button" class="secondary" id="ob-stop" disabled>Stop</button>
         <label class="chk force">
           <input type="checkbox" id="ob-force" /> Force re-download
         </label>
@@ -243,6 +280,7 @@
         <div class="progress-bar" id="ob-progress-bar" style="width:0%"></div>
       </div>
       <p class="progress-msg" id="ob-progress-msg">Idle</p>
+      <div class="sf-lanes" id="ob-lanes" hidden></div>
     </section>
 
     <section class="card" id="ob-results-card">
@@ -250,6 +288,27 @@
       <p class="muted" id="ob-meta">No run yet.</p>
       <div class="hero-grid" id="ob-hero"></div>
       <p class="table-note" id="ob-skip-breakdown"></p>
+      <h3>By month</h3>
+      <p class="table-note">Same stats as the overall run, split by local-date month.</p>
+      <div class="table-wrap">
+        <table id="ob-months">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Trades</th>
+              <th>Skipped</th>
+              <th>Win %</th>
+              <th>Sum pts</th>
+              <th>Avg pts</th>
+              <th>PF</th>
+              <th>Avg win</th>
+              <th>Avg loss</th>
+              <th>Trail %</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
       <h3>Trades</h3>
       <p class="table-note">
         Entry = EMA touch, higher/lower close resume, or break close.
@@ -279,7 +338,7 @@
               <th>TP pts</th>
               <th>Exit</th>
               <th>Reason</th>
-              <th>Trail</th>
+              <th>Arm</th>
               <th>Pts</th>
             </tr>
           </thead>
@@ -529,16 +588,87 @@
     window.addEventListener("scroll", hideObTip, true);
   }
 
+  const LANE_HUES = [204, 158, 286, 22, 142, 338];
+
+  function monthLabel(ln) {
+    if (!ln || !ln.month) return "—";
+    return String(ln.month).slice(0, 7);
+  }
+
+  function renderLanes(st) {
+    const el = $("ob-lanes");
+    if (!el) return;
+    const p = st.progress || {};
+    let lanes = p.lanes || [];
+    if (st.running && !lanes.length) {
+      const n = Number(st.params && st.params.workers) || 3;
+      lanes = [];
+      for (let i = 0; i < n; i++) {
+        lanes.push({ slot: i, phase: "idle", pct: 0, detail: "starting…" });
+      }
+    }
+    if (!lanes.length) {
+      el.innerHTML = "";
+      el.hidden = true;
+      return;
+    }
+    el.hidden = false;
+    el.innerHTML = lanes
+      .map(function (ln, i) {
+        const slot = ln.slot != null ? ln.slot : i;
+        const hue = LANE_HUES[slot % LANE_HUES.length];
+        const phase = ln.phase || "idle";
+        const pct = Math.max(0, Math.min(100, Number(ln.pct) || 0));
+        const month = monthLabel(ln);
+        const detail = ln.detail || (phase === "idle" ? "waiting" : "");
+        const trades =
+          ln.trades && phase !== "idle" ? ln.trades + " trades" : "";
+        const pill =
+          phase === "load" ? "load" : phase === "scan" ? "scan" : "idle";
+        return (
+          '<div class="sf-lane is-' +
+          phase +
+          '" style="--lane-h:' +
+          hue +
+          '">' +
+          '<div class="sf-lane-top">' +
+          '<div class="sf-lane-who">' +
+          '<span class="sf-lane-id">Worker ' +
+          (slot + 1) +
+          "</span>" +
+          '<div class="sf-lane-month">' +
+          month +
+          "</div></div>" +
+          '<div class="sf-lane-meta">' +
+          '<span class="sf-lane-phase">' +
+          pill +
+          "</span>" +
+          "<span>" +
+          pct.toFixed(0) +
+          "%</span>" +
+          (detail ? "<span>" + detail + "</span>" : "") +
+          (trades ? "<span>" + trades + "</span>" : "") +
+          "</div></div>" +
+          '<div class="sf-lane-track"><div class="sf-lane-bar" style="width:' +
+          pct +
+          '%"></div></div></div>'
+        );
+      })
+      .join("");
+  }
+
   function render(result) {
     const meta = $("ob-meta");
     const hero = $("ob-hero");
     const breakdown = $("ob-skip-breakdown");
+    const mb = $("ob-months") && $("ob-months").querySelector("tbody");
     const tb = $("ob-table") && $("ob-table").querySelector("tbody");
     const sb = $("ob-skips") && $("ob-skips").querySelector("tbody");
     if (!result) {
       if (meta) meta.textContent = "No run yet.";
       if (hero) hero.innerHTML = "";
       if (breakdown) breakdown.textContent = "";
+      if (mb) mb.innerHTML = "";
       if (tb) tb.innerHTML = "";
       if (sb) sb.innerHTML = "";
       return;
@@ -586,6 +716,45 @@
       if (entryParts.length) bits.push("Entries: " + entryParts.join(" · "));
       if (skipParts.length) bits.push("Skip reasons: " + skipParts.join(" · "));
       breakdown.textContent = bits.join("  |  ");
+    }
+    if (mb) {
+      mb.innerHTML = "";
+      const months = result.by_month || [];
+      if (!months.length) {
+        mb.innerHTML =
+          '<tr><td colspan="10" class="muted">No months in this window</td></tr>';
+      } else {
+        months.forEach(function (m) {
+          const tr = document.createElement("tr");
+          const sum = m.sum_pts;
+          const sumClass = sum > 0 ? "yes" : sum < 0 ? "no" : "";
+          tr.innerHTML =
+            "<td>" +
+            dash(m.month) +
+            "</td><td>" +
+            dash(m.trades) +
+            "</td><td>" +
+            dash(m.skipped) +
+            "</td><td>" +
+            (m.win_pct != null ? m.win_pct + "%" : "—") +
+            '</td><td class="' +
+            sumClass +
+            '">' +
+            dash(sum) +
+            "</td><td>" +
+            dash(m.avg_pts) +
+            "</td><td>" +
+            dash(m.profit_factor) +
+            "</td><td>" +
+            dash(m.avg_win_pts) +
+            "</td><td>" +
+            dash(m.avg_loss_pts) +
+            "</td><td>" +
+            (m.trail_armed_pct != null ? m.trail_armed_pct + "%" : "—") +
+            "</td>";
+          mb.appendChild(tr);
+        });
+      }
     }
     if (tb) {
       tb.innerHTML = "";
@@ -648,7 +817,8 @@
             "</td><td>" +
             dash(t.exit_reason) +
             "</td><td>" +
-            (t.trail_armed ? "Y" : "") +
+            dash(t.trail_arm_used) +
+            (t.trail_armed ? " Y" : "") +
             '</td><td class="' +
             ptsClass +
             '">' +
@@ -720,6 +890,11 @@
           p.message || (running ? "Running…" : "Idle");
       }
       if ($("ob-run")) $("ob-run").disabled = running;
+      if ($("ob-stop")) {
+        $("ob-stop").disabled = !running;
+        $("ob-stop").textContent = st.cancel_requested ? "Stopping…" : "Stop";
+      }
+      renderLanes(st);
       if (st.result) render(st.result);
       const badge = $("status-badge");
       if (badge && running) {
@@ -742,6 +917,31 @@
     }
   }
 
+  function wireStop() {
+    if (!$("ob-stop")) return;
+    $("ob-stop").addEventListener("click", async () => {
+      $("ob-stop").disabled = true;
+      $("ob-stop").textContent = "Stopping…";
+      try {
+        const r = await fetch("/api/overnight/stop", { method: "POST" });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          alert(err.detail || "Could not stop");
+          $("ob-stop").disabled = false;
+          $("ob-stop").textContent = "Stop";
+        }
+        if (!pollTimer) {
+          pollTimer = setInterval(poll, 800);
+          poll();
+        }
+      } catch (e) {
+        alert(String(e));
+        $("ob-stop").disabled = false;
+        $("ob-stop").textContent = "Stop";
+      }
+    });
+  }
+
   function wireRun() {
     if (!$("ob-run")) return;
     $("ob-run").addEventListener("click", async () => {
@@ -760,6 +960,7 @@
         max_wait_candles: Number($("ob-max-wait").value),
         timeout_action: $("ob-timeout").value,
         use_higher_close: $("ob-higher-close") && $("ob-higher-close").checked,
+        resume_closes: Math.max(1, Number($("ob-resume-closes") && $("ob-resume-closes").value) || 1),
         sl_mode: $("ob-sl-mode").value,
         sl_fixed_pts: Number($("ob-sl-fixed").value),
         sl_range_mult: Number($("ob-sl-range-mult").value),
@@ -767,12 +968,15 @@
         tp_fixed_pts: Number($("ob-tp-fixed").value),
         tp_range_mult: Number($("ob-tp-range-mult").value),
         tp_r_mult: Number($("ob-tp-r-mult").value),
+        trail_arm_mode: ($("ob-trail-arm-mode") && $("ob-trail-arm-mode").value) || "fixed",
         trail_arm_pts: Number($("ob-trail-arm").value),
+        trail_arm_cap_pts: Number(($("ob-trail-arm-cap") && $("ob-trail-arm-cap").value) || 0),
         trail_pts: Number($("ob-trail").value),
         max_hold_hours: Number($("ob-max-hold").value),
         flatten_hour: Number($("ob-flatten").value),
         one_trade_per_day: $("ob-one-per-day") && $("ob-one-per-day").checked,
         side_filter: $("ob-side").value,
+        workers: Math.max(1, Math.min(6, Number($("ob-workers") && $("ob-workers").value) || 3)),
         force_download: $("ob-force") && $("ob-force").checked,
       };
       saveForm();
@@ -806,10 +1010,16 @@
   loadForm();
   bindFormPersist();
   syncPullbackControls();
+  syncTrailArmControls();
   const modeEl = $("ob-pullback-mode");
   if (modeEl) modeEl.addEventListener("change", syncPullbackControls);
+  const resumeEl = $("ob-higher-close");
+  if (resumeEl) resumeEl.addEventListener("change", syncPullbackControls);
+  const trailModeEl = $("ob-trail-arm-mode");
+  if (trailModeEl) trailModeEl.addEventListener("change", syncTrailArmControls);
   wireDecisionTips();
   wireTabs();
   wireRun();
+  wireStop();
   poll();
 })();

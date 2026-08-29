@@ -6,19 +6,26 @@ Bucharest time Asia window → first 15m close outside with min break pts
 
 Entry modes:
   off       : enter on break candle close
-  required  : must get EMA touch or higher-close resume within max wait, else skip
-  ema       : must get EMA touch within max wait (ignore close resume), else skip
+  required  : must get EMA touch (or higher-close resume if enabled) within max wait, else skip
   preferred : try pullback; on timeout enter at market (or skip / worst)
+
+Higher/lower close resume is a separate checkbox (ignored when mode is off).
+
+Trail arm:
+  fixed : trail_arm_pts profit before trail activates (0 = off)
+  asia  : arm = Asia range, capped at trail_arm_cap_pts (0 cap = uncapped)
 
 No partial take-profit.
 """
 
 from __future__ import annotations
 
+from bisect import bisect_left
+from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from statistics import mean
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from zoneinfo import ZoneInfo
 
 from backtest.candles import Candle, CandleBuilder, is_market_open, to_utc
@@ -39,12 +46,13 @@ class OvernightParams:
     max_break_candles_after: int = 8  # how many closed 15m after Asia end still count as first break
     require_close_outside: bool = True
     # Pullback / entry
-    pullback_mode: str = "required"  # off | required | ema | preferred
+    pullback_mode: str = "required"  # off | required | preferred
     ema_period: int = 21
     ema_tf_min: int = 15
     max_wait_candles: int = 8  # 15m candles after break
     timeout_action: str = "skip"  # skip | market | worst  (only for preferred)
     use_higher_close: bool = True  # higher/lower close resume during wait
+    resume_closes: int = 1  # consecutive directional closes required (1 = current)
     # Risk
     sl_mode: str = "asia_opposite"  # fixed | asia_opposite | range_width
     sl_fixed_pts: float = 500.0
@@ -53,7 +61,9 @@ class OvernightParams:
     tp_fixed_pts: float = 1000.0
     tp_range_mult: float = 1.5
     tp_r_mult: float = 2.0
-    trail_arm_pts: float = 400.0  # profit before trail activates (0 = off)
+    trail_arm_mode: str = "fixed"  # fixed | asia
+    trail_arm_pts: float = 400.0  # profit before trail activates when mode=fixed (0 = off)
+    trail_arm_cap_pts: float = 2000.0  # max arm when mode=asia (0 = no cap)
     trail_pts: float = 250.0
     max_hold_hours: float = 10.0
     flatten_hour: int = 18  # local hour hard flatten
@@ -61,10 +71,34 @@ class OvernightParams:
     side_filter: str = "both"  # both | long | short
 
 
+def _normalize_params(params: OvernightParams) -> OvernightParams:
+    # Old UI had a dedicated "ema" pullback mode = required + resume off.
+    if params.pullback_mode == "ema":
+        params.pullback_mode = "required"
+        params.use_higher_close = False
+    return params
+
+
 def _resume_enabled(params: OvernightParams) -> bool:
-    if params.pullback_mode in ("off", "ema"):
+    if params.pullback_mode == "off":
         return False
     return bool(params.use_higher_close)
+
+
+def _resume_need(params: OvernightParams) -> int:
+    return max(1, int(params.resume_closes or 1))
+
+
+def trail_arm_for_range(params: OvernightParams, asia_range_pts: float) -> float:
+    """Profit (pts) required before the trail activates for this day's Asia range."""
+    mode = (params.trail_arm_mode or "fixed").strip().lower()
+    if mode == "asia":
+        arm = float(asia_range_pts or 0.0)
+        cap = float(params.trail_arm_cap_pts or 0.0)
+        if cap > 0:
+            arm = min(arm, cap)
+        return max(0.0, arm)
+    return max(0.0, float(params.trail_arm_pts or 0.0))
 
 
 def asia_window_start_utc(
@@ -106,6 +140,7 @@ class OvernightTrade:
     exit: Optional[float] = None
     exit_reason: Optional[str] = None  # tp | sl | trail | flatten | timeout
     pts: float = 0.0
+    trail_arm_used: float = 0.0
     trail_armed: bool = False
     max_fav_pts: float = 0.0
     max_adv_pts: float = 0.0
@@ -225,6 +260,7 @@ def _decision_line(
     closest_ema_pts: Optional[float] = None,
     best_resume_pts: Optional[float] = None,
     use_higher_close: bool = True,
+    resume_closes: int = 1,
 ) -> str:
     parts: List[str] = [entry_label(reason)]
     if wait_n is not None:
@@ -244,6 +280,9 @@ def _decision_line(
             parts.append(
                 f"close {_fmt_px(signal_close)} {cmp} prev {_fmt_px(prev_close)} {extra}".strip()
             )
+        if resume_closes > 1:
+            kind = "higher" if side == "UP" else "lower"
+            parts.append(f"{resume_closes} consecutive {kind} closes")
         if same_bar_ema:
             parts.append("EMA also touched this bar (close wins)")
         elif ema is not None:
@@ -268,10 +307,13 @@ def _decision_line(
             parts.append(f"closest to EMA {closest_ema_pts:+.0f} pts")
         if not use_higher_close:
             parts.append("close resume off")
-        elif best_resume_pts is None:
-            parts.append("no close to compare")
         else:
-            parts.append(f"best close vs prev {best_resume_pts:+.0f} pts")
+            if resume_closes > 1:
+                parts.append(f"need {resume_closes} consecutive closes")
+            if best_resume_pts is None:
+                parts.append("no close to compare")
+            else:
+                parts.append(f"best close vs prev {best_resume_pts:+.0f} pts")
     return " · ".join(p for p in parts if p)
 
 
@@ -286,6 +328,8 @@ def _skip_decision(
     use_higher_close: bool,
     break_pts: Optional[float],
     side: Optional[str],
+    resume_closes: int = 1,
+    resume_streak: Optional[int] = None,
 ) -> str:
     parts: List[str] = []
     if wait_n is not None:
@@ -308,12 +352,17 @@ def _skip_decision(
             )
         if not use_higher_close:
             parts.append("close resume off")
-        elif best_resume_pts is None:
-            parts.append("no close to compare")
-        elif best_resume_pts <= 1e-9:
-            parts.append(f"no close resume (best {best_resume_pts:+.0f} pts vs prev)")
         else:
-            parts.append(f"best close vs prev {best_resume_pts:+.0f} pts")
+            if resume_closes > 1:
+                parts.append(
+                    f"need {resume_closes} consecutive closes (streak {resume_streak or 0})"
+                )
+            if best_resume_pts is None:
+                parts.append("no close to compare")
+            elif best_resume_pts <= 1e-9:
+                parts.append(f"no close resume (best {best_resume_pts:+.0f} pts vs prev)")
+            else:
+                parts.append(f"best close vs prev {best_resume_pts:+.0f} pts")
         if wait_n is not None and (waited or 0) == 0:
             parts.append("no wait candles after break (Asia window already full)")
     return " · ".join(parts) if parts else ""
@@ -486,6 +535,7 @@ def _simulate_from_entry(
     ps: float,
     tz: ZoneInfo,
     flatten_local: datetime,
+    trail_arm_pts: Optional[float] = None,
 ) -> Tuple[str, datetime, float, float, bool, float, float, float, float]:
     """
     Walk ticks after fill.
@@ -500,6 +550,7 @@ def _simulate_from_entry(
     last_ts = ticks[start_index].ts
     last_px = entry
     hold_deadline = ticks[start_index].ts + timedelta(hours=float(params.max_hold_hours))
+    arm_pts = float(params.trail_arm_pts or 0.0) if trail_arm_pts is None else float(trail_arm_pts)
 
     for i in range(start_index + 1, len(ticks)):
         t = ticks[i]
@@ -522,7 +573,7 @@ def _simulate_from_entry(
             return "flatten", t.ts, px, pts, trail_armed, max_fav, max_adv, best_px, worst_px
 
         # Trail arm
-        if params.trail_arm_pts > 0 and not trail_armed and fav >= params.trail_arm_pts:
+        if arm_pts > 0 and not trail_armed and fav >= arm_pts:
             trail_armed = True
             if side == "UP":
                 trail_level = best_px - params.trail_pts * ps
@@ -563,8 +614,9 @@ def run_overnight(
     *,
     symbol: str = "XAU/USD",
     params: Optional[OvernightParams] = None,
+    progress: Optional[Callable[..., None]] = None,
 ) -> Dict[str, Any]:
-    params = params or OvernightParams()
+    params = _normalize_params(params or OvernightParams())
     tz = ZoneInfo(params.timezone)
     sym = symbol if "/" in symbol else reaktor_symbol(symbol)
     ps = point_size(sym)
@@ -574,11 +626,26 @@ def run_overnight(
     builder = CandleBuilder(timeframe_minutes=15, max_completed=200, skip_ignored=False)
     completed: List[Candle] = []
 
-    # Pre-build all 15m candles from ticks
-    for t in ticks:
+    n_ticks = len(ticks)
+    candle_step = max(n_ticks // 40, 80_000)
+    for i, t in enumerate(ticks):
         closed = builder.add_price(_mid(t), t.ts)
         if closed is not None:
             completed.append(closed)
+        if (
+            progress
+            and n_ticks > 80_000
+            and ((i + 1) % candle_step == 0 or i + 1 == n_ticks)
+        ):
+            import time
+
+            time.sleep(0.001)
+            progress(
+                phase="candles",
+                ticks_done=i + 1,
+                ticks_total=n_ticks,
+                message=f"15m candles {i + 1:,}/{n_ticks:,}",
+            )
 
     # Index ticks by time for fast seek
     n = len(ticks)
@@ -605,8 +672,19 @@ def run_overnight(
     traded_days: set = set()
 
     dates = sorted(by_day.keys())
+    open_times = [c.open_time for c in completed]
+    closes = [c.close for c in completed]
+    n_days = len(dates)
 
-    for day in dates:
+    for di, day in enumerate(dates):
+        if progress and (di % 5 == 0 or di + 1 == n_days):
+            progress(
+                phase="replay",
+                days_done=di + 1,
+                days_total=n_days,
+                trades=len(trades),
+                message=f"Day {day.isoformat()} · {len(trades)} trades",
+            )
         if params.one_trade_per_day and day in traded_days:
             continue
 
@@ -724,9 +802,13 @@ def run_overnight(
                     use_higher_close=_resume_enabled(params),
                     break_pts=bp,
                     side=side,
+                    resume_closes=int(extra.get("resume_closes") or _resume_need(params)),
+                    resume_streak=extra.get("resume_streak"),
                 )
             waited = extra.pop("waited", None)
             extra.pop("break_pts", None)
+            extra.pop("resume_closes", None)
+            extra.pop("resume_streak", None)
             if extra.get("wait_i") is None and waited is not None:
                 extra["wait_i"] = waited
             return _mk_skip(
@@ -808,28 +890,31 @@ def run_overnight(
             found = False
             ema_val: Optional[float] = None
             worst_px = _mid(ticks[entry_idx]) if entry_idx < n else break_candle.close
+            resume_need = _resume_need(params)
+            resume_streak = 0
 
             for wi, wc in enumerate(wait_candles, start=1):
                 waited = wi
-                closes_for_ema = [
-                    c.close for c in completed if c.open_time < wc.open_time
-                ]
-                ema_val = _ema(
-                    closes_for_ema[-params.ema_period * 2 :], params.ema_period
-                )
-                prev_close = closes_for_ema[-1] if closes_for_ema else None
+                ci = bisect_left(open_times, wc.open_time)
+                ema_slice = closes[max(0, ci - params.ema_period * 2) : ci]
+                ema_val = _ema(ema_slice, params.ema_period)
+                prev_close = closes[ci - 1] if ci else None
 
                 resume_hit = False
                 resume_pts: Optional[float] = None
                 if _resume_enabled(params) and prev_close is not None:
                     if side == "UP":
                         resume_pts = (wc.close - prev_close) / ps
-                        resume_hit = wc.close > prev_close + 1e-12
+                        directional = wc.close > prev_close + 1e-12
                     else:
                         resume_pts = (prev_close - wc.close) / ps
-                        resume_hit = wc.close < prev_close - 1e-12
+                        directional = wc.close < prev_close - 1e-12
+                    resume_streak = resume_streak + 1 if directional else 0
+                    resume_hit = resume_streak >= resume_need
                     if best_resume_pts is None or resume_pts > best_resume_pts:
                         best_resume_pts = resume_pts
+                else:
+                    resume_streak = 0
 
                 ema_touched = False
                 ema_touch_idx: Optional[int] = None
@@ -894,10 +979,12 @@ def run_overnight(
                 closest_ema_pts=closest_ema_pts,
                 best_resume_pts=best_resume_pts,
                 break_pts=break_pts,
+                resume_closes=resume_need,
+                resume_streak=resume_streak,
             )
 
             if not found:
-                if params.pullback_mode in ("required", "ema"):
+                if params.pullback_mode == "required":
                     skips.append(skip_break("no_pullback", **skip_diag))
                     continue
                 if params.timeout_action == "skip":
@@ -949,11 +1036,13 @@ def run_overnight(
             closest_ema_pts=closest_ema_pts,
             best_resume_pts=best_resume_pts,
             use_higher_close=_resume_enabled(params),
+            resume_closes=_resume_need(params),
         )
 
         sl, tp, sl_pts, tp_pts = _compute_sl_tp(
             side, entry_px, asia_high, asia_low, params, ps
         )
+        trail_arm_used = trail_arm_for_range(params, asia_range_pts)
 
         if _local(entry_ts, tz) >= flatten_local:
             skips.append(
@@ -991,6 +1080,7 @@ def run_overnight(
             ps=ps,
             tz=tz,
             flatten_local=flatten_local,
+            trail_arm_pts=trail_arm_used,
         )
 
         trades.append(
@@ -1026,6 +1116,7 @@ def run_overnight(
                 exit=round(exit_px, 5),
                 exit_reason=reason,
                 pts=round(pts, 1),
+                trail_arm_used=round(trail_arm_used, 1),
                 trail_armed=trail_armed,
                 max_fav_pts=round(max_fav, 1),
                 max_adv_pts=round(max_adv, 1),
@@ -1038,14 +1129,18 @@ def run_overnight(
     return summarize_overnight(trades, skips, params, symbol=sym, ticks=len(ticks))
 
 
-def summarize_overnight(
-    trades: Sequence[OvernightTrade],
-    skips: Sequence[OvernightSkip],
-    params: OvernightParams,
-    *,
-    symbol: str,
-    ticks: int,
-) -> Dict[str, Any]:
+def _month_key(local_date: Optional[str]) -> str:
+    s = str(local_date or "")
+    return s[:7] if len(s) >= 7 else "unknown"
+
+
+def _pct(a: int, b: int) -> Optional[float]:
+    if b <= 0:
+        return None
+    return round(100.0 * a / b, 1)
+
+
+def _trade_stats(trades: Sequence[OvernightTrade]) -> Dict[str, Any]:
     n = len(trades)
     wins = sum(1 for t in trades if t.pts > 1e-9)
     losses = sum(1 for t in trades if t.pts < -1e-9)
@@ -1057,15 +1152,6 @@ def summarize_overnight(
         by_reason[r] = by_reason.get(r, 0) + 1
         e = t.entry_reason or "?"
         by_entry[e] = by_entry.get(e, 0) + 1
-    skip_reasons: Dict[str, int] = {}
-    for s in skips:
-        skip_reasons[s.reason] = skip_reasons.get(s.reason, 0) + 1
-
-    def pct(a: int, b: int) -> Optional[float]:
-        if b <= 0:
-            return None
-        return round(100.0 * a / b, 1)
-
     avg_pts = round(sum(t.pts for t in trades) / n, 1) if n else 0.0
     avg_win = (
         round(sum(t.pts for t in trades if t.pts > 0) / wins, 1) if wins else None
@@ -1077,29 +1163,75 @@ def summarize_overnight(
     gl = -sum(t.pts for t in trades if t.pts < 0)
     pf = round(gp / gl, 2) if gl > 1e-9 else None
     trail_n = sum(1 for t in trades if t.trail_armed)
+    return {
+        "trades": n,
+        "wins": wins,
+        "losses": losses,
+        "scratches": scratches,
+        "win_pct": _pct(wins, n),
+        "exits": by_reason,
+        "entries": by_entry,
+        "trail_armed_n": trail_n,
+        "trail_armed_pct": _pct(trail_n, n),
+        "avg_pts": avg_pts,
+        "avg_win_pts": avg_win,
+        "avg_loss_pts": avg_loss,
+        "profit_factor": pf,
+        "sum_pts": round(sum(t.pts for t in trades), 1),
+    }
 
+
+def _skip_reason_counts(skips: Sequence[OvernightSkip]) -> Dict[str, int]:
+    skip_reasons: Dict[str, int] = {}
+    for s in skips:
+        skip_reasons[s.reason] = skip_reasons.get(s.reason, 0) + 1
+    return skip_reasons
+
+
+def _month_summaries(
+    trades: Sequence[OvernightTrade],
+    skips: Sequence[OvernightSkip],
+) -> List[Dict[str, Any]]:
+    by_tr: Dict[str, List[OvernightTrade]] = defaultdict(list)
+    by_sk: Dict[str, List[OvernightSkip]] = defaultdict(list)
+    for t in trades:
+        by_tr[_month_key(t.local_date)].append(t)
+    for s in skips:
+        by_sk[_month_key(s.local_date)].append(s)
+    months = sorted(set(by_tr) | set(by_sk))
+    rows: List[Dict[str, Any]] = []
+    for ym in months:
+        m_trades = by_tr.get(ym) or []
+        m_skips = by_sk.get(ym) or []
+        row = _trade_stats(m_trades)
+        row["month"] = ym
+        row["skipped"] = len(m_skips)
+        row["skip_reasons"] = _skip_reason_counts(m_skips)
+        rows.append(row)
+    return rows
+
+
+def summarize_overnight(
+    trades: Sequence[OvernightTrade],
+    skips: Sequence[OvernightSkip],
+    params: OvernightParams,
+    *,
+    symbol: str,
+    ticks: int,
+) -> Dict[str, Any]:
+    n = len(trades)
+    stats = _trade_stats(trades)
+    skip_reasons = _skip_reason_counts(skips)
     return {
         "kind": "overnight_break",
         "symbol": symbol,
         "params": asdict(params),
         "ticks": ticks,
         "days_seen": n + len(skips),
-        "trades": n,
         "skipped": len(skips),
         "skip_reasons": skip_reasons,
-        "wins": wins,
-        "losses": losses,
-        "scratches": scratches,
-        "win_pct": pct(wins, n),
-        "exits": by_reason,
-        "entries": by_entry,
-        "trail_armed_n": trail_n,
-        "trail_armed_pct": pct(trail_n, n),
-        "avg_pts": avg_pts,
-        "avg_win_pts": avg_win,
-        "avg_loss_pts": avg_loss,
-        "profit_factor": pf,
-        "sum_pts": round(sum(t.pts for t in trades), 1),
+        **stats,
+        "by_month": _month_summaries(trades, skips),
         "rows": [asdict(t) for t in trades],
         "skips": [asdict(s) for s in skips],
     }

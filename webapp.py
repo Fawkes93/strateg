@@ -42,6 +42,7 @@ from backtest.overnight_jobs import (
     OvernightJobParams,
     get_overnight_state,
     start_overnight_job,
+    stop_overnight,
 )
 
 WEB_DIR = ROOT / "web"
@@ -315,11 +316,12 @@ class OvernightRunRequest(BaseModel):
     min_break_pts_above: float = 200.0
     min_break_pts_below: float = 200.0
     max_break_candles_after: int = 8
-    pullback_mode: str = "required"  # off | required | ema | preferred
+    pullback_mode: str = "required"  # off | required | preferred
     ema_period: int = 21
     max_wait_candles: int = 8
     timeout_action: str = "skip"
     use_higher_close: bool = True
+    resume_closes: int = 1
     sl_mode: str = "asia_opposite"
     sl_fixed_pts: float = 500.0
     sl_range_mult: float = 1.0
@@ -327,12 +329,15 @@ class OvernightRunRequest(BaseModel):
     tp_fixed_pts: float = 1000.0
     tp_range_mult: float = 1.5
     tp_r_mult: float = 2.0
+    trail_arm_mode: str = "fixed"  # fixed | asia
     trail_arm_pts: float = 400.0
+    trail_arm_cap_pts: float = 2000.0
     trail_pts: float = 250.0
     max_hold_hours: float = 10.0
     flatten_hour: int = 18
     one_trade_per_day: bool = True
     side_filter: str = "both"
+    workers: int = 3
     force_download: bool = False
 
 
@@ -358,6 +363,7 @@ def overnight_run(body: OvernightRunRequest):
         max_wait_candles=int(body.max_wait_candles),
         timeout_action=str(body.timeout_action or "skip"),
         use_higher_close=bool(body.use_higher_close),
+        resume_closes=max(1, int(body.resume_closes or 1)),
         sl_mode=str(body.sl_mode or "asia_opposite"),
         sl_fixed_pts=float(body.sl_fixed_pts),
         sl_range_mult=float(body.sl_range_mult),
@@ -365,17 +371,28 @@ def overnight_run(body: OvernightRunRequest):
         tp_fixed_pts=float(body.tp_fixed_pts),
         tp_range_mult=float(body.tp_range_mult),
         tp_r_mult=float(body.tp_r_mult),
+        trail_arm_mode=str(body.trail_arm_mode or "fixed"),
         trail_arm_pts=float(body.trail_arm_pts),
+        trail_arm_cap_pts=float(body.trail_arm_cap_pts),
         trail_pts=float(body.trail_pts),
         max_hold_hours=float(body.max_hold_hours),
         flatten_hour=int(body.flatten_hour),
         one_trade_per_day=bool(body.one_trade_per_day),
         side_filter=str(body.side_filter or "both"),
+        workers=max(1, min(6, int(body.workers or 1))),
         force_download=bool(body.force_download),
     )
     out = start_overnight_job(params)
     if not out.get("ok"):
         raise HTTPException(status_code=409, detail=out.get("error") or "busy")
+    return out
+
+
+@app.post("/api/overnight/stop")
+def overnight_stop():
+    out = stop_overnight()
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "not running")
     return out
 
 

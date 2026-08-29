@@ -5,6 +5,8 @@ from backtest.candles import Candle
 from backtest.dukascopy import Tick
 from backtest.overnight_break import (
     OvernightParams,
+    OvernightSkip,
+    OvernightTrade,
     _asia_extensions,
     _decision_line,
     _excursion_from,
@@ -12,6 +14,8 @@ from backtest.overnight_break import (
     asia_window_start_utc,
     entry_label,
     run_overnight,
+    summarize_overnight,
+    trail_arm_for_range,
 )
 
 
@@ -153,6 +157,29 @@ def _ohlc_ticks(start, n_bars, default=3310.0, overrides=None):
         t += timedelta(minutes=15)
     ticks.append(_tick(t, last_c))
     return ticks
+
+
+def test_chunk_lookback_starts_five_days_before_month():
+    from backtest.overnight_jobs import _chunk_lookback_start
+
+    summer = _chunk_lookback_start("2026-04-01", OvernightParams())
+    assert summer == datetime(2026, 3, 27, 0, 0, tzinfo=timezone.utc)
+    winter = _chunk_lookback_start("2026-01-01", OvernightParams())
+    assert winter == datetime(2025, 12, 27, 0, 0, tzinfo=timezone.utc)
+
+
+def test_month_chunks_split_calendar_months():
+    from backtest.overnight_jobs import _month_chunks
+
+    assert _month_chunks("2025-01-01", "2025-01-01") == []
+    assert _month_chunks("2025-01-15", "2025-03-01") == [
+        ("2025-01-15", "2025-02-01"),
+        ("2025-02-01", "2025-03-01"),
+    ]
+    assert _month_chunks("2025-12-01", "2026-02-01") == [
+        ("2025-12-01", "2026-01-01"),
+        ("2026-01-01", "2026-02-01"),
+    ]
 
 
 def test_prepend_asia_lookback_fetches_dst_prefix_hours():
@@ -307,8 +334,9 @@ def test_wait1_resume_uses_break_close_not_prior_bar():
     assert skips[0]["reason"] == "no_pullback"
 
 
-def _utc_down_break_ticks(wait1_ohlc):
+def _utc_down_break_ticks(*wait_ohlcs):
     start = datetime(2025, 5, 6, 0, 0, tzinfo=timezone.utc)
+    wait1 = wait_ohlcs[0] if wait_ohlcs else (3296.0, 3298.0, 3294.0, 3296.0)
     overrides = {
         datetime(2025, 5, 6, 4, 0, tzinfo=timezone.utc): (
             3310.0,
@@ -334,16 +362,20 @@ def _utc_down_break_ticks(wait1_ohlc):
             3299.0,
             3300.0,
         ),
-        datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc): wait1_ohlc,
+        datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc): wait1,
     }
     # Later wait bars stay below EMA so they cannot fake an EMA touch.
     for i in range(1, 8):
         t = datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc) + timedelta(minutes=15 * i)
-        overrides[t] = (3296.0, 3298.0, 3294.0, 3296.0)
+        overrides[t] = (
+            wait_ohlcs[i]
+            if i < len(wait_ohlcs)
+            else (3296.0, 3298.0, 3294.0, 3296.0)
+        )
     return _ohlc_ticks(start, 40, overrides=overrides)
 
 
-def test_ema_mode_ignores_lower_close_resume():
+def test_resume_off_ignores_lower_close():
     ticks = _utc_down_break_ticks((3300.0, 3302.0, 3294.0, 3295.0))
     required = OvernightParams(
         timezone="UTC",
@@ -354,10 +386,10 @@ def test_ema_mode_ignores_lower_close_resume():
         min_break_pts_below=200.0,
         min_break_pts_above=200.0,
     )
-    ema = OvernightParams(
+    ema_only = OvernightParams(
         timezone="UTC",
-        pullback_mode="ema",
-        use_higher_close=True,  # ignored in ema mode
+        pullback_mode="required",
+        use_higher_close=False,
         ema_period=21,
         min_asia_range_pts=300.0,
         min_break_pts_below=200.0,
@@ -367,15 +399,32 @@ def test_ema_mode_ignores_lower_close_resume():
     assert with_resume["trades"] == 1
     assert with_resume["rows"][0]["entry_reason"] == "lower_close"
 
-    ema_only = run_overnight(ticks, symbol="XAU/USD", params=ema)
-    assert ema_only["trades"] == 0
-    skips = [s for s in ema_only["skips"] if s.get("side") == "DOWN"]
+    out = run_overnight(ticks, symbol="XAU/USD", params=ema_only)
+    assert out["trades"] == 0
+    skips = [s for s in out["skips"] if s.get("side") == "DOWN"]
     assert skips and skips[0]["reason"] == "no_pullback"
     assert "close resume off" in (skips[0].get("decision") or "")
 
 
-def test_ema_mode_enters_on_ema_touch():
+def test_resume_off_enters_on_ema_touch():
     ticks = _utc_down_break_ticks((3300.0, 3320.0, 3299.0, 3308.0))
+    params = OvernightParams(
+        timezone="UTC",
+        pullback_mode="required",
+        use_higher_close=False,
+        ema_period=21,
+        min_asia_range_pts=300.0,
+        min_break_pts_below=200.0,
+        min_break_pts_above=200.0,
+    )
+    out = run_overnight(ticks, symbol="XAU/USD", params=params)
+    assert out["trades"] == 1
+    assert out["rows"][0]["entry_reason"] == "ema_touch"
+    assert out["rows"][0]["side"] == "DOWN"
+
+
+def test_legacy_ema_pullback_mode_aliases_resume_off():
+    ticks = _utc_down_break_ticks((3300.0, 3302.0, 3294.0, 3295.0))
     params = OvernightParams(
         timezone="UTC",
         pullback_mode="ema",
@@ -386,6 +435,159 @@ def test_ema_mode_enters_on_ema_touch():
         min_break_pts_above=200.0,
     )
     out = run_overnight(ticks, symbol="XAU/USD", params=params)
+    assert out["trades"] == 0
+    skips = [s for s in out["skips"] if s.get("side") == "DOWN"]
+    assert skips and skips[0]["reason"] == "no_pullback"
+
+
+def test_trail_arm_for_range_caps_asia_size():
+    fixed = OvernightParams(trail_arm_mode="fixed", trail_arm_pts=400.0)
+    assert trail_arm_for_range(fixed, 1500.0) == 400.0
+    asia = OvernightParams(trail_arm_mode="asia", trail_arm_cap_pts=2000.0)
+    assert trail_arm_for_range(asia, 1500.0) == 1500.0
+    assert trail_arm_for_range(asia, 4000.0) == 2000.0
+    uncapped = OvernightParams(trail_arm_mode="asia", trail_arm_cap_pts=0.0)
+    assert trail_arm_for_range(uncapped, 4000.0) == 4000.0
+
+
+def test_asia_trail_arm_recorded_on_trade():
+    start = datetime(2026, 3, 31, 21, 0, tzinfo=timezone.utc)
+    utc_midnight = datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc)
+    trunc_low = datetime(2026, 4, 1, 2, 30, tzinfo=timezone.utc)
+    asia_high_bar = datetime(2026, 4, 1, 1, 0, tzinfo=timezone.utc)
+    break_bar = datetime(2026, 4, 1, 4, 0, tzinfo=timezone.utc)
+    full = _ohlc_ticks(
+        start,
+        44,
+        overrides={
+            asia_high_bar: (3310.0, 3320.0, 3308.0, 3315.0),
+            trunc_low: (3312.0, 3315.0, 3305.0, 3308.0),
+            break_bar: (3310.0, 3311.0, 3299.0, 3300.0),
+        },
+    )
+    utc_from_idx = next(i for i, t in enumerate(full) if t.ts >= utc_midnight)
+    truncated = full[utc_from_idx:]
+    params = _apr1_params(
+        trail_arm_mode="asia",
+        trail_arm_cap_pts=2000.0,
+        trail_arm_pts=400.0,
+    )
+    out = run_overnight(truncated, symbol="XAU/USD", params=params)
     assert out["trades"] == 1
-    assert out["rows"][0]["entry_reason"] == "ema_touch"
-    assert out["rows"][0]["side"] == "DOWN"
+    row = out["rows"][0]
+    expected = min(row["asia_range_pts"], 2000.0)
+    assert row["trail_arm_used"] == expected
+    assert expected != 400.0
+
+
+def _resume_only_params(**kwargs):
+    base = dict(
+        timezone="UTC",
+        pullback_mode="required",
+        use_higher_close=True,
+        ema_period=100,
+        min_asia_range_pts=300.0,
+        min_break_pts_below=200.0,
+        min_break_pts_above=200.0,
+        max_wait_candles=8,
+        max_break_candles_after=8,
+    )
+    base.update(kwargs)
+    return OvernightParams(**base)
+
+
+def test_resume_closes_1_enters_on_first_opposite_close():
+    ticks = _utc_down_break_ticks((3300.0, 3302.0, 3294.0, 3295.0))
+    out = run_overnight(ticks, symbol="XAU/USD", params=_resume_only_params(resume_closes=1))
+    assert out["trades"] == 1
+    assert out["rows"][0]["entry_reason"] == "lower_close"
+    assert out["rows"][0]["wait_i"] == 1
+
+
+def test_resume_closes_2_skips_single_opposite_close():
+    ticks = _utc_down_break_ticks((3300.0, 3302.0, 3294.0, 3295.0))
+    out = run_overnight(ticks, symbol="XAU/USD", params=_resume_only_params(resume_closes=2))
+    assert out["trades"] == 0
+    skips = [s for s in out["skips"] if s.get("side") == "DOWN"]
+    assert skips and skips[0]["reason"] == "no_pullback"
+    assert "need 2 consecutive closes" in (skips[0].get("decision") or "")
+
+
+def test_resume_closes_2_enters_on_second_consecutive():
+    ticks = _utc_down_break_ticks(
+        (3300.0, 3302.0, 3294.0, 3295.0),
+        (3295.0, 3296.0, 3288.0, 3290.0),
+    )
+    out = run_overnight(ticks, symbol="XAU/USD", params=_resume_only_params(resume_closes=2))
+    assert out["trades"] == 1
+    row = out["rows"][0]
+    assert row["entry_reason"] == "lower_close"
+    assert row["wait_i"] == 2
+    assert "2 consecutive lower closes" in (row.get("decision") or "")
+
+
+def test_resume_closes_2_resets_streak_on_inside_bar():
+    ticks = _utc_down_break_ticks(
+        (3300.0, 3302.0, 3294.0, 3295.0),  # lower vs 3300 → streak 1
+        (3295.0, 3298.0, 3294.0, 3298.0),  # higher vs 3295 → reset
+        (3298.0, 3299.0, 3288.0, 3290.0),  # lower vs 3298 → streak 1
+    )
+    out = run_overnight(ticks, symbol="XAU/USD", params=_resume_only_params(resume_closes=2))
+    assert out["trades"] == 0
+    skips = [s for s in out["skips"] if s.get("side") == "DOWN"]
+    assert skips and skips[0]["reason"] == "no_pullback"
+
+
+def _summary_trade(day, pts, trail_armed=False):
+    return OvernightTrade(
+        local_date=day,
+        side="UP",
+        asia_high=3320.0,
+        asia_low=3300.0,
+        asia_range_pts=2000.0,
+        break_ts=day + "T07:00:00+00:00",
+        break_price=3322.0,
+        break_candle_open=3310.0,
+        break_candle_close=3322.0,
+        entry_ts=day + "T07:15:00+00:00",
+        entry=3322.0,
+        entry_reason="break_close",
+        sl=3300.0,
+        tp=3350.0,
+        sl_pts=2200.0,
+        tp_pts=2800.0,
+        pts=pts,
+        trail_armed=trail_armed,
+    )
+
+
+def test_summarize_overnight_by_month():
+    trades = [
+        _summary_trade("2025-05-06", 200.0, trail_armed=True),
+        _summary_trade("2025-05-12", -80.0),
+        _summary_trade("2025-06-03", 50.0),
+    ]
+    skips = [
+        OvernightSkip(local_date="2025-05-07", reason="no_break"),
+        OvernightSkip(local_date="2025-07-01", reason="thin_asia"),
+    ]
+    out = summarize_overnight(
+        trades, skips, OvernightParams(), symbol="XAU/USD", ticks=10
+    )
+    months = {m["month"]: m for m in out["by_month"]}
+    assert list(months) == ["2025-05", "2025-06", "2025-07"]
+    may = months["2025-05"]
+    assert may["trades"] == 2
+    assert may["skipped"] == 1
+    assert may["wins"] == 1
+    assert may["losses"] == 1
+    assert may["sum_pts"] == 120.0
+    assert may["win_pct"] == 50.0
+    assert may["trail_armed_n"] == 1
+    assert months["2025-06"]["trades"] == 1
+    assert months["2025-06"]["sum_pts"] == 50.0
+    assert months["2025-06"]["skipped"] == 0
+    assert months["2025-07"]["trades"] == 0
+    assert months["2025-07"]["skipped"] == 1
+    assert out["trades"] == 3
+    assert out["sum_pts"] == 170.0
