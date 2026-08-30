@@ -18,6 +18,8 @@
 
   let pollTimer = null;
   let lastResult = null;
+  let lastRenderedKey = null;
+  let pendingFreshResults = false;
   let alertListFilter = "all"; // all | candle | spike | …
   let signalDocs = {
     range: {},
@@ -30,6 +32,17 @@
   };
   let signalDefaults = null;
   let wasRunning = false;
+  const RESEARCH_KEY = "strateg_research_v1";
+  const ENGINE_IDS = [
+    "eng_candle",
+    "eng_spike",
+    "eng_spike_neo",
+    "eng_impulse_retrace",
+    "eng_range_wick",
+  ];
+  let persistReady = false;
+  let saveTimer = null;
+  let lastSymbol = null;
 
   const RANGE_FIELDS = [
     "range_mult",
@@ -388,25 +401,131 @@
     return { range, spike, spike_neo, impulse_retrace, range_wick, filters };
   }
 
-  async function loadSignalDefaults() {
+  function loadSavedResearch() {
+    try {
+      const raw = localStorage.getItem(RESEARCH_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function normalizeImpulse(ir) {
+    const out = Object.assign({}, ir || {});
+    if (Array.isArray(out.retrace_fractions)) {
+      out.retrace_fractions = out.retrace_fractions.join(",");
+    }
+    return out;
+  }
+
+  function overlaySignal(base, overlay) {
+    return Object.assign({}, base || {}, overlay || {});
+  }
+
+  function saveResearchForSymbol(sym) {
+    if (!persistReady) return;
+    try {
+      const prev = loadSavedResearch() || {};
+      const signalBySymbol = prev.signalBySymbol || {};
+      const key = sym || ($("symbol") && $("symbol").value) || "XAUUSD";
+      signalBySymbol[key] = readSignalFromForm();
+      const engines = {};
+      ENGINE_IDS.forEach((id) => {
+        engines[id] = !!( $(id) && $(id).checked );
+      });
+      const cfg = {
+        symbol: ($("symbol") && $("symbol").value) || key,
+        date_from: $("date_from") && $("date_from").value,
+        date_to: $("date_to") && $("date_to").value,
+        hours: $("hours") && $("hours").value,
+        threshold: $("threshold") && $("threshold").value,
+        adverse_pct: $("adverse_pct") && $("adverse_pct").value,
+        sl_manage: $("sl_manage") && $("sl_manage").value,
+        sl_manage_lock_pts: $("sl_manage_lock_pts") && $("sl_manage_lock_pts").value,
+        engines: engines,
+        signalBySymbol: signalBySymbol,
+      };
+      localStorage.setItem(RESEARCH_KEY, JSON.stringify(cfg));
+    } catch (e) {
+      console.warn("research save failed", e);
+    }
+  }
+
+  function saveResearch() {
+    saveResearchForSymbol(($("symbol") && $("symbol").value) || "XAUUSD");
+  }
+
+  function scheduleSave() {
+    if (!persistReady) return;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveResearch, 200);
+  }
+
+  function applySavedMain(saved) {
+    if (!saved) return;
+    [
+      "symbol",
+      "date_from",
+      "date_to",
+      "hours",
+      "threshold",
+      "adverse_pct",
+      "sl_manage",
+      "sl_manage_lock_pts",
+    ].forEach((id) => {
+      if (saved[id] != null && $(id)) $(id).value = saved[id];
+    });
+  }
+
+  function applySavedEngines(engines) {
+    if (!engines) return;
+    ENGINE_IDS.forEach((id) => {
+      const el = $(id);
+      if (!el) return;
+      if (Object.prototype.hasOwnProperty.call(engines, id)) {
+        el.checked = !!engines[id];
+      }
+    });
+    syncEngineSections();
+  }
+
+  async function loadSignalDefaults(opts) {
+    const applySaved = !opts || opts.applySaved !== false;
+    const skipEngines = !!(opts && opts.skipEngines);
     const sym = $("symbol").value || "XAUUSD";
     const r = await fetch("/api/signal-defaults?symbol=" + encodeURIComponent(sym));
     const data = await r.json();
     signalDefaults = data;
     signalDocs = data.docs || {};
-    fillGrid("grid-range", RANGE_FIELDS, data.range || {}, signalDocs.range, "range-");
-    fillGrid("grid-spike", SPIKE_FIELDS, data.spike || {}, signalDocs.spike, "spike-");
+    const saved = applySaved ? loadSavedResearch() : null;
+    const overlay =
+      saved && saved.signalBySymbol && saved.signalBySymbol[sym]
+        ? saved.signalBySymbol[sym]
+        : null;
+    fillGrid(
+      "grid-range",
+      RANGE_FIELDS,
+      overlaySignal(data.range || {}, overlay && overlay.range),
+      signalDocs.range,
+      "range-"
+    );
+    fillGrid(
+      "grid-spike",
+      SPIKE_FIELDS,
+      overlaySignal(data.spike || {}, overlay && overlay.spike),
+      signalDocs.spike,
+      "spike-"
+    );
     fillGrid(
       "grid-spike-neo",
       SPIKE_NEO_FIELDS,
-      data.spike_neo || {},
+      overlaySignal(data.spike_neo || {}, overlay && overlay.spike_neo),
       signalDocs.spike_neo || {},
       "neo-"
     );
-    const ir = data.impulse_retrace || {};
-    if (Array.isArray(ir.retrace_fractions)) {
-      ir.retrace_fractions = ir.retrace_fractions.join(",");
-    }
+    const ir = normalizeImpulse(
+      overlaySignal(data.impulse_retrace || {}, overlay && overlay.impulse_retrace)
+    );
     fillGrid(
       "grid-impulse",
       IMPULSE_FIELDS,
@@ -417,11 +536,15 @@
     fillGrid(
       "grid-range-wick",
       RANGE_WICK_FIELDS,
-      data.range_wick || {},
+      overlaySignal(data.range_wick || {}, overlay && overlay.range_wick),
       signalDocs.range_wick || {},
       "wick-"
     );
-    fillGrid("grid-filters", FILTER_FIELDS, data.filters || {}, {
+    fillGrid(
+      "grid-filters",
+      FILTER_FIELDS,
+      overlaySignal(data.filters || {}, overlay && overlay.filters),
+      {
       market_open_blackout_enabled:
         "Factor: ignore alerts in first N min after local open (candles still build)",
       market_open_time: "Local open clock (default 01:05 = XAU weekly reopen)",
@@ -440,6 +563,9 @@
       "Range/spike defaults = Reaktor XAU. Market-open blackout = Factor " +
       "(Mon 01:05 Bucharest, 15 min). " +
       (tips || "");
+    if (applySaved && !skipEngines && saved && saved.engines) {
+      applySavedEngines(saved.engines);
+    }
   }
 
   function selectedEngines() {
@@ -865,43 +991,90 @@
 
     filtered.forEach((a) => {
       const tr = document.createElement("tr");
-      // Duration = time until first hit of selected T (only when hit)
-      const dur = a.hit ? fmtDuration(a.first_hit_sec) : "—";
+      const pending = !!a.pending || a.hit == null;
+      const hitCell = pending ? "…" : a.hit ? "yes" : "no";
+      const cleanCell = pending ? "…" : a.clean ? "yes" : "no";
+      const dur = !pending && a.hit ? fmtDuration(a.first_hit_sec) : "—";
       tr.innerHTML = `
         <td>${(a.alert_ts || "").replace("T", " ").slice(0, 19)}</td>
         <td>${kindLabel(a.kind)}</td>
         <td>${a.side}</td>
         <td>${a.entry != null ? Number(a.entry).toFixed(2) : "—"}</td>
-        <td class="${a.hit ? "yes" : "no"}">${a.hit ? "yes" : "no"}</td>
-        <td class="${a.clean ? "yes" : "no"}">${a.clean ? "yes" : "no"}</td>
-        <td>${a.exit || "—"}</td>
-        <td title="${a.first_hit_sec != null ? (Number(a.first_hit_sec) / 60).toFixed(2) + " min to T" : "did not reach T"}">${dur}</td>
-        <td>${a.max_fav}</td>
-        <td>${a.max_adv_until_hit}</td>
-        <td>${a.realized_pts != null ? a.realized_pts : "—"}</td>`;
+        <td class="${pending ? "muted" : a.hit ? "yes" : "no"}">${hitCell}</td>
+        <td class="${pending ? "muted" : a.clean ? "yes" : "no"}">${cleanCell}</td>
+        <td>${pending ? "…" : a.exit || "—"}</td>
+        <td title="${a.first_hit_sec != null ? (Number(a.first_hit_sec) / 60).toFixed(2) + " min to T" : pending ? "waiting for look-ahead" : "did not reach T"}">${dur}</td>
+        <td>${pending || a.max_fav == null ? "—" : a.max_fav}</td>
+        <td>${pending || a.max_adv_until_hit == null ? "—" : a.max_adv_until_hit}</td>
+        <td>${pending || a.realized_pts == null ? "—" : a.realized_pts}</td>`;
       ta.appendChild(tr);
     });
   }
 
-  function renderResults(result, selectedT) {
+  function resultKey(result) {
+    if (!result) return "";
+    return [
+      result.partial ? "1" : "0",
+      result.finished_at || "",
+      result.replay_ticks_done || "",
+      result.alerts,
+      result.scored_alerts,
+      (result.engines || []).join(","),
+      (result.thresholds || []).join(","),
+    ].join("|");
+  }
+
+  function clearResults(msg) {
+    lastResult = null;
+    lastRenderedKey = null;
+    $("results-meta").textContent = msg || "No run yet.";
+    $("hero-grid").innerHTML = "";
+    renderConfigSummary(null);
+    const byType = $("table-by-type");
+    if (byType && byType.querySelector("tbody")) byType.querySelector("tbody").innerHTML = "";
+    const alerts = $("table-alerts");
+    if (alerts && alerts.querySelector("tbody")) alerts.querySelector("tbody").innerHTML = "";
+    const tabs = $("alert-type-tabs");
+    if (tabs) tabs.innerHTML = "";
+    const pdfBtn = $("btn-pdf");
+    if (pdfBtn) pdfBtn.disabled = true;
+    const card = $("results-card");
+    if (card) card.classList.remove("is-fresh");
+  }
+
+  function flashResultsCard() {
+    const card = $("results-card");
+    if (!card) return;
+    card.classList.remove("is-fresh");
+    void card.offsetWidth;
+    card.classList.add("is-fresh");
+  }
+
+  function renderResults(result, selectedT, opts) {
     lastResult = result;
     const pdfBtn = $("btn-pdf");
     if (!result) {
-      $("results-meta").textContent = "No run yet.";
-      $("hero-grid").innerHTML = "";
-      renderConfigSummary(null);
-      if (pdfBtn) pdfBtn.disabled = true;
+      clearResults("No run yet.");
       return;
     }
+    lastRenderedKey = resultKey(result);
     if (pdfBtn) pdfBtn.disabled = false;
 
     const tKey = String(Math.round(selectedT));
+    const finished = result.finished_at
+      ? String(result.finished_at).replace("T", " ").slice(0, 19) + " UTC"
+      : "";
 
+    const scoredN = result.scored_alerts != null ? result.scored_alerts : result.alerts;
     $("results-meta").textContent =
       `${result.duka_symbol || result.symbol} · ` +
       `${(result.from || "").slice(0, 10)} → ${(result.to || "").slice(0, 10)} · ` +
-      `${Number(result.ticks || 0).toLocaleString()} ticks · ` +
-      `${result.alerts || 0} alerts` +
+      `${Number(result.ticks || 0).toLocaleString()} ticks` +
+      (result.partial && result.replay_ticks_done
+        ? ` (${Number(result.replay_ticks_done).toLocaleString()} replayed)`
+        : "") +
+      ` · ${result.alerts || 0} alerts` +
+      (result.partial ? ` · ${scoredN} scored` : "") +
       (result.alerts_by_kind
         ? " (" +
           Object.entries(result.alerts_by_kind)
@@ -911,7 +1084,8 @@
         : "") +
       ` · look-ahead ${result.hours}h · opp ≤ ${Math.round((result.adverse_mult || 1) * 100)}% T` +
       slManageLabel(result) +
-      ` · selected T=${Math.round(selectedT)}`;
+      ` · selected T=${Math.round(selectedT)}` +
+      (result.partial ? " · live" : finished ? " · " + finished : "");
 
     renderConfigSummary(result);
     renderHero(result, selectedT);
@@ -924,6 +1098,7 @@
       [];
     renderAlertTabs(result, detail);
     renderAlertList(detail);
+    if (opts && opts.fresh) flashResultsCard();
   }
 
   /** Short pleasant chime when a research job finishes (Web Audio, no asset file). */
@@ -969,7 +1144,15 @@
 
       renderProgress(state);
       if (state.result) {
-        renderResults(state.result, Number($("threshold").value));
+        const key = resultKey(state.result);
+        if (key !== lastRenderedKey) {
+          const isFinal = !state.result.partial;
+          const fresh = pendingFreshResults && isFinal;
+          if (isFinal) pendingFreshResults = false;
+          renderResults(state.result, Number($("threshold").value), { fresh: fresh });
+        }
+      } else if (running && (lastResult || lastRenderedKey)) {
+        clearResults("Replay in progress — results update as alerts score.");
       }
       if (!running && pollTimer) {
         clearInterval(pollTimer);
@@ -1024,6 +1207,8 @@
         return;
       }
       wasRunning = true; // arm done-sound for this run
+      pendingFreshResults = true;
+      clearResults("Replay in progress — results update as alerts score.");
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = setInterval(poll, 800);
       poll();
@@ -1034,20 +1219,51 @@
   }
 
   $("btn-run").addEventListener("click", runJob);
-  ["eng_candle", "eng_spike", "eng_spike_neo", "eng_impulse_retrace", "eng_range_wick"].forEach(
-    (id) => {
-      const el = $(id);
-      if (el) el.addEventListener("change", syncEngineSections);
-    }
-  );
-  syncEngineSections();
+  ENGINE_IDS.forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("change", () => {
+      syncEngineSections();
+      scheduleSave();
+    });
+  });
   ["change", "input"].forEach((ev) => {
     $("threshold").addEventListener(ev, () => {
       if (lastResult) renderResults(lastResult, Number($("threshold").value));
+      scheduleSave();
     });
   });
-  $("symbol").addEventListener("change", () => loadSignalDefaults());
-  $("btn-reset-signals").addEventListener("click", () => loadSignalDefaults());
+  [
+    "date_from",
+    "date_to",
+    "hours",
+    "adverse_pct",
+    "sl_manage",
+    "sl_manage_lock_pts",
+  ].forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("change", scheduleSave);
+    el.addEventListener("input", scheduleSave);
+  });
+  const signalPanel = $("signal-panel");
+  if (signalPanel) {
+    signalPanel.addEventListener("input", scheduleSave);
+    signalPanel.addEventListener("change", scheduleSave);
+  }
+  $("symbol").addEventListener("change", () => {
+    const prev = lastSymbol;
+    lastSymbol = $("symbol").value || "XAUUSD";
+    if (prev && prev !== lastSymbol) saveResearchForSymbol(prev);
+    loadSignalDefaults({ applySaved: true, skipEngines: true }).catch((e) =>
+      console.error(e)
+    );
+  });
+  $("btn-reset-signals").addEventListener("click", () => {
+    loadSignalDefaults({ applySaved: false, skipEngines: true })
+      .then(() => saveResearch())
+      .catch((e) => console.error(e));
+  });
   $("btn-pdf").addEventListener("click", () => {
     if (!lastResult) return;
     document.body.classList.add("print-results");
@@ -1065,6 +1281,20 @@
     document.body.classList.remove("print-results");
   });
 
-  loadSignalDefaults().catch((e) => console.error(e));
+  (function initResearchForm() {
+    const saved = loadSavedResearch();
+    applySavedMain(saved);
+    lastSymbol = ($("symbol") && $("symbol").value) || "XAUUSD";
+    loadSignalDefaults({ applySaved: true })
+      .then(() => {
+        if (saved && saved.engines) applySavedEngines(saved.engines);
+        else syncEngineSections();
+        persistReady = true;
+      })
+      .catch((e) => {
+        console.error(e);
+        persistReady = true;
+      });
+  })();
   poll();
 })();

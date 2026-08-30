@@ -378,6 +378,13 @@ button.secondary:disabled {
   margin-bottom: 0.35rem;
 }
 .results-head h2 { margin: 0; }
+#results-card.is-fresh {
+  animation: results-fresh 0.9s ease;
+}
+@keyframes results-fresh {
+  from { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent); }
+  to { box-shadow: none; }
+}
 
 .sw-report-filters {
   display: flex;

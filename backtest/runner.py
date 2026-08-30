@@ -6,6 +6,7 @@ Used by single UI jobs and overnight batch sweeps.
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set
@@ -25,7 +26,8 @@ from backtest.forward import (
     filter_scored_by_kind,
     multi_threshold_report,
     normalize_sl_manage,
-    score_all_alerts,
+    prepare_price_arrays,
+    walk_forward_multi,
 )
 from backtest.replay import AlertReplay
 
@@ -194,6 +196,206 @@ def research_from_ticks(
         filters=sig.get("filters") if isinstance(sig, dict) else None,
     )
 
+    sl_mode, sl_frac, sl_lock = normalize_sl_manage(
+        sl_manage, sl_manage_at_frac, sl_manage_lock_pts
+    )
+    window_sec = float(hours) * 3600.0
+
+    def _thr_key(t: float) -> str:
+        ft = float(t)
+        return str(int(ft) if ft == int(ft) else ft)
+
+    keys = [_thr_key(t) for t in thr_list]
+    scored: Dict[str, List] = {k: [] for k in keys}
+    ts_arr, px_arr = prepare_price_arrays(ticks, signal_price)
+
+    def _n_scored() -> int:
+        return len(scored[keys[0]]) if keys else 0
+
+    def _score_ready(now_ts: float, *, at_end: bool) -> int:
+        """Walk alerts whose look-ahead window is fully available (or stream ended)."""
+        alerts = eng.alerts
+        idxs = eng.alert_tick_index
+        n_scored = _n_scored()
+        while n_scored < len(alerts):
+            idx = idxs[n_scored]
+            t0 = float(ts_arr[idx]) if 0 <= idx < len(ts_arr) else 0.0
+            if not at_end and (t0 + window_sec) > now_ts:
+                break
+            multi = walk_forward_multi(
+                alerts[n_scored],
+                ticks,
+                idx,
+                thresholds=thr_list,
+                window_sec=window_sec,
+                adverse_mult=adverse_mult,
+                price_field=signal_price,
+                ts_arr=ts_arr,
+                px_arr=px_arr,
+                sl_manage=sl_mode,
+                sl_manage_at_frac=sl_frac,
+                sl_manage_lock_pts=sl_lock,
+            )
+            for k in keys:
+                scored[k].append(multi[k])
+            n_scored += 1
+        return n_scored
+
+    def _path_row(p) -> Dict[str, Any]:
+        return {
+            "kind": p.alert.kind,
+            "side": p.alert.side,
+            "alert_ts": p.alert.ts.isoformat(),
+            "entry": p.alert.price,
+            "hit": p.hit,
+            "clean": p.clean,
+            "pending": False,
+            "first_touch": p.first_touch,
+            "exit": p.exit,
+            "manage_armed": p.manage_armed,
+            "realized_pts": round(p.realized_pts, 1),
+            "max_fav": round(p.max_fav_pts, 1),
+            "max_adv": round(p.max_adv_pts, 1),
+            "max_adv_until_hit": round(p.max_adv_until_hit, 1),
+            "first_hit_sec": p.first_hit_sec,
+            "meta": p.alert.meta,
+            "retrace_fraction": (p.alert.meta or {}).get("retrace_fraction"),
+        }
+
+    def _pending_row(a) -> Dict[str, Any]:
+        return {
+            "kind": a.kind,
+            "side": a.side,
+            "alert_ts": a.ts.isoformat() if a.ts else "",
+            "entry": a.price,
+            "hit": None,
+            "clean": None,
+            "pending": True,
+            "first_touch": None,
+            "exit": None,
+            "manage_armed": None,
+            "realized_pts": None,
+            "max_fav": None,
+            "max_adv": None,
+            "max_adv_until_hit": None,
+            "first_hit_sec": None,
+            "meta": a.meta,
+            "retrace_fraction": (a.meta or {}).get("retrace_fraction"),
+        }
+
+    def _count_by_kind(alert_list) -> Dict[str, int]:
+        by_kind_count: Dict[str, int] = {}
+        for a in alert_list:
+            by_kind_count[a.kind] = by_kind_count.get(a.kind, 0) + 1
+            if a.kind == "impulse_retrace":
+                frac = (a.meta or {}).get("retrace_fraction")
+                if frac is None:
+                    continue
+                try:
+                    tag = f"impulse_retrace_{int(round(float(frac) * 100))}"
+                    by_kind_count[tag] = by_kind_count.get(tag, 0) + 1
+                except (TypeError, ValueError):
+                    pass
+        return by_kind_count
+
+    def _report(kind_alerts, kind_idx, kind_scored) -> Dict[str, Any]:
+        if not kind_alerts:
+            return {}
+        return multi_threshold_report(
+            kind_alerts,
+            kind_idx,
+            ticks,
+            thresholds=thr_list,
+            window_sec=window_sec,
+            adverse_mult=adverse_mult,
+            price_field=signal_price,
+            sl_manage=sl_mode,
+            sl_manage_at_frac=sl_frac,
+            sl_manage_lock_pts=sl_lock,
+            scored=kind_scored,
+        )
+
+    def assemble(*, partial: bool, replay_ticks_done: int = 0) -> Dict[str, Any]:
+        alerts = eng.alerts
+        alert_idx = eng.alert_tick_index
+        overall = _report(alerts, alert_idx, scored)
+        by_engine: Dict[str, Any] = {}
+        for kind in sorted(eng_set):
+            kind_alerts = [a for a in alerts if a.kind == kind]
+            kind_idx = [i for a, i in zip(alerts, alert_idx) if a.kind == kind]
+            sub = filter_scored_by_kind(scored, kind)
+            by_engine[kind] = _report(kind_alerts, kind_idx, sub)
+            if kind != "impulse_retrace" or not kind_alerts:
+                continue
+            by_frac: Dict[float, List] = {}
+            for a in kind_alerts:
+                frac = (a.meta or {}).get("retrace_fraction")
+                if frac is None:
+                    continue
+                try:
+                    by_frac.setdefault(float(frac), []).append(a)
+                except (TypeError, ValueError):
+                    continue
+            for f, sub_alerts in sorted(by_frac.items()):
+                tag = f"impulse_retrace_{int(round(f * 100))}"
+                frac_scored = {
+                    k: [
+                        p
+                        for p in (sub.get(k) or [])
+                        if abs(
+                            float((p.alert.meta or {}).get("retrace_fraction") or -1)
+                            - f
+                        )
+                        < 1e-9
+                    ]
+                    for k in keys
+                }
+                sub_idx = [
+                    i for a, i in zip(alerts, alert_idx) if a in sub_alerts
+                ]
+                by_engine[tag] = _report(sub_alerts, sub_idx, frac_scored)
+
+        n_scored = _n_scored()
+        result: Dict[str, Any] = {
+            "symbol": sym,
+            "duka_symbol": symbol_duka,
+            "from": start.isoformat(),
+            "to": end.isoformat(),
+            "date_from": date_from,
+            "date_to": date_to,
+            "hours": hours,
+            "window_sec": window_sec,
+            "adverse_mult": adverse_mult,
+            "sl_manage": sl_mode,
+            "sl_manage_at_frac": sl_frac,
+            "sl_manage_lock_pts": sl_lock,
+            "thresholds": thr_list,
+            "engines": sorted(eng_set),
+            "ticks": len(ticks),
+            "replay_ticks_done": replay_ticks_done,
+            "alerts": len(alerts),
+            "scored_alerts": n_scored,
+            "partial": partial,
+            "alerts_by_kind": _count_by_kind(alerts),
+            "candles_completed": eng.candles_completed,
+            "signal_config": effective_cfg,
+            "overall": overall,
+            "by_engine": by_engine,
+            "finished_at": None
+            if partial
+            else datetime.now(timezone.utc).isoformat(),
+        }
+        if include_detail:
+            pending = list(alerts[n_scored:])
+            detail_by_t: Dict[str, List[dict]] = {}
+            for t in thr_list:
+                key = _thr_key(t)
+                rows = [_path_row(p) for p in (scored.get(key) or [])]
+                rows.extend(_pending_row(a) for a in pending)
+                detail_by_t[key] = rows
+            result["detail_by_threshold"] = detail_by_t
+        return result
+
     prog(
         phase="replay",
         message=f"Replay {len(ticks):,} ticks…",
@@ -209,198 +411,35 @@ def research_from_ticks(
     for i, t in enumerate(ticks):
         eng.on_tick(t, i)
         if i % step == 0 or i == n - 1:
-            import time
-
-            time.sleep(0.003)
-            pct = 55.0 + 30.0 * ((i + 1) / n)
-            prog(
-                replay_ticks_done=i + 1,
-                alerts=len(eng.alerts),
-                candles=eng.candles_completed,
-                pct=round(pct, 1),
-                message=(f"Replay {i + 1:,}/{n:,} · {len(eng.alerts)} alerts"),
+            now_ts = float(ts_arr[i]) if i < len(ts_arr) else 0.0
+            at_end = i == n - 1
+            n_scored = _score_ready(now_ts, at_end=at_end)
+            pct = 55.0 + 33.0 * ((i + 1) / n)
+            msg = (
+                f"Replay {i + 1:,}/{n:,} · {len(eng.alerts)} alerts"
+                f" · {n_scored} scored"
             )
+            payload: Dict[str, Any] = {
+                "replay_ticks_done": i + 1,
+                "alerts": len(eng.alerts),
+                "candles": eng.candles_completed,
+                "pct": round(pct, 1),
+                "message": msg,
+            }
+            if include_detail:
+                payload["result"] = assemble(
+                    partial=not at_end or n_scored < len(eng.alerts),
+                    replay_ticks_done=i + 1,
+                )
+            prog(**payload)
+            time.sleep(0.003)
 
     alerts = eng.alerts
-    alert_idx = eng.alert_tick_index
-    window_sec = float(hours) * 3600.0
+    if _n_scored() < len(alerts):
+        last_ts = float(ts_arr[-1]) if ts_arr else 0.0
+        _score_ready(last_ts, at_end=True)
 
-    def _score_progress(done: int, total: int) -> None:
-        pct = 88.0 + 10.0 * (done / max(total, 1))
-        prog(
-            phase="forward",
-            message=f"Score {done}/{total} alerts…",
-            alerts=len(alerts),
-            pct=round(pct, 1),
-        )
-
-    prog(
-        phase="forward",
-        message=f"Score 0/{len(alerts)} alerts…",
-        alerts=len(alerts),
-        pct=88.0,
-    )
-
-    sl_mode, sl_frac, sl_lock = normalize_sl_manage(
-        sl_manage, sl_manage_at_frac, sl_manage_lock_pts
-    )
-
-    scored = score_all_alerts(
-        alerts,
-        alert_idx,
-        ticks,
-        thresholds=thr_list,
-        window_sec=window_sec,
-        adverse_mult=adverse_mult,
-        price_field=signal_price,
-        sl_manage=sl_mode,
-        sl_manage_at_frac=sl_frac,
-        sl_manage_lock_pts=sl_lock,
-        progress_cb=_score_progress,
-    )
-
-    overall = multi_threshold_report(
-        alerts,
-        alert_idx,
-        ticks,
-        thresholds=thr_list,
-        window_sec=window_sec,
-        adverse_mult=adverse_mult,
-        price_field=signal_price,
-        sl_manage=sl_mode,
-        sl_manage_at_frac=sl_frac,
-        sl_manage_lock_pts=sl_lock,
-        scored=scored,
-    )
-
-    def _report_for_alerts(
-        kind_alerts: List,
-        kind_idx: List[int],
-    ) -> Dict[str, Any]:
-        if not kind_alerts:
-            return {}
-        # Rebuild scored subset by matching alert identity (kind+ts+side+price)
-        # Prefer filtering from already-scored paths when available.
-        return multi_threshold_report(
-            kind_alerts,
-            kind_idx,
-            ticks,
-            thresholds=thr_list,
-            window_sec=window_sec,
-            adverse_mult=adverse_mult,
-            price_field=signal_price,
-            sl_manage=sl_mode,
-            sl_manage_at_frac=sl_frac,
-            sl_manage_lock_pts=sl_lock,
-            scored=None,  # recompute from subset (small n per engine)
-        )
-
-    by_engine: Dict[str, Any] = {}
-    for kind in sorted(eng_set):
-        kind_alerts = [a for a in alerts if a.kind == kind]
-        kind_idx = [i for a, i in zip(alerts, alert_idx) if a.kind == kind]
-        sub = filter_scored_by_kind(scored, kind)
-        if not any(sub.values()) and not kind_alerts:
-            by_engine[kind] = {}
-            continue
-        by_engine[kind] = multi_threshold_report(
-            kind_alerts,
-            kind_idx,
-            ticks,
-            thresholds=thr_list,
-            window_sec=window_sec,
-            adverse_mult=adverse_mult,
-            price_field=signal_price,
-            sl_manage=sl_mode,
-            sl_manage_at_frac=sl_frac,
-            sl_manage_lock_pts=sl_lock,
-            scored=sub,
-        )
-
-        # Impulse retrace: also break out 50% / 75% (etc.) so the report is clear
-        if kind == "impulse_retrace" and kind_alerts:
-            by_frac: Dict[float, List[int]] = {}
-            for j, a in enumerate(kind_alerts):
-                frac = (a.meta or {}).get("retrace_fraction")
-                if frac is None:
-                    continue
-                try:
-                    f = float(frac)
-                except (TypeError, ValueError):
-                    continue
-                by_frac.setdefault(f, []).append(j)
-            for f, jlist in sorted(by_frac.items()):
-                sub_alerts = [kind_alerts[j] for j in jlist]
-                sub_idx = [kind_idx[j] for j in jlist]
-                tag = f"impulse_retrace_{int(round(f * 100))}"
-                by_engine[tag] = _report_for_alerts(sub_alerts, sub_idx)
-
-    detail_by_t: Dict[str, List[dict]] = {}
-    if include_detail:
-        for t in thr_list:
-            key = str(int(t) if float(t) == int(t) else t)
-            paths = scored.get(key) or []
-            detail_by_t[key] = [
-                {
-                    "kind": p.alert.kind,
-                    "side": p.alert.side,
-                    "alert_ts": p.alert.ts.isoformat(),
-                    "entry": p.alert.price,
-                    "hit": p.hit,
-                    "clean": p.clean,
-                    "first_touch": p.first_touch,
-                    "exit": p.exit,
-                    "manage_armed": p.manage_armed,
-                    "realized_pts": round(p.realized_pts, 1),
-                    "max_fav": round(p.max_fav_pts, 1),
-                    "max_adv": round(p.max_adv_pts, 1),
-                    "max_adv_until_hit": round(p.max_adv_until_hit, 1),
-                    "first_hit_sec": p.first_hit_sec,
-                    "meta": p.alert.meta,
-                    "retrace_fraction": (p.alert.meta or {}).get("retrace_fraction"),
-                }
-                for p in paths
-            ]
-
-    by_kind_count: Dict[str, int] = {}
-    for a in alerts:
-        by_kind_count[a.kind] = by_kind_count.get(a.kind, 0) + 1
-        if a.kind == "impulse_retrace":
-            frac = (a.meta or {}).get("retrace_fraction")
-            if frac is not None:
-                try:
-                    tag = f"impulse_retrace_{int(round(float(frac) * 100))}"
-                    by_kind_count[tag] = by_kind_count.get(tag, 0) + 1
-                except (TypeError, ValueError):
-                    pass
-
-    result: Dict[str, Any] = {
-        "symbol": sym,
-        "duka_symbol": symbol_duka,
-        "from": start.isoformat(),
-        "to": end.isoformat(),
-        "date_from": date_from,
-        "date_to": date_to,
-        "hours": hours,
-        "window_sec": window_sec,
-        "adverse_mult": adverse_mult,
-        "sl_manage": sl_mode,
-        "sl_manage_at_frac": sl_frac,
-        "sl_manage_lock_pts": sl_lock,
-        "thresholds": thr_list,
-        "engines": sorted(eng_set),
-        "ticks": len(ticks),
-        "alerts": len(alerts),
-        "alerts_by_kind": by_kind_count,
-        "candles_completed": eng.candles_completed,
-        "signal_config": effective_cfg,
-        "overall": overall,
-        "by_engine": by_engine,
-        "finished_at": datetime.now(timezone.utc).isoformat(),
-    }
-    if include_detail:
-        result["detail_by_threshold"] = detail_by_t
-
+    result = assemble(partial=False, replay_ticks_done=n)
     if save_json:
         tag = f"{symbol_duka}_{date_from}_{date_to}_forward"
         out_path = DEFAULT_RESULTS / f"summary_{tag}.json"
@@ -413,6 +452,7 @@ def research_from_ticks(
         pct=100.0,
         alerts=len(alerts),
         ticks=len(ticks),
+        result=result,
     )
     return result
 

@@ -78,10 +78,13 @@ def is_job_running() -> bool:
 
 
 def _set_progress(**kwargs: Any) -> None:
+    result = kwargs.pop("result", None)
     with _lock:
         for k, v in kwargs.items():
             if hasattr(_state.progress, k):
                 setattr(_state.progress, k, v)
+        if result is not None:
+            _state.result = result
 
 
 def start_job(params: JobParams) -> Dict[str, Any]:
