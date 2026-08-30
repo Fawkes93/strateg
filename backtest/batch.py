@@ -581,6 +581,10 @@ def start_batch(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
         if is_spike_fade_running():
             return {"ok": False, "error": "Spike fade is running"}
+        from backtest.micro_momentum_jobs import is_micro_running
+
+        if is_micro_running():
+            return {"ok": False, "error": "Micro burst is running"}
         items = build_work_items(cfg)
         _cancel.clear()
         _state.running = True
@@ -1383,6 +1387,7 @@ def _compact_all_ts(stats_by_t: Dict[str, dict]) -> List[dict]:
                 "stopped_manage_pct": s.get("stopped_manage_pct"),
                 "timeout_pct": s.get("timeout_pct"),
                 "avg_realized_pts": s.get("avg_realized_pts"),
+                "sum_realized_pts": s.get("sum_realized_pts"),
             }
         )
     return rows

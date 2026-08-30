@@ -94,6 +94,10 @@ def start_session_job(params: SessionJobParams) -> Dict[str, Any]:
 
         if is_spike_fade_running():
             return {"ok": False, "error": "Spike fade is running"}
+        from backtest.micro_momentum_jobs import is_micro_running
+
+        if is_micro_running():
+            return {"ok": False, "error": "Micro burst is running"}
         _state.params = params
         _state.result = None
         _state.running = True

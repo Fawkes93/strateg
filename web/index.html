@@ -22,6 +22,7 @@
     <button type="button" class="main-tab" data-tab="sweep">Sweep (overnight)</button>
     <button type="button" class="main-tab" data-tab="session">Session clock</button>
     <button type="button" class="main-tab" data-tab="spikefade">Spike fade</button>
+    <button type="button" class="main-tab" data-tab="micro">Micro burst</button>
     <!-- Overnight break tab button is injected by overnight.js -->
   </nav>
 
@@ -177,6 +178,7 @@
               <th>armed %</th>
               <th>BE/lock stop %</th>
               <th>avg pts</th>
+              <th>sum pts</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -709,16 +711,185 @@
     </section>
   </div>
 
+  <!-- ========== MICRO BURST TAB ========== -->
+  <div id="tab-micro" class="tab-panel hidden">
+    <section class="card pipeline">
+      <h2>Ride a short one-way burst</h2>
+      <ol>
+        <li>If mid moves <strong>min–max pts in a few seconds</strong> with little pullback, enter <em>with</em> that burst (not a fade).</li>
+        <li>Fill at <strong>ask (long) / bid (short)</strong> so spread is in the P/L. Optional forming 1m body must agree.</li>
+        <li>Fixed TP / SL in pts. Optional trail (0 = off). Flatten if still open after max hold. Skip weekend reopen.</li>
+      </ol>
+      <p class="hint">
+        1 pt = $0.01 on XAU. Default TP 100 pts = $1. Huge 1–3s spikes (≥ max burst) are left to Spike fade — they often snap back.
+        Mid-only fills would lie on a scalp this small.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Parameters</h2>
+      <div class="grid">
+        <label>
+          Symbol
+          <select id="mm-symbol">
+            <option value="XAUUSD" selected>XAUUSD (gold)</option>
+          </select>
+        </label>
+        <label>
+          From (UTC)
+          <input type="date" id="mm-from" value="2026-03-02" />
+        </label>
+        <label>
+          To (exclusive)
+          <input type="date" id="mm-to" value="2026-03-09" />
+        </label>
+        <label>
+          Session
+          <select id="mm-session" title="UTC hour windows. Asia wraps midnight (22:00–07:00).">
+            <option value="all" selected>All day</option>
+            <option value="asia">Asia only (22–07 UTC)</option>
+            <option value="asia_london">Asia + London (22–16 UTC)</option>
+            <option value="london_ny">London + NY (07–21 UTC)</option>
+          </select>
+        </label>
+        <label>
+          Window (sec)
+          <input type="number" id="mm-window" value="4" min="1" max="30" step="0.5" />
+        </label>
+        <label>
+          Min burst (pts)
+          <input type="number" id="mm-min" value="100" min="10" step="10" />
+        </label>
+        <label>
+          Max burst (pts)
+          <input type="number" id="mm-max" value="400" min="50" step="10"
+            title="Skip vertical spikes in Spike-fade territory." />
+        </label>
+        <label>
+          Persist (pullback / burst)
+          <input type="number" id="mm-persist" value="0.35" min="0" max="1" step="0.05" />
+        </label>
+        <label>
+          1m body filter
+          <select id="mm-use-1m">
+            <option value="true" selected>On</option>
+            <option value="false">Off</option>
+          </select>
+        </label>
+        <label>
+          Min 1m body (pts)
+          <input type="number" id="mm-1m-body" value="40" min="0" step="10" />
+        </label>
+        <label>
+          TP (pts)
+          <input type="number" id="mm-tp" value="100" min="10" step="10" />
+        </label>
+        <label>
+          SL (pts)
+          <input type="number" id="mm-sl" value="80" min="10" step="10" />
+        </label>
+        <label>
+          Trail (pts)
+          <input type="number" id="mm-trail" value="0" min="0" step="10"
+            title="Distance behind best price once armed. 0 = trail off." />
+        </label>
+        <label>
+          Trail arm (pts)
+          <input type="number" id="mm-arm" value="0" min="0" step="10"
+            title="Favorite pts before the trail turns on. 0 = same as Trail (arms at +trail, i.e. BE if trail equals that move)." />
+        </label>
+        <label>
+          Max hold (sec)
+          <input type="number" id="mm-hold" value="45" min="5" step="5" />
+        </label>
+        <label>
+          Cooldown (sec)
+          <input type="number" id="mm-cd" value="15" min="0" step="5" />
+        </label>
+        <label>
+          Fill lag (sec)
+          <input type="number" id="mm-lag" value="0.5" min="0" max="5" step="0.5" />
+        </label>
+        <label>
+          Max spread (pts)
+          <input type="number" id="mm-spread" value="50" min="0" step="5"
+            title="Skip new entries if bid/ask is wider than this." />
+        </label>
+        <label>
+          Weekend skip (min)
+          <input type="number" id="mm-wknd" value="10" min="0" step="1" />
+        </label>
+        <label>
+          Workers
+          <input type="number" id="mm-workers" value="2" min="1" max="6" step="1" />
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" class="primary" id="mm-run">Run micro burst</button>
+        <button type="button" class="secondary" id="mm-stop" disabled>Stop</button>
+        <label class="chk force">
+          <input type="checkbox" id="mm-force" /> Force re-download
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="sf-progress-head">
+        <h2>Progress</h2>
+        <span class="sw-elapsed" id="mm-elapsed" title="Elapsed wall time">—</span>
+      </div>
+      <div class="sf-overall">
+        <div class="sf-overall-top">
+          <span class="sf-overall-label">All months</span>
+          <span class="sf-overall-pct" id="mm-overall-pct">0%</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar" id="mm-progress-bar" style="width:0%"></div>
+        </div>
+      </div>
+      <p class="progress-msg" id="mm-progress-msg">Idle</p>
+      <div class="sf-lanes" id="mm-lanes" hidden></div>
+    </section>
+
+    <section class="card" id="mm-results-card">
+      <h2>Results</h2>
+      <p class="muted" id="mm-meta">No run yet.</p>
+      <div class="hero-grid" id="mm-hero"></div>
+      <h3>Trades</h3>
+      <div class="table-wrap">
+        <table id="mm-table">
+          <thead>
+            <tr>
+              <th class="mm-sort is-on" data-sort="time">Time (UTC) <span class="dir">▲</span></th>
+              <th>Side</th>
+              <th>Burst</th>
+              <th>Spread</th>
+              <th>TP</th>
+              <th>SL</th>
+              <th>Entry</th>
+              <th>Exit</th>
+              <th class="mm-sort" data-sort="dur">Dur (s) <span class="dir"></span></th>
+              <th class="mm-sort" data-sort="reason">Reason <span class="dir"></span></th>
+              <th>P/L pts</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
   <!-- Overnight break panel is injected by overnight.js -->
 
   <footer class="foot">
-    Research = alerts. Sweep = grid. Session clock = 7am Moldova. Spike fade = 1–3s fade.
+    Research = alerts. Sweep = grid. Session clock = 7am Moldova. Spike fade = fade spikes. Micro burst = ride a few pts.
   </footer>
 
-  <script src="/static/app.js?v=20260830e"></script>
-  <script src="/static/sweep.js?v=20260813b"></script>
+  <script src="/static/app.js?v=20260830f"></script>
+  <script src="/static/sweep.js?v=20260830g"></script>
   <script src="/static/session.js?v=20260813b"></script>
   <script src="/static/spike_fade.js?v=20260814a"></script>
-  <script src="/static/overnight.js?v=20260825d"></script>
+  <script src="/static/micro_momentum.js?v=20260830b"></script>
+  <script src="/static/overnight.js?v=20260830a"></script>
 </body>
 </html>

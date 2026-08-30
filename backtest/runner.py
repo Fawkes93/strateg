@@ -536,6 +536,7 @@ def top_ts_by_clean(
                 "stopped_manage_pct": s.get("stopped_manage_pct"),
                 "timeout_pct": s.get("timeout_pct"),
                 "avg_realized_pts": s.get("avg_realized_pts"),
+                "sum_realized_pts": s.get("sum_realized_pts"),
             }
         )
     rows.sort(

@@ -421,9 +421,8 @@ def summarize_forward(paths: Sequence[ForwardPath]) -> dict:
     init_sl_n = sum(1 for p in paths if p.exit == "init_sl")
     manage_sl_n = sum(1 for p in paths if p.exit == "manage_sl")
     timeout_n = sum(1 for p in paths if p.exit == "timeout")
-    avg_real = (
-        round(sum(float(p.realized_pts) for p in paths) / n, 1) if n else 0.0
-    )
+    pts_sum = sum(float(p.realized_pts) for p in paths) if n else 0.0
+    avg_real = round(pts_sum / n, 1) if n else 0.0
 
     return {
         "n": n,
@@ -458,6 +457,7 @@ def summarize_forward(paths: Sequence[ForwardPath]) -> dict:
         "timeout": timeout_n,
         "timeout_pct": pct(timeout_n, n),
         "avg_realized_pts": avg_real,
+        "sum_realized_pts": round(pts_sum, 1),
     }
 
 

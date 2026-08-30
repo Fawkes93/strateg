@@ -143,6 +143,7 @@
       $("tab-sweep").classList.toggle("hidden", tab !== "sweep");
       if ($("tab-session")) $("tab-session").classList.toggle("hidden", tab !== "session");
       if ($("tab-spikefade")) $("tab-spikefade").classList.toggle("hidden", tab !== "spikefade");
+      if ($("tab-micro")) $("tab-micro").classList.toggle("hidden", tab !== "micro");
       try {
         localStorage.setItem("strateg_tab", tab);
       } catch (e) {}
@@ -927,7 +928,7 @@
             "<table class=\"sw-top\"><thead><tr>" +
             "<th>rank</th><th>T</th><th>n</th><th>Clean %</th><th>Hit %</th>" +
             "<th>avg clean dur (min)</th><th>avg fav</th><th>avg adv</th>" +
-            "<th>armed %</th><th>BE/lock %</th><th>avg pts</th>" +
+            "<th>armed %</th><th>BE/lock %</th><th>avg pts</th><th>sum pts</th>" +
             "</tr></thead><tbody>";
           const topTs = pickThresholdRows(row, report);
           topTs.forEach((t, i) => {
@@ -955,11 +956,13 @@
               (t.stopped_manage_pct != null ? t.stopped_manage_pct + "%" : "—") +
               "</td><td>" +
               (t.avg_realized_pts != null ? t.avg_realized_pts : "—") +
+              "</td><td>" +
+              (t.sum_realized_pts != null ? t.sum_realized_pts : "—") +
               "</td></tr>";
           });
           if (!topTs.length) {
             html +=
-              "<tr><td colspan=\"11\" class=\"muted\">" +
+              "<tr><td colspan=\"12\" class=\"muted\">" +
               (reportFilterT
                 ? "no stats for T=" + reportFilterT
                 : "no T with clean% ≥ 50") +
@@ -1297,7 +1300,7 @@
     // restore last tab
     try {
       const tab = localStorage.getItem("strateg_tab");
-      if (tab === "sweep" || tab === "session" || tab === "spikefade") {
+      if (tab === "sweep" || tab === "session" || tab === "spikefade" || tab === "micro") {
         const btn = document.querySelector('.main-tab[data-tab="' + tab + '"]');
         if (btn) btn.click();
       }

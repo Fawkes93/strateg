@@ -136,6 +136,10 @@ def start_spike_fade_job(params: SpikeFadeJobParams) -> Dict[str, Any]:
             return {"ok": False, "error": "Sweep is running"}
         if is_session_running():
             return {"ok": False, "error": "Session clock is running"}
+        from backtest.micro_momentum_jobs import is_micro_running
+
+        if is_micro_running():
+            return {"ok": False, "error": "Micro burst is running"}
         _cancel.clear()
         _state.params = params
         _state.result = None

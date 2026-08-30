@@ -605,6 +605,37 @@
     return Number(v).toFixed(1) + "%";
   }
 
+  function fmtPts(v) {
+    if (v == null || v === "" || !isFinite(Number(v))) return "—";
+    return Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 });
+  }
+
+  function sumRealizedPts(s, detailRows, kind) {
+    if (s && s.sum_realized_pts != null && isFinite(Number(s.sum_realized_pts))) {
+      return Number(s.sum_realized_pts);
+    }
+    var rows = detailRows || [];
+    if (kind && kind !== "all") {
+      rows = rows.filter(function (a) {
+        return a.kind === kind;
+      });
+    }
+    var tot = 0;
+    var any = false;
+    rows.forEach(function (a) {
+      if (a.pending || a.realized_pts == null || a.realized_pts === "") return;
+      var v = Number(a.realized_pts);
+      if (!isFinite(v)) return;
+      tot += v;
+      any = true;
+    });
+    if (any) return Math.round(tot * 10) / 10;
+    if (s && s.avg_realized_pts != null && s.n) {
+      return Math.round(Number(s.avg_realized_pts) * Number(s.n) * 10) / 10;
+    }
+    return null;
+  }
+
   function slManageLabel(obj) {
     const mode = (obj && obj.sl_manage) || "off";
     if (mode === "be") return " · SL: ½T → BE";
@@ -722,11 +753,12 @@
           : clean != null
             ? "bad"
             : "";
+      const sumPts = sumRealizedPts(row, detailForT(result, String(Math.round(selectedT))), kind);
       card.innerHTML = `
         <div class="hero-label">${kindLabel(kind)} · T=${Math.round(selectedT)}</div>
         <div class="hero-value sm ${cls}">${fmtPct(clean)} <span class="hero-unit">clean</span></div>
         <div class="hero-sub">
-          hit ${fmtPct(row.hit_rate_pct)} · n=${row.n}
+          sum ${fmtPts(sumPts)} pts · hit ${fmtPct(row.hit_rate_pct)} · n=${row.n}
           · clean ${row.cleans != null ? row.cleans : "—"} / hit ${row.hits != null ? row.hits : "—"}
         </div>`;
       grid.appendChild(card);
@@ -781,7 +813,7 @@
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${kindLabel(kind)}</td>
-          <td colspan="10" class="muted">no alerts</td>`;
+          <td colspan="12" class="muted">no alerts</td>`;
         tb.appendChild(tr);
         return;
       }
@@ -807,7 +839,8 @@
           <td>${s.avg_max_adv != null ? s.avg_max_adv : "—"}</td>
           <td>${fmtPct(s.manage_armed_pct)}</td>
           <td>${fmtPct(s.stopped_manage_pct)}</td>
-          <td>${s.avg_realized_pts != null ? s.avg_realized_pts : "—"}</td>`;
+          <td>${s.avg_realized_pts != null ? s.avg_realized_pts : "—"}</td>
+          <td>${fmtPts(sumRealizedPts(s, detailForT(result, k), kind))}</td>`;
         tb.appendChild(tr);
       });
     });

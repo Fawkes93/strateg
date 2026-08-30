@@ -38,6 +38,12 @@ from backtest.spike_fade_jobs import (
     start_spike_fade_job,
     stop_spike_fade,
 )
+from backtest.micro_momentum_jobs import (
+    MicroJobParams,
+    get_micro_state,
+    start_micro_job,
+    stop_micro,
+)
 from backtest.overnight_jobs import (
     OvernightJobParams,
     get_overnight_state,
@@ -296,6 +302,77 @@ def spike_fade_run(body: SpikeFadeRunRequest):
 @app.post("/api/spike-fade/stop")
 def spike_fade_stop():
     out = stop_spike_fade()
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "not running")
+    return out
+
+
+class MicroRunRequest(BaseModel):
+    symbol: str = "XAUUSD"
+    date_from: str = "2026-03-02"
+    date_to: str = "2026-03-09"
+    window_sec: float = 4.0
+    min_burst_pts: float = 100.0
+    max_burst_pts: float = 400.0
+    persist_frac: float = 0.35
+    use_1m: bool = True
+    min_1m_body: float = 40.0
+    tp_pts: float = 100.0
+    sl_pts: float = 80.0
+    trail_pts: float = 0.0
+    trail_arm_pts: float = 0.0
+    max_hold_sec: float = 45.0
+    cooldown_sec: float = 15.0
+    weekend_blackout_min: float = 10.0
+    lag_sec: float = 0.5
+    session: str = "all"
+    max_spread_pts: float = 50.0
+    workers: int = 2
+    force_download: bool = False
+
+
+@app.get("/api/micro-momentum")
+def micro_status(
+    rows: int = Query(0),
+    limit: int = Query(400),
+):
+    return get_micro_state(include_rows=bool(rows), row_limit=int(limit))
+
+
+@app.post("/api/micro-momentum/run")
+def micro_run(body: MicroRunRequest):
+    params = MicroJobParams(
+        symbol=body.symbol,
+        date_from=body.date_from,
+        date_to=body.date_to,
+        window_sec=float(body.window_sec),
+        min_burst_pts=float(body.min_burst_pts),
+        max_burst_pts=float(body.max_burst_pts),
+        persist_frac=float(body.persist_frac),
+        use_1m=bool(body.use_1m),
+        min_1m_body=float(body.min_1m_body),
+        tp_pts=float(body.tp_pts),
+        sl_pts=float(body.sl_pts),
+        trail_pts=float(body.trail_pts or 0.0),
+        trail_arm_pts=float(body.trail_arm_pts or 0.0),
+        max_hold_sec=float(body.max_hold_sec),
+        cooldown_sec=float(body.cooldown_sec),
+        weekend_blackout_min=float(body.weekend_blackout_min),
+        lag_sec=float(body.lag_sec or 0.0),
+        session=str(body.session or "all"),
+        max_spread_pts=float(body.max_spread_pts or 0.0),
+        workers=int(body.workers or 2),
+        force_download=bool(body.force_download),
+    )
+    out = start_micro_job(params)
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "busy")
+    return out
+
+
+@app.post("/api/micro-momentum/stop")
+def micro_stop():
+    out = stop_micro()
     if not out.get("ok"):
         raise HTTPException(status_code=409, detail=out.get("error") or "not running")
     return out
