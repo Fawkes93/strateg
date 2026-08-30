@@ -453,6 +453,20 @@
       out.push("candle_wick");
     return out;
   }
+
+  function syncEngineSections() {
+    let any = false;
+    document.querySelectorAll(".sig-block").forEach((el) => {
+      const cb = $(el.dataset.eng);
+      const on = !!(cb && cb.checked);
+      el.classList.toggle("hidden", !on);
+      if (on) any = true;
+    });
+    const empty = $("sig-empty");
+    const shared = $("sig-shared");
+    if (empty) empty.classList.toggle("hidden", any);
+    if (shared) shared.classList.toggle("hidden", !any);
+  }
   function multiThresholds(selected) {
     const t = Number(selected);
     const set = new Set(DEFAULT_THRESHOLDS);
@@ -968,7 +982,16 @@
 
   async function runJob() {
     const engines = selectedEngines();
+    if (!engines.length) {
+      alert("Tick at least one engine.");
+      return;
+    }
     const t = Number($("threshold").value);
+    if (!isFinite(t) || t <= 0) {
+      alert("Target T must be a positive number of points.");
+      $("threshold").focus();
+      return;
+    }
     const adversePct = Number($("adverse_pct").value);
     const body = {
       symbol: $("symbol").value,
@@ -1011,8 +1034,17 @@
   }
 
   $("btn-run").addEventListener("click", runJob);
-  $("threshold").addEventListener("change", () => {
-    if (lastResult) renderResults(lastResult, Number($("threshold").value));
+  ["eng_candle", "eng_spike", "eng_spike_neo", "eng_impulse_retrace", "eng_range_wick"].forEach(
+    (id) => {
+      const el = $(id);
+      if (el) el.addEventListener("change", syncEngineSections);
+    }
+  );
+  syncEngineSections();
+  ["change", "input"].forEach((ev) => {
+    $("threshold").addEventListener(ev, () => {
+      if (lastResult) renderResults(lastResult, Number($("threshold").value));
+    });
   });
   $("symbol").addEventListener("change", () => loadSignalDefaults());
   $("btn-reset-signals").addEventListener("click", () => loadSignalDefaults());

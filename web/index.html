@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Strateg — local forward research</title>
-  <link rel="stylesheet" href="/static/app.css?v=20260825d" />
+  <link rel="stylesheet" href="/static/app.css?v=20260830a" />
 </head>
 <body>
   <header class="top">
@@ -65,17 +65,8 @@
         </label>
         <label>
           Target T (pts)
-          <select id="threshold">
-            <option value="100">100</option>
-            <option value="200">200</option>
-            <option value="500" selected>500</option>
-            <option value="800">800</option>
-            <option value="1000">1000</option>
-            <option value="1200">1200</option>
-            <option value="1500">1500</option>
-            <option value="2000">2000</option>
-            <option value="3000">3000</option>
-          </select>
+          <input type="number" id="threshold" min="1" step="1" value="500"
+            title="Forward target in points. Type any T; the run scores this plus the standard set for the comparison table." />
         </label>
         <label>
           Opposite max (% of T)
@@ -97,30 +88,43 @@
 
       <div class="engines">
         <span class="label">Engines</span>
-        <label class="chk"><input type="checkbox" id="eng_candle" checked /> Range live</label>
-        <label class="chk"><input type="checkbox" id="eng_spike" checked /> Spike</label>
+        <label class="chk"><input type="checkbox" id="eng_candle" /> Range live</label>
+        <label class="chk"><input type="checkbox" id="eng_spike" /> Spike</label>
         <label class="chk"><input type="checkbox" id="eng_spike_neo" /> Spike Neo</label>
         <label class="chk"><input type="checkbox" id="eng_impulse_retrace" /> Impulse retrace</label>
         <label class="chk"><input type="checkbox" id="eng_range_wick" /> Range wick</label>
       </div>
 
       <details class="signal-panel" id="signal-panel" open>
-        <summary>Signal config (range · wick · spike · neo · impulse · filters)</summary>
+        <summary>Signal config</summary>
         <p class="hint" id="signal-hints"></p>
-        <h3 class="sig-h">Range live</h3>
-        <div class="grid" id="grid-range"></div>
-        <h3 class="sig-h">Range wick (legacy wick-latched)</h3>
-        <div class="grid" id="grid-range-wick"></div>
-        <h3 class="sig-h">Spike (1m)</h3>
-        <div class="grid" id="grid-spike"></div>
-        <h3 class="sig-h">Spike Neo (15m coil→expand)</h3>
-        <div class="grid" id="grid-spike-neo"></div>
-        <h3 class="sig-h">Impulse retrace (blast → 50%/75% pullback)</h3>
-        <div class="grid" id="grid-impulse"></div>
-        <h3 class="sig-h">Filters / session</h3>
-        <div class="grid" id="grid-filters"></div>
-        <div class="actions" style="margin-top:0.75rem">
-          <button type="button" id="btn-reset-signals" class="secondary">Reset to Reaktor defaults</button>
+        <p class="hint muted" id="sig-empty">Tick an engine above to show its params.</p>
+        <div class="sig-block hidden" data-eng="eng_candle">
+          <h3 class="sig-h">Range live</h3>
+          <div class="grid" id="grid-range"></div>
+        </div>
+        <div class="sig-block hidden" data-eng="eng_spike">
+          <h3 class="sig-h">Spike (1m)</h3>
+          <div class="grid" id="grid-spike"></div>
+        </div>
+        <div class="sig-block hidden" data-eng="eng_spike_neo">
+          <h3 class="sig-h">Spike Neo (15m coil→expand)</h3>
+          <div class="grid" id="grid-spike-neo"></div>
+        </div>
+        <div class="sig-block hidden" data-eng="eng_impulse_retrace">
+          <h3 class="sig-h">Impulse retrace (blast → 50%/75% pullback)</h3>
+          <div class="grid" id="grid-impulse"></div>
+        </div>
+        <div class="sig-block hidden" data-eng="eng_range_wick">
+          <h3 class="sig-h">Range wick (legacy wick-latched)</h3>
+          <div class="grid" id="grid-range-wick"></div>
+        </div>
+        <div class="sig-shared hidden" id="sig-shared">
+          <h3 class="sig-h">Filters / session</h3>
+          <div class="grid" id="grid-filters"></div>
+          <div class="actions" style="margin-top:0.75rem">
+            <button type="button" id="btn-reset-signals" class="secondary">Reset to Reaktor defaults</button>
+          </div>
         </div>
       </details>
 
@@ -711,7 +715,7 @@
     Research = alerts. Sweep = grid. Session clock = 7am Moldova. Spike fade = 1–3s fade.
   </footer>
 
-  <script src="/static/app.js?v=20260813b"></script>
+  <script src="/static/app.js?v=20260830b"></script>
   <script src="/static/sweep.js?v=20260813b"></script>
   <script src="/static/session.js?v=20260813b"></script>
   <script src="/static/spike_fade.js?v=20260814a"></script>

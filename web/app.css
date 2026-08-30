@@ -188,6 +188,11 @@ button.secondary:disabled {
   letter-spacing: 0.05em;
   color: var(--muted);
 }
+.sig-block.hidden,
+.sig-shared.hidden,
+#sig-empty.hidden {
+  display: none;
+}
 .field {
   display: flex;
   flex-direction: column;
