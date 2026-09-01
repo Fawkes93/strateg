@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Strateg — local forward research</title>
-  <link rel="stylesheet" href="/static/app.css?v=20260830c" />
+  <link rel="stylesheet" href="/static/app.css?v=20260901c" />
 </head>
 <body>
   <header class="top">
@@ -22,7 +22,9 @@
     <button type="button" class="main-tab" data-tab="sweep">Sweep (overnight)</button>
     <button type="button" class="main-tab" data-tab="session">Session clock</button>
     <button type="button" class="main-tab" data-tab="spikefade">Spike fade</button>
-    <button type="button" class="main-tab" data-tab="micro">Micro burst</button>
+    <button type="button" class="main-tab" data-tab="micro">Micro fade</button>
+    <button type="button" class="main-tab" data-tab="burst">Micro burst</button>
+    <button type="button" class="main-tab" data-tab="cooloff">Cool-off</button>
     <!-- Overnight break tab button is injected by overnight.js -->
   </nav>
 
@@ -134,7 +136,9 @@
         <strong>Clean</strong> = hit and reverse stayed ≤ opposite% × T until then.
         <strong>SL manage</strong> (Factor-style): when profit first reaches <em>½T</em>,
         move the stop to break-even or lock +N pts. The walk then stops if that SL is touched
-        (trade would have been closed). Avg pts = target / −init SL / 0 (BE) / +N (lock) / MTM on timeout.
+        (trade would have been closed).
+        Avg/sum pts = hard SL at opposite% × T: clean +T, anything that tagged the stop
+        −that SL (dirty hits that later reached T still lose), timeout with no SL = MTM.
       </p>
 
       <div class="actions">
@@ -157,6 +161,10 @@
     <section class="card" id="results-card">
       <div class="results-head">
         <h2>Results</h2>
+        <div class="saved-load">
+          <select id="rs-saved" title="Open a saved research run from results/"></select>
+          <button type="button" class="secondary" id="rs-load">Load</button>
+        </div>
         <button type="button" id="btn-pdf" class="secondary" disabled>Download PDF</button>
       </div>
       <p class="muted" id="results-meta">No run yet.</p>
@@ -221,6 +229,7 @@
         spike variant (shorter list cycles) — not a full product.
         Optional full grid = every range × every spike.
         Report: <strong>top 3 T by clean %</strong> per engine, by date range.
+        Avg/sum pts use a hard SL at opposite% × T — dirty hits (T after the stop) count as losses.
       </p>
 
       <div class="grid">
@@ -424,6 +433,10 @@
     <section class="card" id="sw-report-card">
       <div class="results-head">
         <h2>Sweep report</h2>
+        <div class="saved-load">
+          <select id="sw-saved" title="Open a saved sweep from results/"></select>
+          <button type="button" class="secondary" id="sw-load">Load</button>
+        </div>
         <button type="button" class="secondary" id="sw-pdf" disabled>Download PDF</button>
       </div>
       <p class="muted" id="sw-report-meta">No batch yet.</p>
@@ -523,7 +536,13 @@
     </section>
 
     <section class="card" id="sc-results-card">
-      <h2>Results</h2>
+      <div class="results-head">
+        <h2>Results</h2>
+        <div class="saved-load">
+          <select id="sc-saved" title="Open a saved session run from results/"></select>
+          <button type="button" class="secondary" id="sc-load">Load</button>
+        </div>
+      </div>
       <p class="muted" id="sc-meta">No run yet.</p>
       <div class="hero-grid" id="sc-hero"></div>
       <h3>Trades</h3>
@@ -683,8 +702,14 @@
       <div class="sf-lanes" id="sf-lanes" hidden></div>
     </section>
 
-    <section class="card">
-      <h2>Results</h2>
+    <section class="card" id="sf-results-card">
+      <div class="results-head">
+        <h2>Results</h2>
+        <div class="saved-load">
+          <select id="sf-saved" title="Open a saved spike-fade run from results/"></select>
+          <button type="button" class="secondary" id="sf-load">Load</button>
+        </div>
+      </div>
       <p class="muted" id="sf-meta">No run yet.</p>
       <div class="hero-grid" id="sf-hero"></div>
       <h3>Trades</h3>
@@ -711,18 +736,18 @@
     </section>
   </div>
 
-  <!-- ========== MICRO BURST TAB ========== -->
+  <!-- ========== MICRO FADE TAB ========== -->
   <div id="tab-micro" class="tab-panel hidden">
     <section class="card pipeline">
-      <h2>Ride a short one-way burst</h2>
+      <h2>Fade a stalled burst</h2>
       <ol>
-        <li>If mid moves <strong>min–max pts in a few seconds</strong> with little pullback, enter <em>with</em> that burst (not a fade).</li>
-        <li>Fill at <strong>ask (long) / bid (short)</strong> so spread is in the P/L. Optional forming 1m body must agree.</li>
-        <li>Fixed TP / SL in pts. Optional trail (0 = off). Flatten if still open after max hold. Skip weekend reopen.</li>
+        <li>Detect a <strong>100–300 pt</strong> one-way burst in a few seconds (little pullback).</li>
+        <li>If price makes <strong>no new extreme for the pause</strong> (0.5–2s), enter the <em>opposite</em> side (ask long / bid short).</li>
+        <li>Take <strong>25–50% of the burst</strong> at <strong>1:1 RR</strong>. Trail arms at ½R (stop to BE). Flatten after max hold.</li>
       </ol>
       <p class="hint">
-        1 pt = $0.01 on XAU. Default TP 100 pts = $1. Huge 1–3s spikes (≥ max burst) are left to Spike fade — they often snap back.
-        Mid-only fills would lie on a scalp this small.
+        1 pt = $0.01 on XAU. Default: all hours, pause 1s, TP = 50% of burst, SL = TP, trail frac 0.5.
+        Huge verticals (≥ max burst) stay with Spike fade. Quiet = Asia 22–07 UTC plus 20:00–23:00 Chisinau.
       </p>
     </section>
 
@@ -737,17 +762,20 @@
         </label>
         <label>
           From (UTC)
-          <input type="date" id="mm-from" value="2026-03-02" />
+          <input type="date" id="mm-from" value="2026-06-01" />
         </label>
         <label>
           To (exclusive)
-          <input type="date" id="mm-to" value="2026-03-09" />
+          <input type="date" id="mm-to" value="2026-08-31" />
         </label>
         <label>
           Session
-          <select id="mm-session" title="UTC hour windows. Asia wraps midnight (22:00–07:00).">
+          <select id="mm-session" title="Quiet = Asia overnight plus 8–11pm Chisinau. All day is the current research default.">
             <option value="all" selected>All day</option>
+            <option value="quiet">Quiet (Asia + 8–11pm Chisinau)</option>
             <option value="asia">Asia only (22–07 UTC)</option>
+            <option value="late_chisinau">8–11pm Chisinau</option>
+            <option value="asia_core">Asia core (00–05 UTC)</option>
             <option value="asia_london">Asia + London (22–16 UTC)</option>
             <option value="london_ny">London + NY (07–21 UTC)</option>
           </select>
@@ -762,58 +790,50 @@
         </label>
         <label>
           Max burst (pts)
-          <input type="number" id="mm-max" value="400" min="50" step="10"
-            title="Skip vertical spikes in Spike-fade territory." />
+          <input type="number" id="mm-max" value="300" min="50" step="10"
+            title="Skip Spike-fade sized verticals." />
         </label>
         <label>
           Persist (pullback / burst)
           <input type="number" id="mm-persist" value="0.35" min="0" max="1" step="0.05" />
         </label>
         <label>
-          1m body filter
-          <select id="mm-use-1m">
-            <option value="true" selected>On</option>
-            <option value="false">Off</option>
-          </select>
+          Pause (sec)
+          <input type="number" id="mm-pause" value="1" min="0.5" max="4" step="0.5"
+            title="No new extreme in the burst direction for this long, then fade." />
         </label>
         <label>
-          Min 1m body (pts)
-          <input type="number" id="mm-1m-body" value="40" min="0" step="10" />
+          Pause give-up (sec)
+          <input type="number" id="mm-giveup" value="8" min="2" max="30" step="1"
+            title="Abort the stall wait if the burst never pauses." />
         </label>
         <label>
-          TP (pts)
-          <input type="number" id="mm-tp" value="100" min="10" step="10" />
+          TP fraction of burst
+          <input type="number" id="mm-tpfrac" value="0.5" min="0.1" max="1" step="0.05"
+            title="0.25–0.50. TP pts = burst × this." />
         </label>
         <label>
-          SL (pts)
-          <input type="number" id="mm-sl" value="80" min="10" step="10" />
+          SL multiple of TP
+          <input type="number" id="mm-slmult" value="1" min="1" max="3" step="0.1"
+            title="1 = 1:1. 1.5 = SL is 1.5× TP." />
         </label>
         <label>
-          Trail (pts)
-          <input type="number" id="mm-trail" value="0" min="0" step="10"
-            title="Distance behind best price once armed. 0 = trail off." />
-        </label>
-        <label>
-          Trail arm (pts)
-          <input type="number" id="mm-arm" value="0" min="0" step="10"
-            title="Favorite pts before the trail turns on. 0 = same as Trail (arms at +trail, i.e. BE if trail equals that move)." />
+          Trail fraction of TP
+          <input type="number" id="mm-trailfrac" value="0.5" min="0" max="1" step="0.1"
+            title="0 = off. 0.5 = arm at +½R, trail distance ½ TP (BE at +½R)." />
         </label>
         <label>
           Max hold (sec)
-          <input type="number" id="mm-hold" value="45" min="5" step="5" />
+          <input type="number" id="mm-hold" value="20" min="5" step="5" />
         </label>
         <label>
           Cooldown (sec)
-          <input type="number" id="mm-cd" value="15" min="0" step="5" />
-        </label>
-        <label>
-          Fill lag (sec)
-          <input type="number" id="mm-lag" value="0.5" min="0" max="5" step="0.5" />
+          <input type="number" id="mm-cd" value="20" min="0" step="5" />
         </label>
         <label>
           Max spread (pts)
-          <input type="number" id="mm-spread" value="50" min="0" step="5"
-            title="Skip new entries if bid/ask is wider than this." />
+          <input type="number" id="mm-spread" value="40" min="0" step="5"
+            title="Skip if bid/ask is wider than this, or ≥ 40% of TP." />
         </label>
         <label>
           Weekend skip (min)
@@ -825,7 +845,7 @@
         </label>
       </div>
       <div class="actions">
-        <button type="button" class="primary" id="mm-run">Run micro burst</button>
+        <button type="button" class="primary" id="mm-run">Run micro fade</button>
         <button type="button" class="secondary" id="mm-stop" disabled>Stop</button>
         <label class="chk force">
           <input type="checkbox" id="mm-force" /> Force re-download
@@ -852,7 +872,13 @@
     </section>
 
     <section class="card" id="mm-results-card">
-      <h2>Results</h2>
+      <div class="results-head">
+        <h2>Results</h2>
+        <div class="saved-load">
+          <select id="mm-saved" title="Open a saved micro-fade run from results/"></select>
+          <button type="button" class="secondary" id="mm-load">Load</button>
+        </div>
+      </div>
       <p class="muted" id="mm-meta">No run yet.</p>
       <div class="hero-grid" id="mm-hero"></div>
       <h3>Trades</h3>
@@ -879,17 +905,348 @@
     </section>
   </div>
 
+  <!-- ========== MICRO BURST TAB ========== -->
+  <div id="tab-burst" class="tab-panel hidden">
+    <section class="card pipeline">
+      <h2>Join a mini wave</h2>
+      <ol>
+        <li>If mid runs <strong>min–max pts in 1–3 seconds</strong> with little pullback, enter <em>with</em> that burst.</li>
+        <li>Fill at <strong>ask (long) / bid (short)</strong>. Scalp a few pts of continuation.</li>
+        <li>Optional: move SL to <strong>break even as soon as price is in favor</strong>. Else hard SL / max hold.</li>
+      </ol>
+      <p class="hint">
+        1 pt = $0.01 on XAU. Default: 50–100 pts in 2s, TP 30 / SL 40, max spread 15.
+        TP/SL are measured from bid (long) / ask (short) so the spread does not instantly stop you out.
+        If spread ≥ TP or SL the trade is skipped — otherwise you get fake 5–10% win rates.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Parameters</h2>
+      <div class="grid">
+        <label>
+          Symbol
+          <select id="mb-symbol">
+            <option value="XAUUSD" selected>XAUUSD (gold)</option>
+          </select>
+        </label>
+        <label>
+          From (UTC)
+          <input type="date" id="mb-from" value="2026-06-01" />
+        </label>
+        <label>
+          To (exclusive)
+          <input type="date" id="mb-to" value="2026-08-31" />
+        </label>
+        <label>
+          Session
+          <select id="mb-session">
+            <option value="all" selected>All day</option>
+            <option value="quiet">Quiet (Asia + 8–11pm Chisinau)</option>
+            <option value="asia">Asia only (22–07 UTC)</option>
+            <option value="late_chisinau">8–11pm Chisinau</option>
+            <option value="london_ny">London + NY (07–21 UTC)</option>
+          </select>
+        </label>
+        <label>
+          Window (sec)
+          <input type="number" id="mb-window" value="2" min="1" max="3" step="0.5"
+            title="How long the mini wave is measured." />
+        </label>
+        <label>
+          Min burst (pts)
+          <input type="number" id="mb-min" value="50" min="10" step="10" />
+        </label>
+        <label>
+          Max burst (pts)
+          <input type="number" id="mb-max" value="100" min="20" step="10"
+            title="Skip larger bursts (Micro fade / Spike fade)." />
+        </label>
+        <label>
+          Persist (pullback / burst)
+          <input type="number" id="mb-persist" value="0.35" min="0" max="1" step="0.05" />
+        </label>
+        <label>
+          TP (pts)
+          <input type="number" id="mb-tp" value="30" min="5" step="5"
+            title="Continuation on the exit side of the book. Must be larger than spread." />
+        </label>
+        <label>
+          SL (pts)
+          <input type="number" id="mb-sl" value="40" min="5" step="5"
+            title="Must be larger than spread or the stop fires on the next tick." />
+        </label>
+        <label>
+          Max hold (sec)
+          <input type="number" id="mb-hold" value="15" min="3" step="1" />
+        </label>
+        <label>
+          Cooldown (sec)
+          <input type="number" id="mb-cd" value="10" min="0" step="5" />
+        </label>
+        <label>
+          Max spread (pts)
+          <input type="number" id="mb-spread" value="15" min="0" step="5"
+            title="Skip if spread ≥ min(TP, SL). Gold often prints 20–40 pts; a 20-pt scalp cannot survive that." />
+        </label>
+        <label>
+          Weekend skip (min)
+          <input type="number" id="mb-wknd" value="10" min="0" step="1" />
+        </label>
+        <label>
+          Workers
+          <input type="number" id="mb-workers" value="2" min="1" max="6" step="1" />
+        </label>
+        <label>
+          SL to BE after (pts)
+          <input type="number" id="mb-be-pts" value="1" min="0" step="1"
+            title="Move stop to entry once favorite pts reach this. Used when BE is on." />
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" class="primary" id="mb-run">Run micro burst</button>
+        <button type="button" class="secondary" id="mb-stop" disabled>Stop</button>
+        <label class="chk force">
+          <input type="checkbox" id="mb-be" checked /> SL to break even ASAP
+        </label>
+        <label class="chk force">
+          <input type="checkbox" id="mb-force" /> Force re-download
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="sf-progress-head">
+        <h2>Progress</h2>
+        <span class="sw-elapsed" id="mb-elapsed" title="Elapsed wall time">—</span>
+      </div>
+      <div class="sf-overall">
+        <div class="sf-overall-top">
+          <span class="sf-overall-label">All months</span>
+          <span class="sf-overall-pct" id="mb-overall-pct">0%</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar" id="mb-progress-bar" style="width:0%"></div>
+        </div>
+      </div>
+      <p class="progress-msg" id="mb-progress-msg">Idle</p>
+      <div class="sf-lanes" id="mb-lanes" hidden></div>
+    </section>
+
+    <section class="card" id="mb-results-card">
+      <div class="results-head">
+        <h2>Results</h2>
+        <div class="saved-load">
+          <select id="mb-saved" title="Open a saved micro-burst run from results/"></select>
+          <button type="button" class="secondary" id="mb-load">Load</button>
+        </div>
+      </div>
+      <p class="muted" id="mb-meta">No run yet.</p>
+      <div class="hero-grid" id="mb-hero"></div>
+      <h3>Trades</h3>
+      <div class="table-wrap">
+        <table id="mb-table">
+          <thead>
+            <tr>
+              <th class="mb-sort is-on" data-sort="time">Time (UTC) <span class="dir">▲</span></th>
+              <th>Side</th>
+              <th>Burst</th>
+              <th>Spread</th>
+              <th>TP</th>
+              <th>SL</th>
+              <th>Entry</th>
+              <th>Exit</th>
+              <th class="mb-sort" data-sort="dur">Dur (s) <span class="dir"></span></th>
+              <th class="mb-sort" data-sort="reason">Reason <span class="dir"></span></th>
+              <th>P/L pts</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- ========== TREND COOL-OFF TAB ========== -->
+  <div id="tab-cooloff" class="tab-panel hidden">
+    <section class="card pipeline">
+      <h2>Trend cool-off (15m)</h2>
+      <ol>
+        <li>Lock a directional run of at least <strong>5 × 15m</strong> candles (whichever way price just went).</li>
+        <li><strong>Reverse</strong> if price pulls back <strong>&gt; 30%</strong> of that run within <strong>2–3</strong> pause candles — enter opposite, on the tick that tags the level.</li>
+        <li><strong>Join</strong> if the pullback stays <strong>&lt; 30%</strong> over the last <strong>2–4</strong> bars and the forming candle reclaims the run’s <strong>higher high / lower low</strong> — enter with the trend immediately.</li>
+      </ol>
+      <p class="hint">
+        Mid fill. One trade at a time. Pause bar 1 is tracking only (a reclaim there is the run continuing, not a join).
+        Months scan in parallel like Spike fade.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Parameters</h2>
+      <div class="bias-toggle" id="co-invert-wrap">
+        <span class="bias-label">Fill</span>
+        <button type="button" class="bias-btn active" data-invert="0" id="co-side-nat">Natural</button>
+        <button type="button" class="bias-btn" data-invert="1" id="co-side-opp">Opposite</button>
+        <input type="hidden" id="co-invert" value="0" />
+      </div>
+      <p class="hint muted" id="co-invert-hint">
+        Natural = join with the run, reverse against a deep pullback. Opposite = flip every fill to test the other side.
+      </p>
+      <div class="grid">
+        <label>
+          Symbol
+          <select id="co-symbol">
+            <option value="XAUUSD" selected>XAUUSD (gold)</option>
+          </select>
+        </label>
+        <label>
+          From (UTC)
+          <input type="date" id="co-from" value="2026-06-01" />
+        </label>
+        <label>
+          To (exclusive)
+          <input type="date" id="co-to" value="2026-07-01" />
+        </label>
+        <label>
+          Min run bars
+          <input type="number" id="co-min-run" value="5" min="3" max="20" step="1" />
+        </label>
+        <label>
+          Run tolerance
+          <input type="number" id="co-tol" value="2" min="0" max="4" step="1"
+            title="Opposite-color bars allowed inside the run." />
+        </label>
+        <label>
+          Reverse at (% of run)
+          <input type="number" id="co-rev-pct" value="30" min="5" max="90" step="1" />
+        </label>
+        <label>
+          Reverse bars min
+          <input type="number" id="co-rev-min" value="2" min="1" max="8" step="1" />
+        </label>
+        <label>
+          Reverse bars max
+          <input type="number" id="co-rev-max" value="3" min="1" max="8" step="1" />
+        </label>
+        <label>
+          Join bars min
+          <input type="number" id="co-join-min" value="2" min="1" max="8" step="1" />
+        </label>
+        <label>
+          Join bars max
+          <input type="number" id="co-join-max" value="4" min="1" max="12" step="1" />
+        </label>
+        <label>
+          TP (pts)
+          <input type="number" id="co-tp" value="500" min="50" step="50" />
+        </label>
+        <label>
+          SL (pts)
+          <input type="number" id="co-sl" value="500" min="50" step="50" />
+        </label>
+        <label>
+          Trail (pts)
+          <input type="number" id="co-trail" value="0" min="0" step="50"
+            title="0 = off." />
+        </label>
+        <label>
+          Trail arm (pts)
+          <input type="number" id="co-arm" value="0" min="0" step="50"
+            title="Profit before trail turns on. 0 = same as Trail." />
+        </label>
+        <label>
+          Max hold (hours)
+          <input type="number" id="co-hold" value="4" min="0.5" max="24" step="0.5" />
+        </label>
+        <label>
+          Cooldown (min)
+          <input type="number" id="co-cd" value="0" min="0" step="5" />
+        </label>
+        <label>
+          Weekend skip (min)
+          <input type="number" id="co-wknd" value="10" min="0" step="1" />
+        </label>
+        <label>
+          Workers
+          <input type="number" id="co-workers" value="2" min="1" max="6" step="1" />
+        </label>
+      </div>
+      <div class="actions">
+        <button type="button" class="primary" id="co-run">Run cool-off</button>
+        <button type="button" class="secondary" id="co-stop" disabled>Stop</button>
+        <label class="chk force">
+          <input type="checkbox" id="co-force" /> Force re-download
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="sf-progress-head">
+        <h2>Progress</h2>
+        <span class="sw-elapsed" id="co-elapsed" title="Elapsed wall time">—</span>
+      </div>
+      <div class="sf-overall">
+        <div class="sf-overall-top">
+          <span class="sf-overall-label">All months</span>
+          <span class="sf-overall-pct" id="co-overall-pct">0%</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar" id="co-progress-bar" style="width:0%"></div>
+        </div>
+      </div>
+      <p class="progress-msg" id="co-progress-msg">Idle</p>
+      <div class="sf-lanes" id="co-lanes" hidden></div>
+    </section>
+
+    <section class="card" id="co-results-card">
+      <div class="results-head">
+        <h2>Results</h2>
+        <div class="saved-load">
+          <select id="co-saved" title="Open a saved cool-off run from results/"></select>
+          <button type="button" class="secondary" id="co-load">Load</button>
+        </div>
+      </div>
+      <p class="muted" id="co-meta">No run yet.</p>
+      <div class="hero-grid" id="co-hero"></div>
+      <h3>Trades</h3>
+      <div class="table-wrap">
+        <table id="co-table">
+          <thead>
+            <tr>
+              <th class="co-sort is-on" data-sort="time">Time (UTC) <span class="dir">▲</span></th>
+              <th>Kind</th>
+              <th>Side</th>
+              <th>Run</th>
+              <th>Bars</th>
+              <th>Retrace</th>
+              <th>Pause</th>
+              <th>Entry</th>
+              <th>Exit</th>
+              <th class="co-sort" data-sort="reason">Reason <span class="dir"></span></th>
+              <th>P/L pts</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
   <!-- Overnight break panel is injected by overnight.js -->
 
   <footer class="foot">
-    Research = alerts. Sweep = grid. Session clock = 7am Moldova. Spike fade = fade spikes. Micro burst = ride a few pts.
+    Research = alerts. Sweep = grid. Session clock = 7am Moldova. Spike fade = fade big spikes. Micro fade = stall then fade. Micro burst = join a 1–3s mini wave. Cool-off = 15m run, reverse or join.
   </footer>
 
-  <script src="/static/app.js?v=20260830f"></script>
-  <script src="/static/sweep.js?v=20260830g"></script>
-  <script src="/static/session.js?v=20260813b"></script>
-  <script src="/static/spike_fade.js?v=20260814a"></script>
-  <script src="/static/micro_momentum.js?v=20260830b"></script>
-  <script src="/static/overnight.js?v=20260830a"></script>
+  <script src="/static/saved.js?v=20260901a"></script>
+  <script src="/static/app.js?v=20260901d"></script>
+  <script src="/static/sweep.js?v=20260901c"></script>
+  <script src="/static/session.js?v=20260901a"></script>
+  <script src="/static/spike_fade.js?v=20260901a"></script>
+  <script src="/static/micro_momentum.js?v=20260901a"></script>
+  <script src="/static/micro_burst.js?v=20260901a"></script>
+  <script src="/static/overnight.js?v=20260902a"></script>
+  <script src="/static/cooloff.js?v=20260901c"></script>
 </body>
 </html>

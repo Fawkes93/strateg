@@ -215,6 +215,88 @@ def test_trail_off_does_not_trail():
     assert res["rows"][0]["exit_reason"] == "timeout"
 
 
+def test_spread_wider_than_sl_is_not_a_trade():
+    """Gold spread ~30 pts vs a 20-pt SL must not open (was instant SL, 5% WR)."""
+    t0 = datetime(2026, 3, 4, 10, 0, tzinfo=timezone.utc)
+    seq = [(0, 3300.0), (0.8, 3300.40), (1.6, 3300.80)]
+    seq.append((2.0, 3300.90))
+    seq.append((2.5, 3300.50))
+    res = run_micro_momentum(
+        ticks_mid(t0, seq, spread=0.30),
+        symbol="XAU/USD",
+        params=BurstParams(
+            window_sec=2,
+            min_burst_pts=50,
+            max_burst_pts=100,
+            use_1m=False,
+            lag_sec=0,
+            tp_pts=20,
+            sl_pts=20,
+            max_spread_pts=80,
+            session="all",
+        ),
+    )
+    assert res["trades"] == 0
+
+
+def test_spread_does_not_instant_stop():
+    t0 = datetime(2026, 3, 4, 10, 0, tzinfo=timezone.utc)
+    seq = [(0, 3300.0), (0.8, 3300.40), (1.6, 3300.80)]
+    # hold mid flat for a bit — must not SL from the spread alone
+    for i in range(1, 8):
+        seq.append((1.6 + i * 0.2, 3300.80))
+    seq.append((4.0, 3301.20))  # +40 mid → TP 20 on bid from entry bid
+    res = run_micro_momentum(
+        ticks_mid(t0, seq, spread=0.10),  # 10 pts < SL 20
+        symbol="XAU/USD",
+        params=BurstParams(
+            window_sec=2,
+            min_burst_pts=50,
+            max_burst_pts=100,
+            use_1m=False,
+            lag_sec=0,
+            tp_pts=20,
+            sl_pts=20,
+            max_hold_sec=15,
+            max_spread_pts=80,
+            session="all",
+        ),
+    )
+    assert res["trades"] == 1
+    t = res["rows"][0]
+    assert t["hold_sec"] is None or t["hold_sec"] >= 0.3
+    assert t["exit_reason"] != "sl" or t["hold_sec"] >= 0.3
+
+
+def test_be_asap_closes_at_entry():
+    t0 = datetime(2026, 3, 4, 10, 0, tzinfo=timezone.utc)
+    seq = [(0, 3300.0), (0.8, 3300.40), (1.6, 3300.80)]  # +80 in 1.6s
+    seq.append((2.2, 3300.90))  # in favor
+    seq.append((2.8, 3300.80))  # back to fill → BE
+    res = run_micro_momentum(
+        ticks_mid(t0, seq),
+        symbol="XAU/USD",
+        params=BurstParams(
+            window_sec=2,
+            min_burst_pts=50,
+            max_burst_pts=100,
+            use_1m=False,
+            lag_sec=0,
+            tp_pts=20,
+            sl_pts=30,
+            be_asap=True,
+            be_asap_pts=1,
+            max_hold_sec=15,
+            session="all",
+        ),
+    )
+    assert res["trades"] == 1
+    t = res["rows"][0]
+    assert t["side"] == "UP"
+    assert t["exit_reason"] == "be"
+    assert t["pts"] >= 0
+
+
 def test_hard_sl():
     t0 = datetime(2026, 3, 4, 10, 0, tzinfo=timezone.utc)
     seq = [(0, 3300.0), (1.0, 3300.60), (2.0, 3300.90), (3.0, 3301.20)]

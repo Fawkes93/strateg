@@ -18,6 +18,12 @@
 
   let pollTimer = null;
   let lastResult = null;
+  let savedPicker = {
+    isViewingSaved: function () {
+      return false;
+    },
+    clearViewing: function () {},
+  };
   let lastRenderedKey = null;
   let pendingFreshResults = false;
   let alertListFilter = "all"; // all | candle | spike | …
@@ -610,30 +616,93 @@
     return Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 });
   }
 
-  function sumRealizedPts(s, detailRows, kind) {
-    if (s && s.sum_realized_pts != null && isFinite(Number(s.sum_realized_pts))) {
-      return Number(s.sum_realized_pts);
+  function hardSlRealized(a, T, adverseMult, slManage) {
+    if (a.pending || a.realized_pts == null || a.realized_pts === "") return null;
+    var v = Number(a.realized_pts);
+    if (!isFinite(v)) return null;
+    var unmanaged = !slManage || slManage === "off";
+    // Dirty hit: price reached T after tagging the opposite stop. Count as −SL.
+    if (unmanaged && a.hit && !a.clean) {
+      var sl = Number(T) * Number(adverseMult || 1);
+      if (isFinite(sl) && sl > 0) return -sl;
     }
+    return v;
+  }
+
+  function sumRealizedPts(s, detailRows, kind, T, adverseMult, slManage) {
     var rows = detailRows || [];
     if (kind && kind !== "all") {
       rows = rows.filter(function (a) {
-        return a.kind === kind;
+        if (a.kind === kind) return true;
+        if (kind.indexOf("impulse_retrace_") === 0) {
+          var pct = Number(kind.split("_").pop());
+          var frac = a.retrace_fraction;
+          return frac != null && Math.round(Number(frac) * 100) === pct;
+        }
+        return false;
       });
     }
     var tot = 0;
     var any = false;
+    var n = 0;
     rows.forEach(function (a) {
-      if (a.pending || a.realized_pts == null || a.realized_pts === "") return;
-      var v = Number(a.realized_pts);
-      if (!isFinite(v)) return;
+      var v = hardSlRealized(a, T, adverseMult, slManage);
+      if (v == null) return;
       tot += v;
+      n += 1;
       any = true;
     });
-    if (any) return Math.round(tot * 10) / 10;
+    if (any) return { sum: Math.round(tot * 10) / 10, n: n };
+    if (s && s.realized_mode === "hard_sl" && s.sum_realized_pts != null) {
+      return { sum: Number(s.sum_realized_pts), n: s.n };
+    }
+    if (s && s.sum_realized_pts != null && isFinite(Number(s.sum_realized_pts))) {
+      return {
+        sum: hardSlCorrectSum(s, T, adverseMult),
+        n: s.n,
+      };
+    }
     if (s && s.avg_realized_pts != null && s.n) {
-      return Math.round(Number(s.avg_realized_pts) * Number(s.n) * 10) / 10;
+      return {
+        sum: Math.round(Number(s.avg_realized_pts) * Number(s.n) * 10) / 10,
+        n: s.n,
+      };
     }
     return null;
+  }
+
+  function hardSlCorrectSum(s, T, adverseMult) {
+    var sum = Number(s.sum_realized_pts);
+    if (!isFinite(sum)) return sum;
+    if (s.realized_mode === "hard_sl") return sum;
+    var n = Number(s.n) || 0;
+    var hits =
+      s.hits != null
+        ? Number(s.hits)
+        : Math.round((n * Number(s.hit_rate_pct || 0)) / 100);
+    var cleans =
+      s.cleans != null
+        ? Number(s.cleans)
+        : Math.round((n * Number(s.clean_rate_pct || 0)) / 100);
+    var dirty = Math.max(0, hits - cleans);
+    if (!dirty) return Math.round(sum * 10) / 10;
+    var t = Number(T);
+    var sl = t * Number(adverseMult || 1);
+    if (!isFinite(t) || !isFinite(sl)) return Math.round(sum * 10) / 10;
+    return Math.round((sum - dirty * (t + sl)) * 10) / 10;
+  }
+
+  function fmtSumPts(agg) {
+    if (agg == null || agg.sum == null || !isFinite(Number(agg.sum))) return "—";
+    return fmtPts(agg.sum);
+  }
+
+  function fmtAvgPts(agg, fallback) {
+    if (agg && agg.sum != null && agg.n) {
+      return (Math.round((Number(agg.sum) / Number(agg.n)) * 10) / 10).toFixed(1);
+    }
+    if (fallback != null && isFinite(Number(fallback))) return Number(fallback).toFixed(1);
+    return "—";
   }
 
   function slManageLabel(obj) {
@@ -753,12 +822,19 @@
           : clean != null
             ? "bad"
             : "";
-      const sumPts = sumRealizedPts(row, detailForT(result, String(Math.round(selectedT))), kind);
+      const sumPts = sumRealizedPts(
+        row,
+        detailForT(result, String(Math.round(selectedT))),
+        kind,
+        selectedT,
+        result.adverse_mult,
+        result.sl_manage
+      );
       card.innerHTML = `
         <div class="hero-label">${kindLabel(kind)} · T=${Math.round(selectedT)}</div>
         <div class="hero-value sm ${cls}">${fmtPct(clean)} <span class="hero-unit">clean</span></div>
         <div class="hero-sub">
-          sum ${fmtPts(sumPts)} pts · hit ${fmtPct(row.hit_rate_pct)} · n=${row.n}
+          sum ${fmtSumPts(sumPts)} pts · hit ${fmtPct(row.hit_rate_pct)} · n=${row.n}
           · clean ${row.cleans != null ? row.cleans : "—"} / hit ${row.hits != null ? row.hits : "—"}
         </div>`;
       grid.appendChild(card);
@@ -826,6 +902,14 @@
         if (dur == null) {
           dur = avgCleanDurMin(detailForT(result, k), kind);
         }
+        var ptsAgg = sumRealizedPts(
+          s,
+          detailForT(result, k),
+          kind,
+          Number(k),
+          result.adverse_mult,
+          result.sl_manage
+        );
         tr.innerHTML = `
           <td>${kindLabel(kind)}</td>
           <td>${k}</td>
@@ -839,8 +923,8 @@
           <td>${s.avg_max_adv != null ? s.avg_max_adv : "—"}</td>
           <td>${fmtPct(s.manage_armed_pct)}</td>
           <td>${fmtPct(s.stopped_manage_pct)}</td>
-          <td>${s.avg_realized_pts != null ? s.avg_realized_pts : "—"}</td>
-          <td>${fmtPts(sumRealizedPts(s, detailForT(result, k), kind))}</td>`;
+          <td>${fmtAvgPts(ptsAgg, s.avg_realized_pts)}</td>
+          <td>${fmtSumPts(ptsAgg)}</td>`;
         tb.appendChild(tr);
       });
     });
@@ -1028,6 +1112,12 @@
       const hitCell = pending ? "…" : a.hit ? "yes" : "no";
       const cleanCell = pending ? "…" : a.clean ? "yes" : "no";
       const dur = !pending && a.hit ? fmtDuration(a.first_hit_sec) : "—";
+      const pts = hardSlRealized(
+        a,
+        Number($("threshold") && $("threshold").value),
+        lastResult && lastResult.adverse_mult,
+        lastResult && lastResult.sl_manage
+      );
       tr.innerHTML = `
         <td>${(a.alert_ts || "").replace("T", " ").slice(0, 19)}</td>
         <td>${kindLabel(a.kind)}</td>
@@ -1039,7 +1129,7 @@
         <td title="${a.first_hit_sec != null ? (Number(a.first_hit_sec) / 60).toFixed(2) + " min to T" : pending ? "waiting for look-ahead" : "did not reach T"}">${dur}</td>
         <td>${pending || a.max_fav == null ? "—" : a.max_fav}</td>
         <td>${pending || a.max_adv_until_hit == null ? "—" : a.max_adv_until_hit}</td>
-        <td>${pending || a.realized_pts == null ? "—" : a.realized_pts}</td>`;
+        <td>${pts == null ? "—" : pts}</td>`;
       ta.appendChild(tr);
     });
   }
@@ -1118,7 +1208,8 @@
       ` · look-ahead ${result.hours}h · opp ≤ ${Math.round((result.adverse_mult || 1) * 100)}% T` +
       slManageLabel(result) +
       ` · selected T=${Math.round(selectedT)}` +
-      (result.partial ? " · live" : finished ? " · " + finished : "");
+      (result.partial ? " · live" : finished ? " · " + finished : "") +
+      ((window.StrategSaved && window.StrategSaved.loadedNote(result)) || "");
 
     renderConfigSummary(result);
     renderHero(result, selectedT);
@@ -1176,16 +1267,19 @@
       wasRunning = running;
 
       renderProgress(state);
-      if (state.result) {
-        const key = resultKey(state.result);
-        if (key !== lastRenderedKey) {
-          const isFinal = !state.result.partial;
-          const fresh = pendingFreshResults && isFinal;
-          if (isFinal) pendingFreshResults = false;
-          renderResults(state.result, Number($("threshold").value), { fresh: fresh });
+      const holdSaved = savedPicker.isViewingSaved();
+      if (!holdSaved) {
+        if (state.result) {
+          const key = resultKey(state.result);
+          if (key !== lastRenderedKey) {
+            const isFinal = !state.result.partial;
+            const fresh = pendingFreshResults && isFinal;
+            if (isFinal) pendingFreshResults = false;
+            renderResults(state.result, Number($("threshold").value), { fresh: fresh });
+          }
+        } else if (running && (lastResult || lastRenderedKey)) {
+          clearResults("Replay in progress — results update as alerts score.");
         }
-      } else if (running && (lastResult || lastRenderedKey)) {
-        clearResults("Replay in progress — results update as alerts score.");
       }
       if (!running && pollTimer) {
         clearInterval(pollTimer);
@@ -1225,6 +1319,7 @@
       signal: readSignalFromForm(),
     };
 
+    savedPicker.clearViewing();
     $("btn-run").disabled = true;
     $("progress-msg").textContent = "Starting job…";
     try {
@@ -1313,6 +1408,17 @@
     document.title = prev;
     document.body.classList.remove("print-results");
   });
+
+  if (window.StrategSaved) {
+    savedPicker = window.StrategSaved.bindPicker({
+      kind: "research",
+      selectId: "rs-saved",
+      buttonId: "rs-load",
+      onLoaded: function (json) {
+        renderResults(json, Number($("threshold").value), { fresh: true });
+      },
+    });
+  }
 
   (function initResearchForm() {
     const saved = loadSavedResearch();

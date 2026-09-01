@@ -31,6 +31,13 @@ from zoneinfo import ZoneInfo
 from backtest.candles import Candle, CandleBuilder, is_market_open, to_utc
 from backtest.config import point_size
 from backtest.dukascopy import Tick, reaktor_symbol
+from backtest.seasonality import (
+    against_bias,
+    bias_side,
+    month_regime,
+    normalize_seasonal_mode,
+    seasonal_label,
+)
 
 
 @dataclass
@@ -44,12 +51,14 @@ class OvernightParams:
     min_break_pts_above: float = 200.0
     min_break_pts_below: float = 200.0
     max_break_candles_after: int = 8  # how many closed 15m after Asia end still count as first break
-    require_close_outside: bool = True
+    require_close_outside: bool = True  # False = wick (high/low) can print the break
+    break_on_wick: bool = False  # True → same as require_close_outside False
     # Pullback / entry
     pullback_mode: str = "required"  # off | required | preferred
     ema_period: int = 21
     ema_tf_min: int = 15
     max_wait_candles: int = 8  # 15m candles after break
+    wait_from_break: bool = False  # True = count wait from the break bar, not leftover post_asia
     timeout_action: str = "skip"  # skip | market | worst  (only for preferred)
     use_higher_close: bool = True  # higher/lower close resume during wait
     resume_closes: int = 1  # consecutive directional closes required (1 = current)
@@ -73,6 +82,12 @@ class OvernightParams:
     flatten_hour: int = 18  # local hour hard flatten
     one_trade_per_day: bool = True
     side_filter: str = "both"  # both | long | short
+    # Month bias (Bucharest). off = ignore table. tag = stamp only.
+    # filter = skip Asia breaks that fight the month.
+    seasonal_mode: str = "off"  # off | tag | filter
+    # If the month has a bias and Asia never printed a valid break, enter with
+    # that bias instead of skipping no_break.
+    seasonal_join: bool = False
 
 
 def _normalize_params(params: OvernightParams) -> OvernightParams:
@@ -80,7 +95,33 @@ def _normalize_params(params: OvernightParams) -> OvernightParams:
     if params.pullback_mode == "ema":
         params.pullback_mode = "required"
         params.use_higher_close = False
+    if bool(params.break_on_wick):
+        params.require_close_outside = False
+    elif not params.require_close_outside:
+        params.break_on_wick = True
+    params.seasonal_mode = normalize_seasonal_mode(params.seasonal_mode)
+    params.seasonal_join = bool(params.seasonal_join)
     return params
+
+
+def _use_wick_break(params: OvernightParams) -> bool:
+    return bool(params.break_on_wick) or not bool(params.require_close_outside)
+
+
+def _break_pts_for(
+    side: str,
+    candle: Candle,
+    asia_high: float,
+    asia_low: float,
+    ps: float,
+    *,
+    wick: bool,
+) -> float:
+    if side == "UP":
+        px = candle.high if wick else candle.close
+        return (px - asia_high) / ps
+    px = candle.low if wick else candle.close
+    return (asia_low - px) / ps
 
 
 def _resume_enabled(params: OvernightParams) -> bool:
@@ -180,6 +221,8 @@ class OvernightTrade:
     close_vs_prev_pts: Optional[float] = None
     same_bar_ema: bool = False
     decision: str = ""
+    seasonal_regime: Optional[str] = None
+    seasonal_label: Optional[str] = None
 
 
 @dataclass
@@ -205,6 +248,8 @@ class OvernightSkip:
     break_pts: Optional[float] = None
     decision: Optional[str] = None
     detail: Optional[str] = None
+    seasonal_regime: Optional[str] = None
+    seasonal_label: Optional[str] = None
 
 
 def _local(ts: datetime, tz: ZoneInfo) -> datetime:
@@ -255,6 +300,7 @@ def entry_label(reason: str) -> str:
         "break_close": "Break close",
         "timeout_market": "Timeout market",
         "timeout_worst": "Timeout worst",
+        "seasonal_join": "Seasonal join (inside box)",
     }.get(reason, reason or "—")
 
 
@@ -413,6 +459,8 @@ def _mk_skip(
     break_pts: Optional[float] = None,
     decision: Optional[str] = None,
     detail: Optional[str] = None,
+    seasonal_regime: Optional[str] = None,
+    seasonal_label: Optional[str] = None,
 ) -> OvernightSkip:
     return OvernightSkip(
         local_date=day.isoformat(),
@@ -436,6 +484,8 @@ def _mk_skip(
         break_pts=_round_or_none(break_pts, 1),
         decision=decision,
         detail=detail,
+        seasonal_regime=seasonal_regime,
+        seasonal_label=seasonal_label,
     )
 
 
@@ -710,9 +760,20 @@ def run_overnight(
         if params.one_trade_per_day and day in traded_days:
             continue
 
+        seasonal_mode = params.seasonal_mode
+        regime = month_regime(day) if seasonal_mode != "off" else "neutral"
+        regime_lbl = seasonal_label(regime, day) if seasonal_mode != "off" else None
+
         day_candles = by_day[day]
         if not day_candles:
-            skips.append(_mk_skip(day, "no_candles"))
+            skips.append(
+                _mk_skip(
+                    day,
+                    "no_candles",
+                    seasonal_regime=regime if seasonal_mode != "off" else None,
+                    seasonal_label=regime_lbl,
+                )
+            )
             continue
 
         # Asia window candles (open_time local hour in [start, end))
@@ -738,7 +799,13 @@ def run_overnight(
                 ]
         if len(asia_candles) < 2:
             skips.append(
-                _mk_skip(day, "thin_asia", detail=f"{len(asia_candles)} candles")
+                _mk_skip(
+                    day,
+                    "thin_asia",
+                    detail=f"{len(asia_candles)} candles",
+                    seasonal_regime=regime if seasonal_mode != "off" else None,
+                    seasonal_label=regime_lbl,
+                )
             )
             continue
 
@@ -753,6 +820,8 @@ def run_overnight(
                     asia_high=asia_high,
                     asia_low=asia_low,
                     asia_range_pts=asia_range_pts,
+                    seasonal_regime=regime if seasonal_mode != "off" else None,
+                    seasonal_label=regime_lbl,
                 )
             )
             continue
@@ -769,30 +838,29 @@ def run_overnight(
         break_candle: Optional[Candle] = None
         side: Optional[str] = None
 
+        wick_break = _use_wick_break(params)
         for c in post_asia:
             if not c.is_closed:
                 continue
-            up_break = c.close >= asia_high + params.min_break_pts_above * ps
-            dn_break = c.close <= asia_low - params.min_break_pts_below * ps
-            if params.require_close_outside:
-                if up_break:
-                    break_candle, side = c, "UP"
-                    break
-                if dn_break:
-                    break_candle, side = c, "DOWN"
-                    break
+            if wick_break:
+                up_break = c.high >= asia_high + params.min_break_pts_above * ps
+                dn_break = c.low <= asia_low - params.min_break_pts_below * ps
             else:
-                # wick-based (less strict)
-                if c.high >= asia_high + params.min_break_pts_above * ps:
-                    break_candle, side = c, "UP"
-                    break
-                if c.low <= asia_low - params.min_break_pts_below * ps:
-                    break_candle, side = c, "DOWN"
-                    break
+                up_break = c.close >= asia_high + params.min_break_pts_above * ps
+                dn_break = c.close <= asia_low - params.min_break_pts_below * ps
+            if up_break:
+                break_candle, side = c, "UP"
+                break
+            if dn_break:
+                break_candle, side = c, "DOWN"
+                break
 
         above_asia, below_asia = _asia_extensions(after_asia, asia_high, asia_low, ps)
 
         def skip_break(reason: str, **extra: Any) -> OvernightSkip:
+            if seasonal_mode != "off":
+                extra.setdefault("seasonal_regime", regime)
+                extra.setdefault("seasonal_label", regime_lbl)
             fav = adv = fav_px = adv_px = None
             bp = extra.get("break_pts")
             if break_candle is not None and side is not None:
@@ -809,10 +877,14 @@ def run_overnight(
                     max_hold_hours=params.max_hold_hours,
                 )
                 if bp is None:
-                    if side == "UP":
-                        bp = (break_candle.close - asia_high) / ps
-                    else:
-                        bp = (asia_low - break_candle.close) / ps
+                    bp = _break_pts_for(
+                        side,
+                        break_candle,
+                        asia_high,
+                        asia_low,
+                        ps,
+                        wick=wick_break,
+                    )
             if extra.get("decision") is None:
                 extra["decision"] = _skip_decision(
                     reason=reason,
@@ -851,18 +923,66 @@ def run_overnight(
                 **extra,
             )
 
+        seasonal_join = False
         if break_candle is None or side is None:
-            skips.append(
-                _mk_skip(
-                    day,
-                    "no_break",
-                    asia_high=asia_high,
-                    asia_low=asia_low,
-                    asia_range_pts=asia_range_pts,
-                    max_above_asia_pts=above_asia,
-                    max_below_asia_pts=below_asia,
-                )
+            join_side = (
+                bias_side(regime)
+                if bool(params.seasonal_join) and seasonal_mode != "off"
+                else None
             )
+            if join_side is None:
+                skips.append(
+                    _mk_skip(
+                        day,
+                        "no_break",
+                        asia_high=asia_high,
+                        asia_low=asia_low,
+                        asia_range_pts=asia_range_pts,
+                        max_above_asia_pts=above_asia,
+                        max_below_asia_pts=below_asia,
+                        seasonal_regime=regime if seasonal_mode != "off" else None,
+                        seasonal_label=regime_lbl,
+                    )
+                )
+                continue
+            if params.side_filter == "long" and join_side != "UP":
+                skips.append(
+                    _mk_skip(
+                        day,
+                        "side_filter",
+                        side=join_side,
+                        asia_high=asia_high,
+                        asia_low=asia_low,
+                        asia_range_pts=asia_range_pts,
+                        max_above_asia_pts=above_asia,
+                        max_below_asia_pts=below_asia,
+                        seasonal_regime=regime,
+                        seasonal_label=regime_lbl,
+                    )
+                )
+                continue
+            if params.side_filter == "short" and join_side != "DOWN":
+                skips.append(
+                    _mk_skip(
+                        day,
+                        "side_filter",
+                        side=join_side,
+                        asia_high=asia_high,
+                        asia_low=asia_low,
+                        asia_range_pts=asia_range_pts,
+                        max_above_asia_pts=above_asia,
+                        max_below_asia_pts=below_asia,
+                        seasonal_regime=regime,
+                        seasonal_label=regime_lbl,
+                    )
+                )
+                continue
+            side = join_side
+            break_candle = post_asia[-1] if post_asia else asia_candles[-1]
+            seasonal_join = True
+
+        if (not seasonal_join) and seasonal_mode == "filter" and against_bias(regime, side):
+            skips.append(skip_break("seasonal_bias"))
             continue
 
         if params.side_filter == "long" and side != "UP":
@@ -877,10 +997,18 @@ def run_overnight(
         entry_px: Optional[float] = None
         entry_reason = "break_close"
         entry_idx = find_tick_index(break_candle.close_time)
-        if side == "UP":
-            break_pts = (break_candle.close - asia_high) / ps
-        else:
-            break_pts = (asia_low - break_candle.close) / ps
+        break_pts = (
+            0.0
+            if seasonal_join
+            else _break_pts_for(
+                side,
+                break_candle,
+                asia_high,
+                asia_low,
+                ps,
+                wick=wick_break,
+            )
+        )
 
         wait_i: Optional[int] = 0
         wait_n: Optional[int] = None
@@ -892,7 +1020,16 @@ def run_overnight(
         best_resume_pts: Optional[float] = None
         waited = 0
 
-        if params.pullback_mode == "off":
+        if seasonal_join:
+            if entry_idx >= n:
+                skips.append(skip_break("no_entry_tick", break_pts=break_pts))
+                continue
+            entry_ts = ticks[entry_idx].ts
+            entry_px = _mid(ticks[entry_idx])
+            entry_reason = "seasonal_join"
+            wait_i = 0
+            wait_n = 0
+        elif params.pullback_mode == "off":
             # Enter at break candle close (or first tick after)
             if entry_idx >= n:
                 skips.append(skip_break("no_entry_tick", break_pts=break_pts))
@@ -903,11 +1040,19 @@ def run_overnight(
             wait_i = 0
             wait_n = 0
         else:
-            wait_candles = post_asia[
-                post_asia.index(break_candle) + 1 : post_asia.index(break_candle)
-                + 1
-                + params.max_wait_candles
+            wait_src = after_asia if params.wait_from_break else post_asia
+            try:
+                br_i = wait_src.index(break_candle)
+            except ValueError:
+                br_i = post_asia.index(break_candle)
+                wait_src = post_asia
+            wait_candles = wait_src[
+                br_i + 1 : br_i + 1 + params.max_wait_candles
             ]
+            if params.wait_from_break:
+                wait_candles = [
+                    c for c in wait_candles if _local(c.open_time, tz) < flatten_local
+                ]
             wait_n = len(wait_candles)
             found = False
             blocked_late_short = False
@@ -1075,6 +1220,8 @@ def run_overnight(
             use_higher_close=_resume_enabled(params),
             resume_closes=_resume_need(params),
         )
+        if regime_lbl:
+            decision = (decision + " · " if decision else "") + regime_lbl
 
         sl, tp, sl_pts, tp_pts = _compute_sl_tp(
             side, entry_px, asia_high, asia_low, params, ps
@@ -1159,6 +1306,8 @@ def run_overnight(
                 max_adv_pts=round(max_adv, 1),
                 max_fav_price=round(best_px, 5),
                 max_adv_price=round(worst_px, 5),
+                seasonal_regime=regime if seasonal_mode != "off" else None,
+                seasonal_label=regime_lbl,
             )
         )
         traded_days.add(day)

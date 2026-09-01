@@ -65,10 +65,12 @@ class OvernightJobParams:
     min_break_pts_above: float = 200.0
     min_break_pts_below: float = 200.0
     max_break_candles_after: int = 8
+    break_on_wick: bool = False
     # Pullback
     pullback_mode: str = "required"  # off | required | preferred
     ema_period: int = 21
     max_wait_candles: int = 8
+    wait_from_break: bool = False
     timeout_action: str = "skip"
     use_higher_close: bool = True
     resume_closes: int = 1
@@ -90,6 +92,8 @@ class OvernightJobParams:
     flatten_hour: int = 18
     one_trade_per_day: bool = True
     side_filter: str = "both"
+    seasonal_mode: str = "off"  # off | tag | filter
+    seasonal_join: bool = False
     workers: int = 3
     force_download: bool = False
 
@@ -125,6 +129,25 @@ def is_overnight_running() -> bool:
         return _state.running
 
 
+def load_saved(result: Dict[str, Any], *, name: str = "") -> Dict[str, Any]:
+    """Show a saved overnight-break JSON in the UI without re-running."""
+    with _lock:
+        if _state.running:
+            return {"ok": False, "error": "Overnight break is running — stop it first"}
+        _cancel.clear()
+        _state.result = result
+        _state.progress = OvernightJobProgress(
+            phase="done",
+            message=f"Loaded {name}" if name else "Loaded saved run",
+            pct=100.0,
+            ticks=int(result.get("ticks") or 0),
+            trades=int(result.get("trades") or 0),
+            finished_at=result.get("finished_at"),
+            lanes=[],
+        )
+    return {"ok": True}
+
+
 def _set_progress(**kwargs: Any) -> None:
     with _lock:
         for k, v in kwargs.items():
@@ -154,7 +177,11 @@ def start_overnight_job(params: OvernightJobParams) -> Dict[str, Any]:
         from backtest.micro_momentum_jobs import is_micro_running
 
         if is_micro_running():
-            return {"ok": False, "error": "Micro burst is running"}
+            return {"ok": False, "error": "Micro fade is running"}
+        from backtest.cooloff_jobs import is_cooloff_running
+
+        if is_cooloff_running():
+            return {"ok": False, "error": "Cool-off is running"}
         _cancel.clear()
         _state.params = params
         _state.result = None
@@ -555,9 +582,12 @@ def _run(params: OvernightJobParams) -> None:
             min_break_pts_above=float(params.min_break_pts_above),
             min_break_pts_below=float(params.min_break_pts_below),
             max_break_candles_after=int(params.max_break_candles_after),
+            break_on_wick=bool(params.break_on_wick),
+            require_close_outside=not bool(params.break_on_wick),
             pullback_mode=str(params.pullback_mode or "required"),
             ema_period=int(params.ema_period),
             max_wait_candles=int(params.max_wait_candles),
+            wait_from_break=bool(params.wait_from_break),
             timeout_action=str(params.timeout_action or "skip"),
             use_higher_close=bool(params.use_higher_close),
             resume_closes=max(1, int(params.resume_closes or 1)),
@@ -578,6 +608,8 @@ def _run(params: OvernightJobParams) -> None:
             flatten_hour=int(params.flatten_hour),
             one_trade_per_day=bool(params.one_trade_per_day),
             side_filter=str(params.side_filter or "both"),
+            seasonal_mode=str(params.seasonal_mode or "off"),
+            seasonal_join=bool(params.seasonal_join),
         )
         chunks = _month_chunks(params.date_from, params.date_to)
         if not chunks:

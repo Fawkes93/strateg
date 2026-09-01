@@ -357,6 +357,7 @@ def research_from_ticks(
 
         n_scored = _n_scored()
         result: Dict[str, Any] = {
+            "kind": "research",
             "symbol": sym,
             "duka_symbol": symbol_duka,
             "from": start.isoformat(),
@@ -535,8 +536,11 @@ def top_ts_by_clean(
                 "stopped_init_pct": s.get("stopped_init_pct"),
                 "stopped_manage_pct": s.get("stopped_manage_pct"),
                 "timeout_pct": s.get("timeout_pct"),
+                "hits": s.get("hits"),
+                "cleans": s.get("cleans"),
                 "avg_realized_pts": s.get("avg_realized_pts"),
                 "sum_realized_pts": s.get("sum_realized_pts"),
+                "realized_mode": s.get("realized_mode"),
             }
         )
     rows.sort(

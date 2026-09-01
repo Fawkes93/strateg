@@ -2,6 +2,12 @@
   const $ = (id) => document.getElementById(id);
   let pollTimer = null;
   let wasRunning = false;
+  let savedPicker = {
+    isViewingSaved: function () {
+      return false;
+    },
+    clearViewing: function () {},
+  };
 
   function heroItem(label, value) {
     return (
@@ -36,7 +42,8 @@
         (result.skipped || 0) +
         " skipped · avg " +
         (result.avg_pts != null ? result.avg_pts : "—") +
-        " pts";
+        " pts" +
+        ((window.StrategSaved && window.StrategSaved.loadedNote(result)) || "");
     }
     if (hero) {
       hero.innerHTML =
@@ -105,7 +112,7 @@
           p.message || (running ? "Running…" : "Idle");
       }
       if ($("sc-run")) $("sc-run").disabled = running;
-      if (st.result) render(st.result);
+      if (st.result && !savedPicker.isViewingSaved()) render(st.result);
       const badge = $("status-badge");
       if (badge && running) {
         badge.textContent = "session";
@@ -140,6 +147,7 @@
         flatten_hour: Number($("sc-flatten").value),
         force_download: $("sc-force") && $("sc-force").checked,
       };
+      savedPicker.clearViewing();
       $("sc-run").disabled = true;
       $("sc-progress-msg").textContent = "Starting…";
       try {
@@ -162,6 +170,17 @@
         alert(String(e));
         $("sc-run").disabled = false;
       }
+    });
+  }
+
+  if (window.StrategSaved) {
+    savedPicker = window.StrategSaved.bindPicker({
+      kind: "session_clock",
+      selectId: "sc-saved",
+      buttonId: "sc-load",
+      onLoaded: function (json) {
+        render(json);
+      },
     });
   }
 

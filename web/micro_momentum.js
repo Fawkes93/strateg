@@ -1,6 +1,6 @@
 (function () {
   const $ = (id) => document.getElementById(id);
-  const STORAGE_KEY = "strateg_micro_v1";
+  const STORAGE_KEY = "strateg_micro_fade_v1";
   let pollTimer = null;
   let elapsedTimer = null;
   let wasRunning = false;
@@ -11,6 +11,12 @@
   let sortDir = 1;
   let startedAt = null;
   let finishedAt = null;
+  let savedPicker = {
+    isViewingSaved: function () {
+      return false;
+    },
+    clearViewing: function () {},
+  };
 
   const FORM_IDS = [
     "mm-symbol",
@@ -21,15 +27,13 @@
     "mm-min",
     "mm-max",
     "mm-persist",
-    "mm-use-1m",
-    "mm-1m-body",
-    "mm-tp",
-    "mm-sl",
-    "mm-trail",
-    "mm-arm",
+    "mm-pause",
+    "mm-giveup",
+    "mm-tpfrac",
+    "mm-slmult",
+    "mm-trailfrac",
     "mm-hold",
     "mm-cd",
-    "mm-lag",
     "mm-spread",
     "mm-wknd",
     "mm-workers",
@@ -46,7 +50,7 @@
       });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
     } catch (e) {
-      console.warn("micro burst save failed", e);
+      console.warn("micro fade save failed", e);
     }
   }
 
@@ -67,7 +71,7 @@
         else el.value = cfg[id];
       });
     } catch (e) {
-      console.warn("micro burst load failed", e);
+      console.warn("micro fade load failed", e);
     }
   }
 
@@ -261,7 +265,8 @@
         " trades · avg " +
         (result.avg_pts != null ? result.avg_pts : "—") +
         " pts" +
-        (result.partial ? " · live" : "");
+        (result.partial ? " · live" : "") +
+        ((window.StrategSaved && window.StrategSaved.loadedNote(result)) || "");
     }
     if (hero) {
       hero.innerHTML =
@@ -398,9 +403,10 @@
       const st = await fetchState(!!runningHint || true);
       const p = st.progress || {};
       const running = !!st.running;
+      const mine = ((st.params || {}).mode || "") === "fade";
       const pct = Number(p.pct) || 0;
-      if ($("mm-progress-bar")) $("mm-progress-bar").style.width = pct + "%";
-      if ($("mm-overall-pct")) {
+      if (mine && $("mm-progress-bar")) $("mm-progress-bar").style.width = pct + "%";
+      if (mine && $("mm-overall-pct")) {
         const md = p.months_done;
         const mt = p.months_total;
         $("mm-overall-pct").textContent =
@@ -408,33 +414,37 @@
             ? pct.toFixed(0) + "% · " + (md || 0) + "/" + mt
             : pct.toFixed(0) + "%";
       }
-      if ($("mm-progress-msg")) {
+      if (mine && $("mm-progress-msg")) {
         let msg = p.message || (running ? "Running…" : "Idle");
         if (p.phase === "error") msg = "Error: " + (p.message || "failed");
         $("mm-progress-msg").textContent = msg;
       }
-      renderLanes(st);
+      if (mine) renderLanes(st);
       if ($("mm-run")) $("mm-run").disabled = running;
       if ($("mm-stop")) {
-        $("mm-stop").disabled = !running;
+        $("mm-stop").disabled = !running || !mine;
         $("mm-stop").textContent = st.cancel_requested ? "Stopping…" : "Stop";
       }
-      if (p.started_at) startedAt = p.started_at;
-      if (p.finished_at) finishedAt = p.finished_at;
-      if (running) startElapsedTicker();
-      else stopElapsedTicker();
-      updateElapsedDisplay(running);
+      if (mine && p.started_at) startedAt = p.started_at;
+      if (mine && p.finished_at) finishedAt = p.finished_at;
+      if (mine && running) startElapsedTicker();
+      else if (!running) stopElapsedTicker();
+      if (mine) updateElapsedDisplay(running);
       const badge = $("status-badge");
       const finished = p.phase === "done" || p.phase === "cancelled";
-      if (badge && running) {
-        badge.textContent = st.cancel_requested ? "stopping" : "burst";
+      if (badge && running && mine) {
+        badge.textContent = st.cancel_requested ? "stopping" : "fade";
         badge.className = "badge run";
       }
-      if (st.result) {
+      if (
+        st.result &&
+        st.result.kind === "micro_fade" &&
+        !savedPicker.isViewingSaved()
+      ) {
         const key = resultKey(st.result);
         if (key !== lastResultKey) render(st.result);
       }
-      if (wasRunning && !running && finished && badge) {
+      if (wasRunning && !running && finished && mine && badge) {
         badge.textContent = p.phase === "cancelled" ? "stopped" : "done";
         badge.className = "badge done";
       }
@@ -467,21 +477,24 @@
         min_burst_pts: Number($("mm-min").value),
         max_burst_pts: Number($("mm-max").value),
         persist_frac: Number($("mm-persist").value),
-        use_1m: $("mm-use-1m").value === "true",
-        min_1m_body: Number($("mm-1m-body").value),
-        tp_pts: Number($("mm-tp").value),
-        sl_pts: Number($("mm-sl").value),
-        trail_pts: Number($("mm-trail") && $("mm-trail").value) || 0,
-        trail_arm_pts: Number($("mm-arm") && $("mm-arm").value) || 0,
+        pause_sec: Number($("mm-pause").value),
+        pause_give_up_sec: Number($("mm-giveup").value),
+        tp_frac: Number($("mm-tpfrac").value),
+        sl_mult: Number($("mm-slmult").value) || 1,
+        trail_frac: Number($("mm-trailfrac").value) || 0,
         max_hold_sec: Number($("mm-hold").value),
         cooldown_sec: Number($("mm-cd").value),
-        lag_sec: Number($("mm-lag").value),
         max_spread_pts: Number($("mm-spread").value),
         weekend_blackout_min: Number($("mm-wknd").value),
         workers: Number($("mm-workers").value) || 2,
         force_download: $("mm-force") && $("mm-force").checked,
+        mode: "fade",
+        rr_one_to_one: true,
+        use_1m: false,
+        lag_sec: 0,
       };
       saveForm();
+      savedPicker.clearViewing();
       $("mm-run").disabled = true;
       if ($("mm-stop")) $("mm-stop").disabled = false;
       startedAt = new Date().toISOString();
@@ -541,6 +554,17 @@
         $("mm-stop").disabled = false;
         $("mm-stop").textContent = "Stop";
       }
+    });
+  }
+
+  if (window.StrategSaved) {
+    savedPicker = window.StrategSaved.bindPicker({
+      kind: "micro_fade",
+      selectId: "mm-saved",
+      buttonId: "mm-load",
+      onLoaded: function (json) {
+        render(json);
+      },
     });
   }
 

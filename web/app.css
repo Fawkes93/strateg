@@ -115,6 +115,42 @@ input:focus, select:focus {
 }
 .chk input { width: auto; }
 
+.bias-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 0 0.35rem;
+}
+.bias-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.bias-btn {
+  font: inherit;
+  min-width: 4.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+}
+.bias-btn.active[data-invert="0"],
+.bias-btn.active[data-bias="UP"] {
+  color: var(--good);
+  border-color: #1e4a35;
+  background: #14261d;
+}
+.bias-btn.active[data-invert="1"],
+.bias-btn.active[data-bias="DOWN"] {
+  color: var(--bad);
+  border-color: #5a2a30;
+  background: #2a1518;
+}
+
 .hint {
   margin: 1rem 0 0;
   font-size: 0.88rem;
@@ -376,8 +412,25 @@ button.secondary:disabled {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 0.35rem;
+  flex-wrap: wrap;
 }
 .results-head h2 { margin: 0; }
+.saved-load {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 12rem;
+  justify-content: flex-end;
+}
+.saved-load select {
+  flex: 1;
+  max-width: 28rem;
+  min-width: 10rem;
+  font-size: 0.82rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
 #results-card.is-fresh {
   animation: results-fresh 0.9s ease;
 }

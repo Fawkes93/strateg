@@ -10,6 +10,12 @@
   let sortDir = 1;
   let startedAt = null;
   let finishedAt = null;
+  let savedPicker = {
+    isViewingSaved: function () {
+      return false;
+    },
+    clearViewing: function () {},
+  };
 
   const FORM_IDS = [
     "sf-symbol",
@@ -258,7 +264,8 @@
         (result.trades || 0) +
         " trades · avg " +
         (result.avg_pts != null ? result.avg_pts : "—") +
-        " pts";
+        " pts" +
+        ((window.StrategSaved && window.StrategSaved.loadedNote(result)) || "");
     }
     if (hero) {
       hero.innerHTML =
@@ -448,14 +455,17 @@
         badge.textContent = st.cancel_requested ? "stopping" : "fade";
         badge.className = "badge run";
       }
+      const holdSaved = savedPicker.isViewingSaved();
       if (wasRunning && !running && finished) {
         if (badge) {
           badge.textContent = p.phase === "cancelled" ? "stopped" : "done";
           badge.className = "badge done";
         }
-        const full = await fetchState(true);
-        if (full.result) render(full.result);
-      } else if (!running && st.result && finished) {
+        if (!holdSaved) {
+          const full = await fetchState(true);
+          if (full.result) render(full.result);
+        }
+      } else if (!running && st.result && finished && !holdSaved) {
         if (!st.result.rows || !st.result.rows.length) {
           const full = await fetchState(true);
           if (full.result) render(full.result);
@@ -505,6 +515,7 @@
         force_download: $("sf-force") && $("sf-force").checked,
       };
       saveForm();
+      savedPicker.clearViewing();
       $("sf-run").disabled = true;
       if ($("sf-stop")) $("sf-stop").disabled = false;
       startedAt = new Date().toISOString();
@@ -560,6 +571,17 @@
         $("sf-stop").disabled = false;
         $("sf-stop").textContent = "Stop";
       }
+    });
+  }
+
+  if (window.StrategSaved) {
+    savedPicker = window.StrategSaved.bindPicker({
+      kind: "spike_fade",
+      selectId: "sf-saved",
+      buttonId: "sf-load",
+      onLoaded: function (json) {
+        render(json);
+      },
     });
   }
 

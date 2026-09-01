@@ -15,6 +15,47 @@
   let reportFilterEngine = "";
   let reportFilterT = ""; // string form of numeric T, e.g. "500"
   let reportFilterBound = false;
+  let savedPicker = {
+    isViewingSaved: function () {
+      return false;
+    },
+    clearViewing: function () {},
+  };
+
+  function hardSlSum(t, report) {
+    if (!t || t.sum_realized_pts == null) return null;
+    var sum = Number(t.sum_realized_pts);
+    if (!isFinite(sum)) return null;
+    if (t.realized_mode === "hard_sl") return sum;
+    var mode = (report && report.sl_manage) || "off";
+    if (mode && mode !== "off") return sum;
+    var n = Number(t.n) || 0;
+    var hits =
+      t.hits != null
+        ? Number(t.hits)
+        : Math.round((n * Number(t.hit_rate_pct || 0)) / 100);
+    var cleans =
+      t.cleans != null
+        ? Number(t.cleans)
+        : Math.round((n * Number(t.clean_rate_pct || 0)) / 100);
+    var dirty = Math.max(0, hits - cleans);
+    if (!dirty) return Math.round(sum * 10) / 10;
+    var T = Number(t.T);
+    var adv =
+      report && report.adverse_mult != null ? Number(report.adverse_mult) : 1;
+    var sl = T * adv;
+    if (!isFinite(T) || !isFinite(sl)) return Math.round(sum * 10) / 10;
+    return Math.round((sum - dirty * (T + sl)) * 10) / 10;
+  }
+
+  function hardSlAvg(t, report) {
+    var sum = hardSlSum(t, report);
+    var n = Number(t && t.n) || 0;
+    if (sum == null || !n) {
+      return t && t.avg_realized_pts != null ? t.avg_realized_pts : "—";
+    }
+    return Math.round((sum / n) * 10) / 10;
+  }
 
   function formatElapsed(ms) {
     if (ms == null || !isFinite(ms) || ms < 0) return "—";
@@ -144,6 +185,8 @@
       if ($("tab-session")) $("tab-session").classList.toggle("hidden", tab !== "session");
       if ($("tab-spikefade")) $("tab-spikefade").classList.toggle("hidden", tab !== "spikefade");
       if ($("tab-micro")) $("tab-micro").classList.toggle("hidden", tab !== "micro");
+      if ($("tab-burst")) $("tab-burst").classList.toggle("hidden", tab !== "burst");
+      if ($("tab-cooloff")) $("tab-cooloff").classList.toggle("hidden", tab !== "cooloff");
       try {
         localStorage.setItem("strateg_tab", tab);
       } catch (e) {}
@@ -660,7 +703,7 @@
       }
       wasRunning = running;
 
-      if (st.report) {
+      if (st.report && !savedPicker.isViewingSaved()) {
         lastReport = st.report;
         renderReport(st.report);
         $("sw-pdf").disabled = false;
@@ -883,6 +926,7 @@
       "h · top " +
       (report.top_n || 3) +
       " T by clean% (≥50%)" +
+      ((window.StrategSaved && window.StrategSaved.loadedNote(report)) || "") +
       (function () {
         const mode = report.sl_manage || "off";
         if (mode === "be") return " · SL ½T→BE";
@@ -955,9 +999,15 @@
               "</td><td>" +
               (t.stopped_manage_pct != null ? t.stopped_manage_pct + "%" : "—") +
               "</td><td>" +
-              (t.avg_realized_pts != null ? t.avg_realized_pts : "—") +
+              (function () {
+                var avg = hardSlAvg(t, report);
+                return avg == null ? "—" : avg;
+              })() +
               "</td><td>" +
-              (t.sum_realized_pts != null ? t.sum_realized_pts : "—") +
+              (function () {
+                var sum = hardSlSum(t, report);
+                return sum == null ? "—" : sum;
+              })() +
               "</td></tr>";
           });
           if (!topTs.length) {
@@ -1017,6 +1067,7 @@
       );
       return;
     }
+    savedPicker.clearViewing();
     $("sw-run").disabled = true;
     if ($("sw-stop")) $("sw-stop").disabled = false;
     $("sw-progress-msg").textContent = "Starting batch…";
@@ -1300,12 +1351,24 @@
     // restore last tab
     try {
       const tab = localStorage.getItem("strateg_tab");
-      if (tab === "sweep" || tab === "session" || tab === "spikefade" || tab === "micro") {
+      if (tab === "sweep" || tab === "session" || tab === "spikefade" || tab === "micro" || tab === "burst" || tab === "cooloff") {
         const btn = document.querySelector('.main-tab[data-tab="' + tab + '"]');
         if (btn) btn.click();
       }
     } catch (e) {}
 
+    if (window.StrategSaved) {
+      savedPicker = window.StrategSaved.bindPicker({
+        kind: "batch_sweep",
+        selectId: "sw-saved",
+        buttonId: "sw-load",
+        onLoaded: function (json) {
+          lastReport = json;
+          renderReport(json);
+          if ($("sw-pdf")) $("sw-pdf").disabled = false;
+        },
+      });
+    }
     updateRunCount();
     scheduleSave();
     pollBatch();

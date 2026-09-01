@@ -584,7 +584,11 @@ def start_batch(cfg: Dict[str, Any]) -> Dict[str, Any]:
         from backtest.micro_momentum_jobs import is_micro_running
 
         if is_micro_running():
-            return {"ok": False, "error": "Micro burst is running"}
+            return {"ok": False, "error": "Micro fade is running"}
+        from backtest.cooloff_jobs import is_cooloff_running
+
+        if is_cooloff_running():
+            return {"ok": False, "error": "Cool-off is running"}
         items = build_work_items(cfg)
         _cancel.clear()
         _state.running = True
@@ -1386,8 +1390,11 @@ def _compact_all_ts(stats_by_t: Dict[str, dict]) -> List[dict]:
                 "stopped_init_pct": s.get("stopped_init_pct"),
                 "stopped_manage_pct": s.get("stopped_manage_pct"),
                 "timeout_pct": s.get("timeout_pct"),
+                "hits": s.get("hits"),
+                "cleans": s.get("cleans"),
                 "avg_realized_pts": s.get("avg_realized_pts"),
                 "sum_realized_pts": s.get("sum_realized_pts"),
+                "realized_mode": s.get("realized_mode"),
             }
         )
     return rows

@@ -113,6 +113,25 @@ def is_spike_fade_running() -> bool:
         return _state.running
 
 
+def load_saved(result: Dict[str, Any], *, name: str = "") -> Dict[str, Any]:
+    """Show a saved spike-fade JSON in the UI without re-running."""
+    with _lock:
+        if _state.running:
+            return {"ok": False, "error": "Spike fade is running — stop it first"}
+        _cancel.clear()
+        _state.result = result
+        _state.progress = SpikeFadeProgress(
+            phase="done",
+            message=f"Loaded {name}" if name else "Loaded saved run",
+            pct=100.0,
+            ticks=int(result.get("ticks") or 0),
+            trades=int(result.get("trades") or 0),
+            finished_at=result.get("finished_at"),
+            lanes=[],
+        )
+    return {"ok": True}
+
+
 def _set_progress(**kwargs: Any) -> None:
     with _lock:
         for k, v in kwargs.items():
@@ -139,7 +158,11 @@ def start_spike_fade_job(params: SpikeFadeJobParams) -> Dict[str, Any]:
         from backtest.micro_momentum_jobs import is_micro_running
 
         if is_micro_running():
-            return {"ok": False, "error": "Micro burst is running"}
+            return {"ok": False, "error": "Micro fade is running"}
+        from backtest.cooloff_jobs import is_cooloff_running
+
+        if is_cooloff_running():
+            return {"ok": False, "error": "Cool-off is running"}
         _cancel.clear()
         _state.params = params
         _state.result = None

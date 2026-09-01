@@ -441,6 +441,38 @@ def test_legacy_ema_pullback_mode_aliases_resume_off():
     assert skips and skips[0]["reason"] == "no_pullback"
 
 
+def test_wick_break_when_close_is_still_inside():
+    """Min-break can use the wick: high/low vs Asia, even if the 15m closes back inside."""
+    start = datetime(2026, 3, 31, 21, 0, tzinfo=timezone.utc)
+    lookback_low = datetime(2026, 3, 31, 22, 30, tzinfo=timezone.utc)
+    asia_high_bar = datetime(2026, 4, 1, 1, 0, tzinfo=timezone.utc)
+    break_bar = datetime(2026, 4, 1, 4, 0, tzinfo=timezone.utc)
+    ticks = _ohlc_ticks(
+        start,
+        44,
+        overrides={
+            lookback_low: (3310.0, 3312.0, 3290.0, 3308.0),
+            asia_high_bar: (3310.0, 3320.0, 3308.0, 3315.0),
+            # wick +400 pts above Asia high 3320; close 3316 still inside
+            break_bar: (3315.0, 3324.0, 3314.0, 3316.0),
+        },
+    )
+    close_only = run_overnight(
+        ticks, symbol="XAU/USD", params=_apr1_params(require_close_outside=True)
+    )
+    assert close_only["trades"] == 0
+    assert any(s.get("reason") == "no_break" for s in close_only["skips"])
+
+    wick = run_overnight(
+        ticks, symbol="XAU/USD", params=_apr1_params(break_on_wick=True)
+    )
+    assert wick["trades"] == 1
+    row = wick["rows"][0]
+    assert row["side"] == "UP"
+    assert row["break_pts"] >= 200.0
+    assert round(row["break_pts"], 0) == 400.0
+
+
 def test_trail_arm_for_range_caps_asia_size():
     fixed = OvernightParams(trail_arm_mode="fixed", trail_arm_pts=400.0)
     assert trail_arm_for_range(fixed, 1500.0) == 400.0
@@ -657,6 +689,49 @@ def test_late_short_still_enters_on_large_asia():
     assert out["rows"][0]["asia_range_pts"] >= 3000.0
 
 
+def test_wait_from_break_not_clipped_by_max_break_window():
+    """Late break: default wait dies with leftover post_asia; wait_from_break still counts 3 bars."""
+    ticks = _utc_down_break_ticks(
+        (3300.0, 3302.0, 3299.0, 3301.0),
+        (3301.0, 3302.0, 3299.0, 3301.5),
+        (3301.5, 3302.0, 3294.0, 3295.0),
+    )
+    clipped = OvernightParams(
+        timezone="UTC",
+        pullback_mode="required",
+        use_higher_close=True,
+        ema_period=100,
+        min_asia_range_pts=300.0,
+        min_break_pts_below=200.0,
+        min_break_pts_above=200.0,
+        max_wait_candles=8,
+        max_break_candles_after=2,
+        wait_from_break=False,
+    )
+    from_break = OvernightParams(
+        timezone="UTC",
+        pullback_mode="required",
+        use_higher_close=True,
+        ema_period=100,
+        min_asia_range_pts=300.0,
+        min_break_pts_below=200.0,
+        min_break_pts_above=200.0,
+        max_wait_candles=8,
+        max_break_candles_after=2,
+        wait_from_break=True,
+    )
+    off = run_overnight(ticks, symbol="XAU/USD", params=clipped)
+    assert off["trades"] == 0
+    skips = [s for s in off["skips"] if s.get("side") == "DOWN"]
+    assert skips and skips[0]["reason"] == "no_pullback"
+
+    on = run_overnight(ticks, symbol="XAU/USD", params=from_break)
+    assert on["trades"] == 1
+    assert on["rows"][0]["side"] == "DOWN"
+    assert on["rows"][0]["wait_i"] == 3
+    assert on["rows"][0]["entry_reason"] == "lower_close"
+
+
 def test_late_short_off_enters_wait7():
     ticks = _wait7_ema_down_ticks(asia_high=3320.0)
     params = OvernightParams(
@@ -675,3 +750,142 @@ def test_late_short_off_enters_wait7():
     assert out["trades"] == 1
     assert out["rows"][0]["wait_i"] == 7
     assert out["rows"][0]["entry_reason"] == "ema_touch"
+
+
+def _season_day_ticks(start_utc, high_bar, low_bar, first_post, break_side=None):
+    overrides = {
+        high_bar: (3310.0, 3320.0, 3308.0, 3315.0),
+        low_bar: (3312.0, 3315.0, 3290.0, 3308.0),
+    }
+    if break_side == "UP":
+        overrides[first_post] = (3315.0, 3324.0, 3314.0, 3323.0)
+    elif break_side == "DOWN":
+        overrides[first_post] = (3310.0, 3311.0, 3287.0, 3288.0)
+    return _ohlc_ticks(start_utc, 48, overrides=overrides)
+
+
+def _season_params(**kwargs):
+    base = dict(
+        timezone="Europe/Bucharest",
+        pullback_mode="off",
+        min_asia_range_pts=300.0,
+        min_break_pts_above=200.0,
+        min_break_pts_below=200.0,
+        max_break_candles_after=8,
+        seasonal_mode="filter",
+        seasonal_join=False,
+    )
+    base.update(kwargs)
+    return OvernightParams(**base)
+
+
+def test_january_up_break_passes_filter():
+    ticks = _season_day_ticks(
+        datetime(2025, 1, 5, 22, 0, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 2, 0, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 3, 30, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 5, 0, tzinfo=timezone.utc),
+        break_side="UP",
+    )
+    out = run_overnight(ticks, symbol="XAU/USD", params=_season_params())
+    rows = [r for r in out["rows"] if r["local_date"] == "2025-01-06"]
+    assert rows and rows[0]["side"] == "UP"
+    assert rows[0]["seasonal_regime"] == "strong"
+
+
+def test_january_down_break_skipped_by_filter():
+    ticks = _season_day_ticks(
+        datetime(2025, 1, 5, 22, 0, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 2, 0, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 3, 30, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 5, 0, tzinfo=timezone.utc),
+        break_side="DOWN",
+    )
+    out = run_overnight(ticks, symbol="XAU/USD", params=_season_params())
+    assert not [r for r in out["rows"] if r["local_date"] == "2025-01-06"]
+    skips = [s for s in out["skips"] if s["local_date"] == "2025-01-06"]
+    assert skips and skips[0]["reason"] == "seasonal_bias"
+    assert skips[0]["side"] == "DOWN"
+
+
+def test_january_no_break_join_goes_long():
+    ticks = _season_day_ticks(
+        datetime(2025, 1, 5, 22, 0, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 2, 0, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 3, 30, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 5, 0, tzinfo=timezone.utc),
+        break_side=None,
+    )
+    joined = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_season_params(seasonal_join=True),
+    )
+    rows = [r for r in joined["rows"] if r["local_date"] == "2025-01-06"]
+    assert rows and rows[0]["side"] == "UP"
+    assert rows[0]["entry_reason"] == "seasonal_join"
+
+    skipped = run_overnight(ticks, symbol="XAU/USD", params=_season_params())
+    skips = [s for s in skipped["skips"] if s["local_date"] == "2025-01-06"]
+    assert skips and skips[0]["reason"] == "no_break"
+
+
+def test_april_down_break_neutral_still_trades():
+    start = datetime(2026, 3, 31, 21, 0, tzinfo=timezone.utc)
+    utc_midnight = datetime(2026, 4, 1, 0, 0, tzinfo=timezone.utc)
+    lookback_low = datetime(2026, 3, 31, 22, 30, tzinfo=timezone.utc)
+    trunc_low = datetime(2026, 4, 1, 2, 30, tzinfo=timezone.utc)
+    asia_high_bar = datetime(2026, 4, 1, 1, 0, tzinfo=timezone.utc)
+    break_bar = datetime(2026, 4, 1, 4, 0, tzinfo=timezone.utc)
+    full = _ohlc_ticks(
+        start,
+        44,
+        overrides={
+            lookback_low: (3310.0, 3312.0, 3290.0, 3308.0),
+            asia_high_bar: (3310.0, 3320.0, 3308.0, 3315.0),
+            trunc_low: (3312.0, 3315.0, 3305.0, 3308.0),
+            break_bar: (3310.0, 3311.0, 3299.0, 3300.0),
+        },
+    )
+    truncated = full[next(i for i, t in enumerate(full) if t.ts >= utc_midnight) :]
+    out = run_overnight(
+        truncated,
+        symbol="XAU/USD",
+        params=_apr1_params(seasonal_mode="filter"),
+    )
+    assert out["trades"] == 1
+    assert out["rows"][0]["side"] == "DOWN"
+    assert out["rows"][0]["local_date"] == "2026-04-01"
+
+
+def test_may_up_break_skipped_by_filter():
+    ticks = _season_day_ticks(
+        datetime(2025, 5, 5, 21, 0, tzinfo=timezone.utc),
+        datetime(2025, 5, 6, 1, 0, tzinfo=timezone.utc),
+        datetime(2025, 5, 6, 2, 30, tzinfo=timezone.utc),
+        datetime(2025, 5, 6, 4, 0, tzinfo=timezone.utc),
+        break_side="UP",
+    )
+    out = run_overnight(ticks, symbol="XAU/USD", params=_season_params())
+    skips = [s for s in out["skips"] if s["local_date"] == "2025-05-06"]
+    assert skips and skips[0]["reason"] == "seasonal_bias"
+    assert skips[0]["side"] == "UP"
+
+
+def test_seasonal_mode_off_ignores_table():
+    ticks = _season_day_ticks(
+        datetime(2025, 1, 5, 22, 0, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 2, 0, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 3, 30, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 5, 0, tzinfo=timezone.utc),
+        break_side="DOWN",
+    )
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_season_params(seasonal_mode="off", seasonal_join=True),
+    )
+    rows = [r for r in out["rows"] if r["local_date"] == "2025-01-06"]
+    assert rows and rows[0]["side"] == "DOWN"
+    assert rows[0].get("seasonal_regime") in (None, "neutral")
+    assert rows[0]["entry_reason"] != "seasonal_join"

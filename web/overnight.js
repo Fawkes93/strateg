@@ -4,6 +4,12 @@
   let pollTimer = null;
   let wasRunning = false;
   let saveTimer = null;
+  let savedPicker = {
+    isViewingSaved: function () {
+      return false;
+    },
+    clearViewing: function () {},
+  };
 
   const FORM_IDS = [
     "ob-symbol",
@@ -14,16 +20,20 @@
     "ob-min-asia",
     "ob-break-up",
     "ob-break-dn",
+    "ob-break-wick",
     "ob-max-break-candles",
     "ob-pullback-mode",
     "ob-ema",
     "ob-max-wait",
+    "ob-wait-from-break",
     "ob-timeout",
     "ob-higher-close",
     "ob-resume-closes",
     "ob-late-short-wait",
     "ob-late-short-asia",
     "ob-side",
+    "ob-seasonal-mode",
+    "ob-seasonal-join",
     "ob-sl-mode",
     "ob-sl-fixed",
     "ob-sl-range-mult",
@@ -107,8 +117,20 @@
     const mode = $("ob-trail-arm-mode") && $("ob-trail-arm-mode").value;
     const fixed = $("ob-trail-arm");
     const cap = $("ob-trail-arm-cap");
-    if (fixed) fixed.disabled = mode === "asia";
-    if (cap) cap.disabled = mode !== "asia";
+    if (fixed) {
+      fixed.disabled = false;
+      fixed.title =
+        mode === "asia"
+          ? "Ignored when Trail arm mode is Asia range (arm = Asia range, capped)."
+          : "Profit (pts) before the trail turns on. 0 = off.";
+    }
+    if (cap) {
+      cap.disabled = false;
+      cap.title =
+        mode === "asia"
+          ? "Max trail-arm when using Asia range. 0 = no cap."
+          : "Cap is used when Trail arm mode is Asia range. 0 = no cap. Always editable so you can set it before switching mode.";
+    }
   }
 
   // ----- inject tab button + panel if missing (keeps index.html unchanged) -----
@@ -133,12 +155,14 @@
       <h2>Asia range breakout (Bucharest)</h2>
       <ol>
         <li>Lock the Asia high/low in <strong>Europe/Bucharest</strong> (default 00:00–07:00).</li>
-        <li>First completed 15m close outside the range by min break pts = break signal.</li>
-        <li>Entry = first of: <em>EMA touch</em> or <em>higher/lower close resume</em> during the wait window (resume closes = consecutive directional closes; uncheck resume for EMA-only; break close if pullback = off).</li>
+        <li>First completed 15m bar that clears Asia by min break pts = break signal (close only, or wick if the toggle is on).</li>
+        <li>Entry = first of: <em>EMA touch</em> or <em>higher/lower close resume</em> during the wait window (resume closes = consecutive directional closes; uncheck resume for EMA-only; break close if pullback = off). <em>Wait from break</em> counts max wait from the break bar instead of leftover Asia-break bars.</li>
         <li>No partial TP. Trail arms after a profit threshold (fixed pts, or Asia range with a cap), then trails. Flatten at local hour.</li>
       </ol>
       <p class="hint">
         Mid fill. One trade per day by default. Skips days with no valid break / no pullback (required mode).
+        Seasonal month (optional): Jan/Aug long, May/Jun short. Filter skips the against-side break.
+        Join inside box takes that month’s side when price never left the Asia range.
       </p>
     </section>
 
@@ -169,6 +193,10 @@
         <label>Min break below (pts)
           <input type="number" id="ob-break-dn" value="200" min="0" step="50" />
         </label>
+        <label class="chk">Count wicks (not only close)
+          <input type="checkbox" id="ob-break-wick"
+            title="Off = 15m close must clear Asia by min break pts. On = a wick (high/low) of that size is enough even if the bar closes back inside." />
+        </label>
         <label>Max break candles after Asia
           <input type="number" id="ob-max-break-candles" value="8" min="1" max="20" />
         </label>
@@ -184,6 +212,10 @@
         </label>
         <label>Max wait candles
           <input type="number" id="ob-max-wait" value="8" min="1" max="20" />
+        </label>
+        <label class="chk">Wait from break
+          <input type="checkbox" id="ob-wait-from-break"
+            title="Off = wait only inside leftover max-break-after-Asia bars. On = count max wait candles from the actual break bar (not clipped by a late break)." />
         </label>
         <label>Timeout action (preferred)
           <select id="ob-timeout">
@@ -212,6 +244,18 @@
             <option value="long">long only</option>
             <option value="short">short only</option>
           </select>
+        </label>
+        <label>Seasonal month
+          <select id="ob-seasonal-mode"
+            title="Bucharest month: Jan/Aug long bias, May/Jun short. Off = ignore. Tag = stamp only. Filter = skip the against-side Asia break.">
+            <option value="off" selected>off</option>
+            <option value="tag">tag only</option>
+            <option value="filter">filter against-side</option>
+          </select>
+        </label>
+        <label class="chk">Join inside box
+          <input type="checkbox" id="ob-seasonal-join"
+            title="If the month has a bias and Asia never printed a valid break, enter with that bias instead of skipping no_break." />
         </label>
         <label>SL mode
           <select id="ob-sl-mode">
@@ -252,7 +296,8 @@
           <input type="number" id="ob-trail-arm" value="400" min="0" step="50" />
         </label>
         <label>Trail arm cap (pts)
-          <input type="number" id="ob-trail-arm-cap" value="2000" min="0" step="50" />
+          <input type="number" id="ob-trail-arm-cap" value="2000" min="0" step="50"
+            title="Max trail-arm when mode is Asia range. 0 = no cap." />
         </label>
         <label>Trail distance (pts)
           <input type="number" id="ob-trail" value="250" min="0" step="50" />
@@ -294,7 +339,13 @@
     </section>
 
     <section class="card" id="ob-results-card">
-      <h2>Results</h2>
+      <div class="results-head">
+        <h2>Results</h2>
+        <div class="saved-load">
+          <select id="ob-saved" title="Open a saved overnight-break run from results/"></select>
+          <button type="button" class="secondary" id="ob-load">Load</button>
+        </div>
+      </div>
       <p class="muted" id="ob-meta">No run yet.</p>
       <div class="hero-grid" id="ob-hero"></div>
       <p class="table-note" id="ob-skip-breakdown"></p>
@@ -409,7 +460,7 @@
         if (panel) panel.classList.toggle("hidden", tab !== "overnight");
         // when opening overnight, hide other known panels
         if (tab === "overnight") {
-          ["tab-research", "tab-sweep", "tab-session", "tab-spikefade", "tab-micro"].forEach((id) => {
+          ["tab-research", "tab-sweep", "tab-session", "tab-spikefade", "tab-micro", "tab-burst", "tab-cooloff"].forEach((id) => {
             const el = $(id);
             if (el) el.classList.add("hidden");
           });
@@ -444,6 +495,7 @@
     late_short: "Late short on small/medium Asia",
     no_entry: "No entry",
     past_flatten: "Past flatten hour",
+    seasonal_bias: "Seasonal month bias",
   };
 
   const ENTRY_LABELS = {
@@ -451,6 +503,7 @@
     higher_close: "Higher close resume",
     lower_close: "Lower close resume",
     break_close: "Break close",
+    seasonal_join: "Seasonal join (inside box)",
     timeout_market: "Timeout market",
     timeout_worst: "Timeout worst",
   };
@@ -697,7 +750,8 @@
         (result.skipped || 0) +
         " skipped · avg " +
         (result.avg_pts != null ? result.avg_pts : "—") +
-        " pts";
+        " pts" +
+        ((window.StrategSaved && window.StrategSaved.loadedNote(result)) || "");
     }
     if (hero) {
       hero.innerHTML =
@@ -906,7 +960,7 @@
         $("ob-stop").textContent = st.cancel_requested ? "Stopping…" : "Stop";
       }
       renderLanes(st);
-      if (st.result) render(st.result);
+      if (st.result && !savedPicker.isViewingSaved()) render(st.result);
       const badge = $("status-badge");
       if (badge && running) {
         badge.textContent = "overnight";
@@ -965,10 +1019,12 @@
         min_asia_range_pts: Number($("ob-min-asia").value),
         min_break_pts_above: Number($("ob-break-up").value),
         min_break_pts_below: Number($("ob-break-dn").value),
+        break_on_wick: $("ob-break-wick") && $("ob-break-wick").checked,
         max_break_candles_after: Number($("ob-max-break-candles").value),
         pullback_mode: $("ob-pullback-mode").value,
         ema_period: Number($("ob-ema").value),
         max_wait_candles: Number($("ob-max-wait").value),
+        wait_from_break: $("ob-wait-from-break") && $("ob-wait-from-break").checked,
         timeout_action: $("ob-timeout").value,
         use_higher_close: $("ob-higher-close") && $("ob-higher-close").checked,
         resume_closes: Math.max(1, Number($("ob-resume-closes") && $("ob-resume-closes").value) || 1),
@@ -989,10 +1045,13 @@
         flatten_hour: Number($("ob-flatten").value),
         one_trade_per_day: $("ob-one-per-day") && $("ob-one-per-day").checked,
         side_filter: $("ob-side").value,
+        seasonal_mode: ($("ob-seasonal-mode") && $("ob-seasonal-mode").value) || "off",
+        seasonal_join: $("ob-seasonal-join") && $("ob-seasonal-join").checked,
         workers: Math.max(1, Math.min(6, Number($("ob-workers") && $("ob-workers").value) || 3)),
         force_download: $("ob-force") && $("ob-force").checked,
       };
       saveForm();
+      savedPicker.clearViewing();
       $("ob-run").disabled = true;
       $("ob-progress-msg").textContent = "Starting…";
       try {
@@ -1034,5 +1093,15 @@
   wireTabs();
   wireRun();
   wireStop();
+  if (window.StrategSaved) {
+    savedPicker = window.StrategSaved.bindPicker({
+      kind: "overnight_break",
+      selectId: "ob-saved",
+      buttonId: "ob-load",
+      onLoaded: function (json) {
+        render(json);
+      },
+    });
+  }
   poll();
 })();

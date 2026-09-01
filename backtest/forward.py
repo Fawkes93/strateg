@@ -9,7 +9,12 @@ Optional Factor-style SL manage (`sl_manage`):
   When fav first reaches `sl_manage_at_frac` × T (default ½T), move the stop to
   break-even (`be`) or lock in `sl_manage_lock_pts` (default 100). After that the
   walk for that T stops if the managed stop is touched — the trade would have
-  been closed. Unmanaged (`off`) keeps the original path-analysis semantics.
+  been closed.
+
+Realized P&L (avg/sum pts) assumes a hard stop at adverse_mult × T:
+  clean hit → +T; tagged the opposite stop (including dirty hits that later
+  reached T) → −SL; timeout with no SL → mark-to-market. Hit % still answers
+  “did price reach T”; Clean % is the win rate with that stop.
 
 Hot path optimized: one tick walk per alert covers all T values.
 """
@@ -363,12 +368,13 @@ def walk_forward_multi(
             clean = h  # reached T without being stopped
         else:
             clean = h and (max_adv_until[k] <= adv_lims[k] + 1e-9)
-            if h:
+            if clean:
                 realized[k] = thr
             elif first_touch[k] == "adv":
-                # Unmanaged path-analysis: SL was touched but walk kept going.
-                # Realized-if-flattened-at-SL for expectancy comparison.
+                # Hard SL: flatten at opposite limit. Dirty hits (T after SL)
+                # are losses — the trade would already have been stopped.
                 realized[k] = -adv_lims[k]
+                exit_kind[k] = "init_sl"
             else:
                 realized[k] = last_cur_fav
                 exit_kind[k] = "timeout"
@@ -458,6 +464,8 @@ def summarize_forward(paths: Sequence[ForwardPath]) -> dict:
         "timeout_pct": pct(timeout_n, n),
         "avg_realized_pts": avg_real,
         "sum_realized_pts": round(pts_sum, 1),
+        # Stamp so UIs can tell new hard-SL sums from legacy dirty-as-+T files.
+        "realized_mode": "hard_sl",
     }
 
 

@@ -1,4 +1,4 @@
-"""Background job for the Micro burst tab (month-chunked, live summaries)."""
+"""Background job for the Micro fade tab (month-chunked, live summaries)."""
 
 from __future__ import annotations
 
@@ -65,6 +65,20 @@ class MicroJobParams:
     lag_sec: float = 0.5
     session: str = "all"
     max_spread_pts: float = 50.0
+    mode: str = "with"
+    confirm_pts: float = 0.0
+    confirm_timeout_sec: float = 3.0
+    pause_sec: float = 1.0
+    pause_give_up_sec: float = 8.0
+    tp_frac: float = 0.0
+    tp_cap_pts: float = 0.0
+    sl_extra_pts: float = 0.0
+    rr_one_to_one: bool = False
+    sl_mult: float = 1.0
+    trail_frac: float = 0.0
+    max_spread_vs_tp: float = 0.4
+    be_asap: bool = False
+    be_asap_pts: float = 1.0
     workers: int = 2
     force_download: bool = False
 
@@ -122,6 +136,25 @@ def is_micro_running() -> bool:
         return _state.running
 
 
+def load_saved(result: Dict[str, Any], *, name: str = "") -> Dict[str, Any]:
+    """Show a saved micro fade/burst JSON in the UI without re-running."""
+    with _lock:
+        if _state.running:
+            return {"ok": False, "error": "Micro fade is running — stop it first"}
+        _cancel.clear()
+        _state.result = result
+        _state.progress = MicroProgress(
+            phase="done",
+            message=f"Loaded {name}" if name else "Loaded saved run",
+            pct=100.0,
+            ticks=int(result.get("ticks") or 0),
+            trades=int(result.get("trades") or 0),
+            finished_at=result.get("finished_at"),
+            lanes=[],
+        )
+    return {"ok": True}
+
+
 def _set_progress(**kwargs: Any) -> None:
     result = kwargs.pop("result", None)
     with _lock:
@@ -150,6 +183,10 @@ def _busy_others() -> Optional[str]:
         return "Spike fade is running"
     if is_overnight_running():
         return "Overnight break is running"
+    from backtest.cooloff_jobs import is_cooloff_running
+
+    if is_cooloff_running():
+        return "Cool-off is running"
     return None
 
 
@@ -157,7 +194,7 @@ def start_micro_job(params: MicroJobParams) -> Dict[str, Any]:
     global _thread
     with _lock:
         if _state.running:
-            return {"ok": False, "error": "Micro burst is already running"}
+            return {"ok": False, "error": "Micro fade is already running"}
         err = _busy_others()
         if err:
             return {"ok": False, "error": err}
@@ -173,7 +210,7 @@ def start_micro_job(params: MicroJobParams) -> Dict[str, Any]:
         )
         _thread = threading.Thread(target=_run, args=(params,), daemon=True)
         _thread.start()
-    return {"ok": True, "message": "Micro burst started"}
+    return {"ok": True, "message": "Micro fade started"}
 
 
 def _force_kill_pool() -> int:
@@ -217,7 +254,7 @@ def _force_kill_pool() -> int:
 def stop_micro() -> Dict[str, Any]:
     with _lock:
         if not _state.running:
-            return {"ok": False, "error": "No micro burst running"}
+            return {"ok": False, "error": "No micro fade running"}
         _cancel.set()
         _set_progress(phase="cancelling", message="Stopping… killing workers")
     n = _force_kill_pool()
@@ -246,6 +283,20 @@ def _params_to_burst(params: MicroJobParams) -> BurstParams:
         lag_sec=float(params.lag_sec or 0.0),
         session=str(params.session or "all"),
         max_spread_pts=float(params.max_spread_pts or 0.0),
+        mode=str(params.mode or "with"),
+        confirm_pts=float(params.confirm_pts or 0.0),
+        confirm_timeout_sec=float(params.confirm_timeout_sec or 3.0),
+        pause_sec=float(params.pause_sec or 0.0),
+        pause_give_up_sec=float(params.pause_give_up_sec or 8.0),
+        tp_frac=float(params.tp_frac or 0.0),
+        tp_cap_pts=float(params.tp_cap_pts or 0.0),
+        sl_extra_pts=float(params.sl_extra_pts or 0.0),
+        rr_one_to_one=bool(params.rr_one_to_one),
+        sl_mult=float(params.sl_mult or 1.0),
+        trail_frac=float(params.trail_frac or 0.0),
+        max_spread_vs_tp=float(params.max_spread_vs_tp or 0.0),
+        be_asap=bool(params.be_asap),
+        be_asap_pts=float(params.be_asap_pts or 0.0),
     )
 
 

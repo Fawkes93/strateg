@@ -77,6 +77,23 @@ def is_job_running() -> bool:
         return _state.running
 
 
+def load_saved(result: Dict[str, Any], *, name: str = "") -> Dict[str, Any]:
+    """Show a saved research JSON in the UI without re-running."""
+    with _lock:
+        if _state.running:
+            return {"ok": False, "error": "Research job is running — wait until it finishes"}
+        _state.result = result
+        _state.progress = JobProgress(
+            phase="done",
+            message=f"Loaded {name}" if name else "Loaded saved run",
+            pct=100.0,
+            ticks=int(result.get("ticks") or 0),
+            alerts=int(result.get("alerts") or 0),
+            finished_at=result.get("finished_at"),
+        )
+    return {"ok": True}
+
+
 def _set_progress(**kwargs: Any) -> None:
     result = kwargs.pop("result", None)
     with _lock:
@@ -105,7 +122,11 @@ def start_job(params: JobParams) -> Dict[str, Any]:
         from backtest.micro_momentum_jobs import is_micro_running
 
         if is_micro_running():
-            return {"ok": False, "error": "Micro burst is running"}
+            return {"ok": False, "error": "Micro fade is running"}
+        from backtest.cooloff_jobs import is_cooloff_running
+
+        if is_cooloff_running():
+            return {"ok": False, "error": "Cool-off is running"}
         _state.params = params
         _state.result = None
         _state.running = True

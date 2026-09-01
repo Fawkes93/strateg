@@ -24,6 +24,12 @@ from backtest.batch import (
     stop_batch,
 )
 from backtest.runner import DEFAULT_RESULTS
+from backtest.saved_results import (
+    KNOWN_KINDS,
+    list_saved_results,
+    load_into_job,
+    read_saved_result,
+)
 from backtest.config import defaults_snapshot
 from backtest.dukascopy import reaktor_symbol
 from backtest.jobs import JobParams, get_state, start_job
@@ -49,6 +55,12 @@ from backtest.overnight_jobs import (
     get_overnight_state,
     start_overnight_job,
     stop_overnight,
+)
+from backtest.cooloff_jobs import (
+    CoolOffJobParams,
+    get_cooloff_state,
+    start_cooloff_job,
+    stop_cooloff,
 )
 
 WEB_DIR = ROOT / "web"
@@ -202,6 +214,46 @@ def batch_load_report(body: LoadReportRequest = LoadReportRequest()):
     return out
 
 
+class LoadSavedRequest(BaseModel):
+    kind: str
+    name: str
+
+
+@app.get("/api/results")
+def results_list(kind: str = Query(...)):
+    try:
+        files = list_saved_results(kind)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"kind": kind, "files": files}
+
+
+@app.get("/api/results/file")
+def results_file(name: str = Query(...)):
+    try:
+        data, path = read_saved_result(name)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Not found: {name}")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return data
+
+
+@app.post("/api/results/load")
+def results_load(body: LoadSavedRequest):
+    if body.kind not in KNOWN_KINDS:
+        raise HTTPException(status_code=400, detail=f"Unknown kind: {body.kind}")
+    try:
+        out = load_into_job(body.kind, body.name)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Not found: {body.name}")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "busy")
+    return out
+
+
 class SessionRunRequest(BaseModel):
     symbol: str = "XAUUSD"
     date_from: str = "2025-05-01"
@@ -309,24 +361,33 @@ def spike_fade_stop():
 
 class MicroRunRequest(BaseModel):
     symbol: str = "XAUUSD"
-    date_from: str = "2026-03-02"
-    date_to: str = "2026-03-09"
+    date_from: str = "2026-06-01"
+    date_to: str = "2026-08-31"
     window_sec: float = 4.0
     min_burst_pts: float = 100.0
-    max_burst_pts: float = 400.0
+    max_burst_pts: float = 300.0
     persist_frac: float = 0.35
-    use_1m: bool = True
+    use_1m: bool = False
     min_1m_body: float = 40.0
     tp_pts: float = 100.0
     sl_pts: float = 80.0
     trail_pts: float = 0.0
     trail_arm_pts: float = 0.0
-    max_hold_sec: float = 45.0
-    cooldown_sec: float = 15.0
+    max_hold_sec: float = 20.0
+    cooldown_sec: float = 20.0
     weekend_blackout_min: float = 10.0
-    lag_sec: float = 0.5
+    lag_sec: float = 0.0
     session: str = "all"
-    max_spread_pts: float = 50.0
+    max_spread_pts: float = 40.0
+    mode: str = "fade"
+    pause_sec: float = 1.0
+    pause_give_up_sec: float = 8.0
+    tp_frac: float = 0.5
+    sl_mult: float = 1.0
+    rr_one_to_one: bool = True
+    trail_frac: float = 0.5
+    be_asap: bool = False
+    be_asap_pts: float = 1.0
     workers: int = 2
     force_download: bool = False
 
@@ -361,6 +422,15 @@ def micro_run(body: MicroRunRequest):
         lag_sec=float(body.lag_sec or 0.0),
         session=str(body.session or "all"),
         max_spread_pts=float(body.max_spread_pts or 0.0),
+        mode=str(body.mode or "fade"),
+        pause_sec=float(body.pause_sec or 1.0),
+        pause_give_up_sec=float(body.pause_give_up_sec or 8.0),
+        tp_frac=float(body.tp_frac or 0.0),
+        sl_mult=float(body.sl_mult or 1.0),
+        rr_one_to_one=bool(body.rr_one_to_one),
+        trail_frac=float(body.trail_frac or 0.0),
+        be_asap=bool(body.be_asap),
+        be_asap_pts=float(body.be_asap_pts or 0.0),
         workers=int(body.workers or 2),
         force_download=bool(body.force_download),
     )
@@ -393,9 +463,11 @@ class OvernightRunRequest(BaseModel):
     min_break_pts_above: float = 200.0
     min_break_pts_below: float = 200.0
     max_break_candles_after: int = 8
+    break_on_wick: bool = False
     pullback_mode: str = "required"  # off | required | preferred
     ema_period: int = 21
     max_wait_candles: int = 8
+    wait_from_break: bool = False
     timeout_action: str = "skip"
     use_higher_close: bool = True
     resume_closes: int = 1
@@ -416,6 +488,8 @@ class OvernightRunRequest(BaseModel):
     flatten_hour: int = 18
     one_trade_per_day: bool = True
     side_filter: str = "both"
+    seasonal_mode: str = "off"
+    seasonal_join: bool = False
     workers: int = 3
     force_download: bool = False
 
@@ -437,9 +511,11 @@ def overnight_run(body: OvernightRunRequest):
         min_break_pts_above=float(body.min_break_pts_above),
         min_break_pts_below=float(body.min_break_pts_below),
         max_break_candles_after=int(body.max_break_candles_after),
+        break_on_wick=bool(body.break_on_wick),
         pullback_mode=str(body.pullback_mode or "required"),
         ema_period=int(body.ema_period),
         max_wait_candles=int(body.max_wait_candles),
+        wait_from_break=bool(body.wait_from_break),
         timeout_action=str(body.timeout_action or "skip"),
         use_higher_close=bool(body.use_higher_close),
         resume_closes=max(1, int(body.resume_closes or 1)),
@@ -460,6 +536,8 @@ def overnight_run(body: OvernightRunRequest):
         flatten_hour=int(body.flatten_hour),
         one_trade_per_day=bool(body.one_trade_per_day),
         side_filter=str(body.side_filter or "both"),
+        seasonal_mode=str(body.seasonal_mode or "off"),
+        seasonal_join=bool(body.seasonal_join),
         workers=max(1, min(6, int(body.workers or 1))),
         force_download=bool(body.force_download),
     )
@@ -472,6 +550,80 @@ def overnight_run(body: OvernightRunRequest):
 @app.post("/api/overnight/stop")
 def overnight_stop():
     out = stop_overnight()
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "not running")
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Trend Cool-Off (15m run → reverse >30% / join <30% + HH/LL reclaim)
+# ---------------------------------------------------------------------------
+
+
+class CoolOffRunRequest(BaseModel):
+    symbol: str = "XAUUSD"
+    date_from: str = "2026-06-01"
+    date_to: str = "2026-07-01"
+    invert: bool = False
+    min_run: int = 5
+    max_tolerance: int = 2
+    reverse_frac: float = 0.30
+    reverse_min_bars: int = 2
+    reverse_max_bars: int = 3
+    join_min_bars: int = 2
+    join_max_bars: int = 4
+    tp_pts: float = 500.0
+    sl_pts: float = 500.0
+    trail_pts: float = 0.0
+    trail_arm_pts: float = 0.0
+    max_hold_hours: float = 4.0
+    cooldown_min: float = 0.0
+    weekend_blackout_min: float = 10.0
+    workers: int = 2
+    force_download: bool = False
+
+
+@app.get("/api/cooloff")
+def cooloff_status(
+    rows: int = Query(0),
+    limit: int = Query(400),
+):
+    return get_cooloff_state(include_rows=bool(rows), row_limit=int(limit))
+
+
+@app.post("/api/cooloff/run")
+def cooloff_run(body: CoolOffRunRequest):
+    params = CoolOffJobParams(
+        symbol=body.symbol,
+        date_from=body.date_from,
+        date_to=body.date_to,
+        invert=bool(body.invert),
+        min_run=max(2, int(body.min_run)),
+        max_tolerance=max(0, int(body.max_tolerance)),
+        reverse_frac=float(body.reverse_frac),
+        reverse_min_bars=max(1, int(body.reverse_min_bars)),
+        reverse_max_bars=max(1, int(body.reverse_max_bars)),
+        join_min_bars=max(1, int(body.join_min_bars)),
+        join_max_bars=max(1, int(body.join_max_bars)),
+        tp_pts=float(body.tp_pts),
+        sl_pts=float(body.sl_pts),
+        trail_pts=float(body.trail_pts or 0.0),
+        trail_arm_pts=float(body.trail_arm_pts or 0.0),
+        max_hold_hours=float(body.max_hold_hours),
+        cooldown_sec=float(body.cooldown_min or 0.0) * 60.0,
+        weekend_blackout_min=float(body.weekend_blackout_min or 0.0),
+        workers=max(1, min(6, int(body.workers or 1))),
+        force_download=bool(body.force_download),
+    )
+    out = start_cooloff_job(params)
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "busy")
+    return out
+
+
+@app.post("/api/cooloff/stop")
+def cooloff_stop():
+    out = stop_cooloff()
     if not out.get("ok"):
         raise HTTPException(status_code=409, detail=out.get("error") or "not running")
     return out
