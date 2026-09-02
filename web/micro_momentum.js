@@ -447,6 +447,9 @@
       if (wasRunning && !running && finished && mine && badge) {
         badge.textContent = p.phase === "cancelled" ? "stopped" : "done";
         badge.className = "badge done";
+        if (p.phase === "done" && window.StrategSaved && window.StrategSaved.playDone) {
+          window.StrategSaved.playDone();
+        }
       }
       if (p.phase === "error" && badge) {
         badge.textContent = "err";

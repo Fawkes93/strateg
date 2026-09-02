@@ -1,0 +1,1025 @@
+{
+  "symbol": "XAUUSD",
+  "from": "2023-01-01",
+  "to": "2026-12-31",
+  "timezone": "America/New_York",
+  "sets": {
+    "scheduled": [
+      "fomc",
+      "cpi",
+      "nfp",
+      "jackson_hole"
+    ],
+    "all": [
+      "fomc",
+      "cpi",
+      "nfp",
+      "jackson_hole",
+      "shock"
+    ]
+  },
+  "notes": [
+    "Dates are US/Eastern calendar days. CPI/NFP 08:30 ET, FOMC 14:00 ET, Jackson Hole ~10:00 ET \u2014 same YYYY-MM-DD in Europe/Bucharest.",
+    "scheduled = known-in-advance USD prints that routinely spike gold. all = scheduled plus unscheduled shocks.",
+    "FOMC dates: Federal Reserve official calendar (decision day). CPI/NFP dates: BLS via ALFRED actual release dates (seasonal-factor and CES-benchmark-only days omitted).",
+    "Oct 2025 US government shutdown delayed/canceled several BLS prints; those rows use the actual published date.",
+    "Shock dates for weekend events use the first FX session (usually Monday).",
+    "Edit this file to add/remove days, then re-run with news_mode=filter to test."
+  ],
+  "events": [
+    {
+      "date": "2023-01-06",
+      "kind": "nfp",
+      "title": "US NFP (December 2022)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2023-01-12",
+      "kind": "cpi",
+      "title": "US CPI (December 2022)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2023-02-01",
+      "kind": "fomc",
+      "title": "Jan 31\u2013Feb 1 FOMC: +25 bp to 4.50\u20134.75%",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2023-02-03",
+      "kind": "nfp",
+      "title": "US NFP (January 2023)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2023-02-14",
+      "kind": "cpi",
+      "title": "US CPI (January 2023)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2023-03-10",
+      "kind": "nfp",
+      "title": "US NFP (February 2023)",
+      "time_et": "08:30",
+      "note": "NFP morning; SVB was closed the same day \u2014 gold spiked on both."
+    },
+    {
+      "date": "2023-03-10",
+      "kind": "shock",
+      "title": "SVB closed by California DFPI / FDIC",
+      "note": "Same calendar day as NFP. Gold ripped on the banking panic into the weekend."
+    },
+    {
+      "date": "2023-03-13",
+      "kind": "shock",
+      "title": "SVB/Signature Monday: emergency Bank Term Funding Program",
+      "note": "First full session after the SVB weekend. Flight-to-safety in gold."
+    },
+    {
+      "date": "2023-03-14",
+      "kind": "cpi",
+      "title": "US CPI (February 2023)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2023-03-15",
+      "kind": "shock",
+      "title": "Credit Suisse AT1 / SNB emergency liquidity",
+      "note": "European banking-crisis day; gold bid, yields collapsed."
+    },
+    {
+      "date": "2023-03-19",
+      "kind": "shock",
+      "title": "UBS rescue of Credit Suisse / SNB backstop",
+      "note": "Sunday deal; Monday gold/FX still violent."
+    },
+    {
+      "date": "2023-03-22",
+      "kind": "fomc",
+      "title": "Mar 21\u201322 FOMC + SEP: +25 bp (banking-crisis meeting)",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2023-04-07",
+      "kind": "nfp",
+      "title": "US NFP (March 2023)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2023-04-12",
+      "kind": "cpi",
+      "title": "US CPI (March 2023)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2023-05-03",
+      "kind": "fomc",
+      "title": "May 2\u20133 FOMC: +25 bp to 5.00\u20135.25%",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2023-05-05",
+      "kind": "nfp",
+      "title": "US NFP (April 2023)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2023-05-10",
+      "kind": "cpi",
+      "title": "US CPI (April 2023)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2023-06-02",
+      "kind": "nfp",
+      "title": "US NFP (May 2023)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2023-06-13",
+      "kind": "cpi",
+      "title": "US CPI (May 2023)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2023-06-14",
+      "kind": "fomc",
+      "title": "Jun 13\u201314 FOMC + SEP: pause at 5.00\u20135.25%",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2023-07-07",
+      "kind": "nfp",
+      "title": "US NFP (June 2023)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2023-07-12",
+      "kind": "cpi",
+      "title": "US CPI (June 2023)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2023-07-26",
+      "kind": "fomc",
+      "title": "Jul 25\u201326 FOMC: +25 bp to 5.25\u20135.50% (cycle peak)",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2023-08-04",
+      "kind": "nfp",
+      "title": "US NFP (July 2023)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2023-08-10",
+      "kind": "cpi",
+      "title": "US CPI (July 2023)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2023-08-25",
+      "kind": "jackson_hole",
+      "title": "Powell Jackson Hole: higher for longer still on the table",
+      "time_et": "10:05",
+      "note": "Kansas City Fed symposium. Chair keynote ~10:00 ET."
+    },
+    {
+      "date": "2023-09-01",
+      "kind": "nfp",
+      "title": "US NFP (August 2023)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2023-09-13",
+      "kind": "cpi",
+      "title": "US CPI (August 2023)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2023-09-20",
+      "kind": "fomc",
+      "title": "Sep 19\u201320 FOMC + SEP: hold; higher-for-longer dots",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2023-10-06",
+      "kind": "nfp",
+      "title": "US NFP (September 2023)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2023-10-09",
+      "kind": "shock",
+      "title": "Israel\u2013Hamas war, first full trading day",
+      "note": "Attack was Saturday 7 Oct. Gold opened Sunday night / Monday."
+    },
+    {
+      "date": "2023-10-12",
+      "kind": "cpi",
+      "title": "US CPI (September 2023)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2023-11-01",
+      "kind": "fomc",
+      "title": "Oct 31\u2013Nov 1 FOMC: hold",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2023-11-03",
+      "kind": "nfp",
+      "title": "US NFP (October 2023)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2023-11-14",
+      "kind": "cpi",
+      "title": "US CPI (October 2023)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2023-12-08",
+      "kind": "nfp",
+      "title": "US NFP (November 2023)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2023-12-12",
+      "kind": "cpi",
+      "title": "US CPI (November 2023)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2023-12-13",
+      "kind": "fomc",
+      "title": "Dec 12\u201313 FOMC + SEP: hold; 2024 cut dots",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2024-01-05",
+      "kind": "nfp",
+      "title": "US NFP (December 2023)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2024-01-11",
+      "kind": "cpi",
+      "title": "US CPI (December 2023)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2024-01-31",
+      "kind": "fomc",
+      "title": "Jan 30\u201331 FOMC: hold",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2024-02-02",
+      "kind": "nfp",
+      "title": "US NFP (January 2024)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2024-02-13",
+      "kind": "cpi",
+      "title": "US CPI (January 2024)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2024-03-08",
+      "kind": "nfp",
+      "title": "US NFP (February 2024)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2024-03-12",
+      "kind": "cpi",
+      "title": "US CPI (February 2024)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2024-03-20",
+      "kind": "fomc",
+      "title": "Mar 19\u201320 FOMC + SEP: hold",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2024-04-05",
+      "kind": "nfp",
+      "title": "US NFP (March 2024)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2024-04-10",
+      "kind": "cpi",
+      "title": "US CPI (March 2024)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2024-04-14",
+      "kind": "shock",
+      "title": "Iran missile/drone attack on Israel, first session",
+      "note": "Strikes Saturday 13 Apr. Gold spiked on the open then faded."
+    },
+    {
+      "date": "2024-05-01",
+      "kind": "fomc",
+      "title": "Apr 30\u2013May 1 FOMC: hold",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2024-05-03",
+      "kind": "nfp",
+      "title": "US NFP (April 2024)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2024-05-15",
+      "kind": "cpi",
+      "title": "US CPI (April 2024)",
+      "time_et": "08:30",
+      "note": "BLS published CPI a day early."
+    },
+    {
+      "date": "2024-06-07",
+      "kind": "nfp",
+      "title": "US NFP (May 2024)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2024-06-12",
+      "kind": "cpi",
+      "title": "US CPI (May 2024)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2024-06-12",
+      "kind": "fomc",
+      "title": "Jun 11\u201312 FOMC + SEP: hold",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2024-07-05",
+      "kind": "nfp",
+      "title": "US NFP (June 2024)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2024-07-11",
+      "kind": "cpi",
+      "title": "US CPI (June 2024)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2024-07-31",
+      "kind": "fomc",
+      "title": "Jul 30\u201331 FOMC: hold",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2024-08-02",
+      "kind": "nfp",
+      "title": "US NFP (July 2024)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2024-08-05",
+      "kind": "shock",
+      "title": "Yen carry-trade unwind / BOJ scare",
+      "note": "Global risk-off dump; gold sold with everything then snapped back."
+    },
+    {
+      "date": "2024-08-14",
+      "kind": "cpi",
+      "title": "US CPI (July 2024)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2024-08-23",
+      "kind": "jackson_hole",
+      "title": "Powell Jackson Hole: 'the time has come for policy to adjust'",
+      "time_et": "10:00",
+      "note": "Kansas City Fed symposium. Chair keynote ~10:00 ET."
+    },
+    {
+      "date": "2024-09-06",
+      "kind": "nfp",
+      "title": "US NFP (August 2024)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2024-09-11",
+      "kind": "cpi",
+      "title": "US CPI (August 2024)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2024-09-18",
+      "kind": "fomc",
+      "title": "Sep 17\u201318 FOMC + SEP: \u221250 bp (first cut)",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2024-10-04",
+      "kind": "nfp",
+      "title": "US NFP (September 2024)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2024-10-10",
+      "kind": "cpi",
+      "title": "US CPI (September 2024)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2024-11-01",
+      "kind": "nfp",
+      "title": "US NFP (October 2024)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2024-11-06",
+      "kind": "shock",
+      "title": "US election (Trump win) gold dump then bid",
+      "note": "Election night 5 Nov. FOMC was 7 Nov \u2014 keep both days."
+    },
+    {
+      "date": "2024-11-07",
+      "kind": "fomc",
+      "title": "Nov 6\u20137 FOMC: \u221225 bp (day after US election)",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2024-11-13",
+      "kind": "cpi",
+      "title": "US CPI (October 2024)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2024-12-06",
+      "kind": "nfp",
+      "title": "US NFP (November 2024)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2024-12-11",
+      "kind": "cpi",
+      "title": "US CPI (November 2024)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2024-12-18",
+      "kind": "fomc",
+      "title": "Dec 17\u201318 FOMC + SEP: \u221225 bp; hawkish dots",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2025-01-10",
+      "kind": "nfp",
+      "title": "US NFP (December 2024)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2025-01-15",
+      "kind": "cpi",
+      "title": "US CPI (December 2024)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2025-01-29",
+      "kind": "fomc",
+      "title": "Jan 28\u201329 FOMC: hold 4.25\u20134.50%",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2025-02-07",
+      "kind": "nfp",
+      "title": "US NFP (January 2025)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2025-02-12",
+      "kind": "cpi",
+      "title": "US CPI (January 2025)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2025-03-07",
+      "kind": "nfp",
+      "title": "US NFP (February 2025)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2025-03-12",
+      "kind": "cpi",
+      "title": "US CPI (February 2025)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2025-03-19",
+      "kind": "fomc",
+      "title": "Mar 18\u201319 FOMC + SEP: hold",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2025-04-02",
+      "kind": "shock",
+      "title": "Trump 'Liberation Day' reciprocal tariffs",
+      "note": "Announcement day. Gold began the April surge toward $3,500."
+    },
+    {
+      "date": "2025-04-04",
+      "kind": "nfp",
+      "title": "US NFP (March 2025)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2025-04-09",
+      "kind": "shock",
+      "title": "Tariff-panic week: gold surge / 'Sell America'",
+      "note": "Part of the 12 Apr 7\u201323 gold +12% tariff leg."
+    },
+    {
+      "date": "2025-04-10",
+      "kind": "cpi",
+      "title": "US CPI (March 2025)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2025-05-02",
+      "kind": "nfp",
+      "title": "US NFP (April 2025)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2025-05-07",
+      "kind": "fomc",
+      "title": "May 6\u20137 FOMC: hold",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2025-05-13",
+      "kind": "cpi",
+      "title": "US CPI (April 2025)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2025-06-06",
+      "kind": "nfp",
+      "title": "US NFP (May 2025)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2025-06-11",
+      "kind": "cpi",
+      "title": "US CPI (May 2025)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2025-06-18",
+      "kind": "fomc",
+      "title": "Jun 17\u201318 FOMC + SEP: hold",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2025-07-03",
+      "kind": "nfp",
+      "title": "US NFP (June 2025)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2025-07-15",
+      "kind": "cpi",
+      "title": "US CPI (June 2025)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2025-07-30",
+      "kind": "fomc",
+      "title": "Jul 29\u201330 FOMC: hold",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2025-08-01",
+      "kind": "nfp",
+      "title": "US NFP (July 2025)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2025-08-12",
+      "kind": "cpi",
+      "title": "US CPI (July 2025)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2025-08-22",
+      "kind": "jackson_hole",
+      "title": "Powell Jackson Hole: labor-market risks rising / framework review",
+      "time_et": "10:00",
+      "note": "Kansas City Fed symposium. Chair keynote ~10:00 ET."
+    },
+    {
+      "date": "2025-09-05",
+      "kind": "nfp",
+      "title": "US NFP (August 2025)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2025-09-11",
+      "kind": "cpi",
+      "title": "US CPI (August 2025)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2025-09-17",
+      "kind": "fomc",
+      "title": "Sep 16\u201317 FOMC + SEP: \u221225 bp to 4.00\u20134.25%",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2025-10-01",
+      "kind": "shock",
+      "title": "US federal government shutdown begins",
+      "note": "Longest lapse on record; delayed NFP/CPI and bid gold into autumn."
+    },
+    {
+      "date": "2025-10-24",
+      "kind": "cpi",
+      "title": "US CPI (September 2025)",
+      "time_et": "08:30",
+      "note": "Delayed by the Oct 2025 appropriations lapse (was Oct 15)."
+    },
+    {
+      "date": "2025-10-29",
+      "kind": "fomc",
+      "title": "Oct 28\u201329 FOMC: hold",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2025-11-20",
+      "kind": "nfp",
+      "title": "US NFP (September 2025)",
+      "time_et": "08:30",
+      "note": "Delayed from Oct 3 by the Oct 2025 government shutdown."
+    },
+    {
+      "date": "2025-12-10",
+      "kind": "fomc",
+      "title": "Dec 9\u201310 FOMC + SEP",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2025-12-16",
+      "kind": "nfp",
+      "title": "US NFP (October + November 2025)",
+      "time_et": "08:30",
+      "note": "Combined Oct+Nov payrolls after the shutdown (was Nov 7 / Dec 5)."
+    },
+    {
+      "date": "2025-12-18",
+      "kind": "cpi",
+      "title": "US CPI (November 2025)",
+      "time_et": "08:30",
+      "note": "November 2025 CPI after shutdown. October 2025 CPI was not published."
+    },
+    {
+      "date": "2026-01-09",
+      "kind": "nfp",
+      "title": "US NFP (December 2025)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2026-01-13",
+      "kind": "cpi",
+      "title": "US CPI (December 2025)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2026-01-28",
+      "kind": "fomc",
+      "title": "Jan 27\u201328 FOMC (gold ATH week)",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2026-01-29",
+      "kind": "shock",
+      "title": "Gold all-time high (~$5,600) then metals reversal",
+      "note": "Day after FOMC. Warsh Fed-chair nomination / momentum unwind."
+    },
+    {
+      "date": "2026-02-11",
+      "kind": "nfp",
+      "title": "US NFP (January 2026)",
+      "time_et": "08:30",
+      "note": "Delayed from Feb 6 by the 2025 lapse makeup calendar."
+    },
+    {
+      "date": "2026-02-13",
+      "kind": "cpi",
+      "title": "US CPI (January 2026)",
+      "time_et": "08:30",
+      "note": "Delayed from Feb 11 by the 2025 lapse makeup calendar."
+    },
+    {
+      "date": "2026-02-28",
+      "kind": "shock",
+      "title": "US\u2013Iran war start",
+      "note": "Oil shock. Gold spiked then later sold as the Fed turned hawkish."
+    },
+    {
+      "date": "2026-03-06",
+      "kind": "nfp",
+      "title": "US NFP (February 2026)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2026-03-11",
+      "kind": "cpi",
+      "title": "US CPI (February 2026)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2026-03-18",
+      "kind": "fomc",
+      "title": "Mar 17\u201318 FOMC + SEP: hawkish (Iran/oil shock)",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2026-03-23",
+      "kind": "shock",
+      "title": "Gold flash-crash (~$4,098) after Iran/Fed week",
+      "note": "CTA long-gold capitulation. Trump pause on Iran energy strikes later that day."
+    },
+    {
+      "date": "2026-04-03",
+      "kind": "nfp",
+      "title": "US NFP (March 2026)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2026-04-10",
+      "kind": "cpi",
+      "title": "US CPI (March 2026)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2026-04-29",
+      "kind": "fomc",
+      "title": "Apr 28\u201329 FOMC",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2026-05-08",
+      "kind": "nfp",
+      "title": "US NFP (April 2026)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2026-05-12",
+      "kind": "cpi",
+      "title": "US CPI (April 2026)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2026-06-05",
+      "kind": "nfp",
+      "title": "US NFP (May 2026)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2026-06-10",
+      "kind": "cpi",
+      "title": "US CPI (May 2026)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2026-06-17",
+      "kind": "fomc",
+      "title": "Jun 16\u201317 FOMC + SEP",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2026-07-02",
+      "kind": "nfp",
+      "title": "US NFP (June 2026)",
+      "time_et": "08:30",
+      "note": "Thursday release ahead of July 4."
+    },
+    {
+      "date": "2026-07-14",
+      "kind": "cpi",
+      "title": "US CPI (June 2026)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2026-07-29",
+      "kind": "fomc",
+      "title": "Jul 28\u201329 FOMC",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2026-08-07",
+      "kind": "nfp",
+      "title": "US NFP (July 2026)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2026-08-12",
+      "kind": "cpi",
+      "title": "US CPI (July 2026)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2026-08-28",
+      "kind": "jackson_hole",
+      "title": "Warsh Jackson Hole debut (no explicit hike timeline)",
+      "time_et": "10:00",
+      "note": "Kansas City Fed symposium. Chair keynote ~10:00 ET."
+    },
+    {
+      "date": "2026-09-04",
+      "kind": "nfp",
+      "title": "US NFP (August 2026)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2026-09-11",
+      "kind": "cpi",
+      "title": "US CPI (August 2026)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2026-09-16",
+      "kind": "fomc",
+      "title": "Sep 15\u201316 FOMC + SEP",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2026-10-02",
+      "kind": "nfp",
+      "title": "US NFP (September 2026)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2026-10-14",
+      "kind": "cpi",
+      "title": "US CPI (September 2026)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2026-10-28",
+      "kind": "fomc",
+      "title": "Oct 27\u201328 FOMC",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2026-11-06",
+      "kind": "nfp",
+      "title": "US NFP (October 2026)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2026-11-10",
+      "kind": "cpi",
+      "title": "US CPI (October 2026)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    },
+    {
+      "date": "2026-12-04",
+      "kind": "nfp",
+      "title": "US NFP (November 2026)",
+      "time_et": "08:30",
+      "note": "BLS Employment Situation (NFP + unemployment) 08:30 ET."
+    },
+    {
+      "date": "2026-12-09",
+      "kind": "fomc",
+      "title": "Dec 8\u20139 FOMC + SEP",
+      "time_et": "14:00",
+      "note": "Statement 14:00 ET, Powell/Warsh presser 14:30 ET. Fed official calendar."
+    },
+    {
+      "date": "2026-12-10",
+      "kind": "cpi",
+      "title": "US CPI (November 2026)",
+      "time_et": "08:30",
+      "note": "BLS CPI-U 08:30 ET. ALFRED/BLS release calendar."
+    }
+  ]
+}

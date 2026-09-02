@@ -145,6 +145,9 @@
         test_spike_neo: $("sw-test-spike-neo") && $("sw-test-spike-neo").checked,
         test_impulse_retrace: $("sw-test-impulse") && $("sw-test-impulse").checked,
         test_range_wick: $("sw-test-wick") && $("sw-test-wick").checked,
+        seasonal_mode: $("sw-seasonal-mode") && $("sw-seasonal-mode").value,
+        week2: $("sw-week2") && $("sw-week2").checked,
+        trend_flat: $("sw-trend-flat") && $("sw-trend-flat").value,
         date_ranges: [],
         range_rows: readExpRows("sw-range-table"),
         spike_rows: readExpRows("sw-spike-table"),
@@ -587,6 +590,9 @@
   bindSaveOn($("sw-sl-lock"));
   bindSaveOn($("sw-topn"));
   bindSaveOn($("sw-thresholds"));
+  bindSaveOn($("sw-seasonal-mode"));
+  if ($("sw-week2")) $("sw-week2").addEventListener("change", scheduleSave);
+  bindSaveOn($("sw-trend-flat"));
 
   // ----- run batch -----
   function buildConfig() {
@@ -624,30 +630,19 @@
       spike_neo_rows: readExpRows("sw-neo-table"),
       impulse_retrace_rows: readExpRows("sw-impulse-table"),
       range_wick_rows: readExpRows("sw-wick-table"),
-      filters: {}, // defaults from server apply_overrides
+      filters: {
+        seasonal_mode: ($("sw-seasonal-mode") && $("sw-seasonal-mode").value) || "off",
+        week2_trend: $("sw-week2") && $("sw-week2").checked,
+        trend_flat_pts: Number($("sw-trend-flat") && $("sw-trend-flat").value) || 1500,
+        timezone: "Europe/Bucharest",
+      },
     };
   }
 
   function playDone() {
-    try {
-      var Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      var ctx = new Ctx();
-      var now = ctx.currentTime;
-      [523.25, 659.25, 783.99].forEach(function (freq, i) {
-        var o = ctx.createOscillator();
-        var g = ctx.createGain();
-        o.type = "sine";
-        o.frequency.value = freq;
-        g.gain.setValueAtTime(0.0001, now);
-        g.gain.exponentialRampToValueAtTime(0.1, now + 0.02 + i * 0.1);
-        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.4 + i * 0.1);
-        o.connect(g);
-        g.connect(ctx.destination);
-        o.start(now + i * 0.1);
-        o.stop(now + 0.5 + i * 0.1);
-      });
-    } catch (e) {}
+    if (window.StrategSaved && window.StrategSaved.playDone) {
+      window.StrategSaved.playDone();
+    }
   }
 
   async function pollBatch() {
@@ -933,6 +928,15 @@
         if (mode === "lock")
           return " · SL ½T→lock +" + (report.sl_manage_lock_pts || 100);
         return "";
+      })() +
+      (function () {
+        const f = report.filters || {};
+        const sm = f.seasonal_mode || "off";
+        const w2 = !!f.week2_trend;
+        if (sm === "off" && !w2) return "";
+        let s = " · bias neo/impulse " + sm;
+        if (w2) s += " + 2w trend";
+        return s;
       })();
 
     updateReportFilters(report);
@@ -1220,6 +1224,12 @@
           $("sw-test-impulse").checked = saved.test_impulse_retrace;
         if (typeof saved.test_range_wick === "boolean" && $("sw-test-wick"))
           $("sw-test-wick").checked = saved.test_range_wick;
+        if (saved.seasonal_mode && $("sw-seasonal-mode"))
+          $("sw-seasonal-mode").value = saved.seasonal_mode;
+        if (typeof saved.week2 === "boolean" && $("sw-week2"))
+          $("sw-week2").checked = saved.week2;
+        if (saved.trend_flat != null && $("sw-trend-flat"))
+          $("sw-trend-flat").value = saved.trend_flat;
 
         $("sw-ranges").innerHTML = "";
         const dr = saved.date_ranges || [];

@@ -32,6 +32,7 @@ from backtest.overnight_break import (
     summarize_overnight,
 )
 from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS, _parse_range, load_ticks
+from backtest.seasonality import TREND_LOOKBACK_DAYS
 
 # Extra hours before each month pack so EMA / Asia DST still work in a worker
 # that does not see the previous month's ticks.
@@ -94,6 +95,11 @@ class OvernightJobParams:
     side_filter: str = "both"
     seasonal_mode: str = "off"  # off | tag | filter
     seasonal_join: bool = False
+    week2_trend: bool = False
+    trend_flat_pts: float = 1500.0
+    trend_sessions: int = 10
+    news_mode: str = "off"  # off | tag | filter
+    news_set: str = "scheduled"  # scheduled | all
     workers: int = 3
     force_download: bool = False
 
@@ -295,6 +301,8 @@ def _chunk_lookback_start(date_from: str, op: OvernightParams) -> datetime:
         day, op.timezone, op.asia_start_hour, op.asia_end_hour
     )
     ema = parse_ymd(date_from) - _CHUNK_LOOKBACK
+    if getattr(op, "week2_trend", False):
+        ema = min(ema, parse_ymd(date_from) - timedelta(days=TREND_LOOKBACK_DAYS))
     return min(asia, ema)
 
 
@@ -610,6 +618,11 @@ def _run(params: OvernightJobParams) -> None:
             side_filter=str(params.side_filter or "both"),
             seasonal_mode=str(params.seasonal_mode or "off"),
             seasonal_join=bool(params.seasonal_join),
+            week2_trend=bool(params.week2_trend),
+            trend_flat_pts=float(params.trend_flat_pts or 1500.0),
+            trend_sessions=max(5, int(params.trend_sessions or 10)),
+            news_mode=str(params.news_mode or "off"),
+            news_set=str(params.news_set or "scheduled"),
         )
         chunks = _month_chunks(params.date_from, params.date_to)
         if not chunks:

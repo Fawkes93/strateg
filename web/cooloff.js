@@ -460,6 +460,9 @@
           badge.textContent = p.phase === "cancelled" ? "stopped" : "done";
           badge.className = "badge done";
         }
+        if (p.phase === "done" && window.StrategSaved && window.StrategSaved.playDone) {
+          window.StrategSaved.playDone();
+        }
         if (!holdSaved) {
           const full = await fetchState(true);
           if (full.result) render(full.result);

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional, Sequence, Set
+from typing import Any, Dict, List, Optional, Sequence, Set
 
 from backtest import config
 from backtest.candles import (
@@ -59,10 +59,12 @@ class AlertReplay:
         *,
         engines: Optional[Set[str]] = None,
         price_field: str = "mid",
+        bias: Any = None,
     ):
         self.symbol = symbol
         self.engines = engines or {"candle", "spike"}
         self.price_field = price_field
+        self.bias = bias
 
         self.builder = CandleBuilder(
             timeframe_minutes=config.CANDLE_TIMEFRAME_MIN,
@@ -313,30 +315,36 @@ class AlertReplay:
         if bar_key[0] is not None and self._neo_alerted_bar == bar_key:
             return None
         exp = snap.get("expansion") or {}
+        meta = {
+            "beyond_points": snap.get("beyond_points"),
+            "forming_range_points": snap.get("forming_range_points"),
+            "expansion_ratio": exp.get("ratio"),
+            "expansion_mult": exp.get("expansion_mult"),
+            "compression_swing_points": (snap.get("compression") or {}).get(
+                "swing_points"
+            ),
+            "forming_open_time": snap.get("forming_open_time"),
+            "variant": "spike_neo",
+        }
+        allow = True
+        if self.bias is not None:
+            allow = self.bias.allows("spike_neo", side, ts, meta)
+        self._last_neo_alert_ts = now_ts
+        self._neo_condition_since = None
+        if bar_key[0] is not None:
+            self._neo_alerted_bar = bar_key
+        if not allow:
+            return None
         alert = AlertSignal(
             kind="spike_neo",
             symbol=self.symbol,
             side=side,  # type: ignore[arg-type]
             ts=ts,
             price=price,
-            meta={
-                "beyond_points": snap.get("beyond_points"),
-                "forming_range_points": snap.get("forming_range_points"),
-                "expansion_ratio": exp.get("ratio"),
-                "expansion_mult": exp.get("expansion_mult"),
-                "compression_swing_points": (snap.get("compression") or {}).get(
-                    "swing_points"
-                ),
-                "forming_open_time": snap.get("forming_open_time"),
-                "variant": "spike_neo",
-            },
+            meta=meta,
         )
         self.alerts.append(alert)
         self.alert_tick_index.append(tick_index)
-        self._last_neo_alert_ts = now_ts
-        self._neo_condition_since = None
-        if bar_key[0] is not None:
-            self._neo_alerted_bar = bar_key
         return alert
 
     def _ir_cooldown_ok(self, now_ts: float) -> bool:
@@ -444,29 +452,35 @@ class AlertReplay:
         if float(frac) in self._ir_alerted_fractions:
             return None
 
+        meta = {
+            "retrace_fraction": frac,
+            "retrace_pct": snap.get("retrace_pct"),
+            "active_level": snap.get("active_level"),
+            "base": snap.get("base"),
+            "extreme": snap.get("extreme"),
+            "range_points": snap.get("range_points"),
+            "extreme_age_sec": snap.get("extreme_age_sec"),
+            "forming_open_time": snap.get("forming_open_time"),
+            "variant": "impulse_retrace",
+        }
+        allow = True
+        if self.bias is not None:
+            allow = self.bias.allows("impulse_retrace", side, ts, meta)
+        self._last_ir_alert_ts = now_ts
+        self._ir_condition_since = None
+        self._ir_alerted_fractions.add(float(frac))
+        if not allow:
+            return None
         alert = AlertSignal(
             kind="impulse_retrace",
             symbol=self.symbol,
             side=side,  # type: ignore[arg-type]
             ts=ts,
             price=price,
-            meta={
-                "retrace_fraction": frac,
-                "retrace_pct": snap.get("retrace_pct"),
-                "active_level": snap.get("active_level"),
-                "base": snap.get("base"),
-                "extreme": snap.get("extreme"),
-                "range_points": snap.get("range_points"),
-                "extreme_age_sec": snap.get("extreme_age_sec"),
-                "forming_open_time": snap.get("forming_open_time"),
-                "variant": "impulse_retrace",
-            },
+            meta=meta,
         )
         self.alerts.append(alert)
         self.alert_tick_index.append(tick_index)
-        self._last_ir_alert_ts = now_ts
-        self._ir_condition_since = None
-        self._ir_alerted_fractions.add(float(frac))
         return alert
 
     def _wick_cooldown_ok(self, now_ts: float) -> bool:

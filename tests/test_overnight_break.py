@@ -872,6 +872,64 @@ def test_may_up_break_skipped_by_filter():
     assert skips[0]["side"] == "UP"
 
 
+def _news_day_ticks(local_ymd, break_side="UP"):
+    """Winter Bucharest (UTC+2): local midnight = 22:00 UTC previous evening."""
+    y, m, d = (int(x) for x in local_ymd.split("-"))
+    start = datetime(y, m, d, 0, 0, tzinfo=ZoneInfo("Europe/Bucharest")).astimezone(
+        timezone.utc
+    )
+    high = start + timedelta(hours=4)
+    low = start + timedelta(hours=5, minutes=30)
+    post = start + timedelta(hours=7)
+    return _season_day_ticks(start, high, low, post, break_side=break_side)
+
+
+def test_news_filter_skips_nfp_day():
+    ticks = _news_day_ticks("2023-02-03", break_side="UP")
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_season_params(seasonal_mode="off", news_mode="filter"),
+    )
+    assert not [r for r in out["rows"] if r["local_date"] == "2023-02-03"]
+    skips = [s for s in out["skips"] if s["local_date"] == "2023-02-03"]
+    assert skips and skips[0]["reason"] == "news_day"
+    assert skips[0]["news_kind"] == "nfp"
+
+
+def test_news_tag_still_trades():
+    ticks = _news_day_ticks("2023-02-03", break_side="UP")
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_season_params(seasonal_mode="off", news_mode="tag"),
+    )
+    rows = [r for r in out["rows"] if r["local_date"] == "2023-02-03"]
+    assert rows and rows[0]["side"] == "UP"
+    assert rows[0]["news_kind"] == "nfp"
+    assert "NFP" in (rows[0]["news_title"] or "")
+
+
+def test_news_set_scheduled_ignores_shock_only_day():
+    ticks = _news_day_ticks("2024-08-05", break_side="UP")  # yen unwind, not a print
+    scheduled = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_season_params(
+            seasonal_mode="off", news_mode="filter", news_set="scheduled"
+        ),
+    )
+    assert [r for r in scheduled["rows"] if r["local_date"] == "2024-08-05"]
+    all_set = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_season_params(seasonal_mode="off", news_mode="filter", news_set="all"),
+    )
+    skips = [s for s in all_set["skips"] if s["local_date"] == "2024-08-05"]
+    assert skips and skips[0]["reason"] == "news_day"
+    assert skips[0]["news_kind"] == "shock"
+
+
 def test_seasonal_mode_off_ignores_table():
     ticks = _season_day_ticks(
         datetime(2025, 1, 5, 22, 0, tzinfo=timezone.utc),
@@ -889,3 +947,43 @@ def test_seasonal_mode_off_ignores_table():
     assert rows and rows[0]["side"] == "DOWN"
     assert rows[0].get("seasonal_regime") in (None, "neutral")
     assert rows[0]["entry_reason"] != "seasonal_join"
+
+
+def test_january_down_agrees_with_down_trend_still_filtered():
+    ticks = _season_day_ticks(
+        datetime(2025, 1, 5, 22, 0, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 2, 0, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 3, 30, tzinfo=timezone.utc),
+        datetime(2025, 1, 6, 5, 0, tzinfo=timezone.utc),
+        break_side="DOWN",
+    )
+    # Prefix 12 sessions of falling gold so 2-week is down (agrees with... wait
+    # January season is UP, down trend CONFLICTS → should NOT filter).
+    from zoneinfo import ZoneInfo
+    from datetime import time as dtime
+
+    tz = ZoneInfo("Europe/Bucharest")
+    prefix = []
+    for i in range(12, 0, -1):
+        d = date(2025, 1, 6) - timedelta(days=i)
+        loc = datetime.combine(d, dtime(16, 0), tzinfo=tz)
+        px = 3400.0 - (12 - i) * 2.0
+        prefix.append(_tick(loc.astimezone(timezone.utc), px))
+    out = run_overnight(
+        prefix + ticks,
+        symbol="XAU/USD",
+        params=_season_params(week2_trend=True, trend_flat_pts=1500.0),
+    )
+    rows = [r for r in out["rows"] if r["local_date"] == "2025-01-06"]
+    assert rows and rows[0]["side"] == "DOWN"
+    assert rows[0]["bias_conflict"] is True
+
+
+def test_week2_lookback_extends_when_enabled():
+    from backtest.overnight_jobs import _chunk_lookback_start
+
+    off = _chunk_lookback_start("2026-04-01", OvernightParams())
+    on = _chunk_lookback_start(
+        "2026-04-01", OvernightParams(week2_trend=True)
+    )
+    assert on < off

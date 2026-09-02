@@ -1225,31 +1225,9 @@
     if (opts && opts.fresh) flashResultsCard();
   }
 
-  /** Short pleasant chime when a research job finishes (Web Audio, no asset file). */
   function playDoneSound() {
-    try {
-      var Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      var ctx = playDoneSound._ctx || new Ctx();
-      playDoneSound._ctx = ctx;
-      if (ctx.state === "suspended") ctx.resume();
-      var now = ctx.currentTime;
-      // two soft tones
-      [523.25, 659.25].forEach(function (freq, i) {
-        var o = ctx.createOscillator();
-        var g = ctx.createGain();
-        o.type = "sine";
-        o.frequency.value = freq;
-        g.gain.setValueAtTime(0.0001, now);
-        g.gain.exponentialRampToValueAtTime(0.12, now + 0.02 + i * 0.12);
-        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.35 + i * 0.15);
-        o.connect(g);
-        g.connect(ctx.destination);
-        o.start(now + i * 0.12);
-        o.stop(now + 0.45 + i * 0.15);
-      });
-    } catch (e) {
-      /* autoplay policies / no audio — ignore */
+    if (window.StrategSaved && window.StrategSaved.playDone) {
+      window.StrategSaved.playDone();
     }
   }
 

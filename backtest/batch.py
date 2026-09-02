@@ -24,13 +24,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from backtest.config import _base_for_symbol
-from backtest.dukascopy import reaktor_symbol
+from backtest.dukascopy import parse_ymd, reaktor_symbol
 from backtest.runner import (
     DEFAULT_RESULTS,
     load_ticks,
     research_from_ticks,
     top_ts_by_clean,
 )
+from backtest.seasonality import lookback_from
 
 # Short UI names → full config keys
 RANGE_SHORT = {
@@ -887,6 +888,21 @@ def _run_date_group_job(job: Dict[str, Any]) -> List[Dict[str, Any]]:
 
     emit("loaded", ticks=len(ticks), message=f"Pack {len(ticks):,} ticks · {date_from}→{date_to}")
 
+    lookback_ticks = None
+    if bool((job.get("filters") or {}).get("week2_trend")):
+        try:
+            prefix = load_ticks(
+                symbol=symbol,
+                date_from=lookback_from(date_from),
+                date_to=date_from,
+                force_download=False,
+                progress=None,
+            )
+            cutoff = parse_ymd(date_from)
+            lookback_ticks = [t for t in prefix if t.ts < cutoff]
+        except Exception:
+            lookback_ticks = None
+
     for vi, item in enumerate(items):
         engines = list(item.get("engines") or ["candle", "spike"])
         signal = _item_signal(item, filters, symbol)
@@ -931,6 +947,7 @@ def _run_date_group_job(job: Dict[str, Any]) -> List[Dict[str, Any]]:
                 include_detail=False,
                 save_json=False,
                 progress=sub_progress,
+                lookback_ticks=lookback_ticks,
             )
             rows.extend(_rows_from_result(item, res, top_n=top_n))
             emit("item_done", n=1, ok=True, label=label, message=label)

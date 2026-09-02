@@ -34,6 +34,10 @@
     "ob-side",
     "ob-seasonal-mode",
     "ob-seasonal-join",
+    "ob-week2",
+    "ob-trend-flat",
+    "ob-news-mode",
+    "ob-news-set",
     "ob-sl-mode",
     "ob-sl-fixed",
     "ob-sl-range-mult",
@@ -162,7 +166,8 @@
       <p class="hint">
         Mid fill. One trade per day by default. Skips days with no valid break / no pullback (required mode).
         Seasonal month (optional): Jan/Aug long, May/Jun short. Filter skips the against-side break.
-        Join inside box takes that month’s side when price never left the Asia range.
+        Join inside box takes the combined bias side when price never left the Asia range.
+        2-week trend: if it disagrees with the month, both are called out and the day trades with no side filter.
       </p>
     </section>
 
@@ -255,7 +260,30 @@
         </label>
         <label class="chk">Join inside box
           <input type="checkbox" id="ob-seasonal-join"
-            title="If the month has a bias and Asia never printed a valid break, enter with that bias instead of skipping no_break." />
+            title="If the combined bias has a side and Asia never printed a valid break, enter with that side instead of skipping no_break. Off when month and 2-week disagree." />
+        </label>
+        <label class="chk">2-week trend
+          <input type="checkbox" id="ob-week2"
+            title="Close-to-close over ~10 sessions before the Asia day. If it disagrees with the month, both are tagged and neither side is filtered." />
+        </label>
+        <label>Trend flat (pts)
+          <input type="number" id="ob-trend-flat" value="1500" min="0" step="100"
+            title="2-week net move below this is flat. Gold default 1500 pts = $15." />
+        </label>
+        <label>News days
+          <select id="ob-news-mode"
+            title="Days in backtest/xau_news_days.json (2023–2026). Off = ignore. Tag = stamp FOMC/CPI/NFP on the row. Filter = skip the whole local day.">
+            <option value="off" selected>off</option>
+            <option value="tag">tag only</option>
+            <option value="filter">filter out</option>
+          </select>
+        </label>
+        <label>News set
+          <select id="ob-news-set"
+            title="scheduled = FOMC + CPI + NFP + Jackson Hole. all = those plus unscheduled shocks (SVB, wars, tariffs, …).">
+            <option value="scheduled" selected>scheduled (FOMC/CPI/NFP/JH)</option>
+            <option value="all">all (incl. shocks)</option>
+          </select>
         </label>
         <label>SL mode
           <select id="ob-sl-mode">
@@ -495,7 +523,8 @@
     late_short: "Late short on small/medium Asia",
     no_entry: "No entry",
     past_flatten: "Past flatten hour",
-    seasonal_bias: "Seasonal month bias",
+    seasonal_bias: "Season / 2-week bias",
+    news_day: "News day",
   };
 
   const ENTRY_LABELS = {
@@ -971,6 +1000,9 @@
           badge.textContent = "done";
           badge.className = "badge done";
         }
+        if (window.StrategSaved && window.StrategSaved.playDone) {
+          window.StrategSaved.playDone();
+        }
       }
       wasRunning = running;
       if (!running && pollTimer) {
@@ -1047,6 +1079,10 @@
         side_filter: $("ob-side").value,
         seasonal_mode: ($("ob-seasonal-mode") && $("ob-seasonal-mode").value) || "off",
         seasonal_join: $("ob-seasonal-join") && $("ob-seasonal-join").checked,
+        week2_trend: $("ob-week2") && $("ob-week2").checked,
+        trend_flat_pts: Number($("ob-trend-flat") && $("ob-trend-flat").value) || 1500,
+        news_mode: ($("ob-news-mode") && $("ob-news-mode").value) || "off",
+        news_set: ($("ob-news-set") && $("ob-news-set").value) || "scheduled",
         workers: Math.max(1, Math.min(6, Number($("ob-workers") && $("ob-workers").value) || 3)),
         force_download: $("ob-force") && $("ob-force").checked,
       };

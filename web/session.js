@@ -123,6 +123,9 @@
           badge.textContent = "done";
           badge.className = "badge done";
         }
+        if (window.StrategSaved && window.StrategSaved.playDone) {
+          window.StrategSaved.playDone();
+        }
       }
       wasRunning = running;
       if (!running && pollTimer) {

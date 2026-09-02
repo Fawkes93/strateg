@@ -30,6 +30,7 @@ from backtest.forward import (
     walk_forward_multi,
 )
 from backtest.replay import AlertReplay
+from backtest.seasonality import BiasFilter
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CACHE = ROOT / "data" / "dukascopy"
@@ -163,6 +164,7 @@ def research_from_ticks(
     include_detail: bool = True,
     save_json: bool = False,
     progress: ProgressCb = None,
+    lookback_ticks: Optional[List] = None,
 ) -> Dict[str, Any]:
     """
     Replay + score using an already-loaded tick list.
@@ -406,7 +408,13 @@ def research_from_ticks(
         alerts=0,
     )
 
-    eng = AlertReplay(sym, engines=eng_set, price_field=signal_price)
+    bias_ticks = list(lookback_ticks or []) + list(ticks) if lookback_ticks else ticks
+    bias = BiasFilter.from_filters(
+        sig.get("filters") if isinstance(sig, dict) else None,
+        bias_ticks,
+        symbol=sym,
+    )
+    eng = AlertReplay(sym, engines=eng_set, price_field=signal_price, bias=bias)
     n = len(ticks)
     step = max(n // 40, 1)
     for i, t in enumerate(ticks):

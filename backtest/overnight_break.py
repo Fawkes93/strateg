@@ -31,12 +31,20 @@ from zoneinfo import ZoneInfo
 from backtest.candles import Candle, CandleBuilder, is_market_open, to_utc
 from backtest.config import point_size
 from backtest.dukascopy import Tick, reaktor_symbol
+from backtest.news_calendar import (
+    events_on,
+    format_news,
+    kinds_for_set,
+    normalize_news_mode,
+    normalize_news_set,
+)
 from backtest.seasonality import (
-    against_bias,
     bias_side,
+    build_daily_closes,
     month_regime,
     normalize_seasonal_mode,
     seasonal_label,
+    snapshot_bias,
 )
 
 
@@ -88,6 +96,13 @@ class OvernightParams:
     # If the month has a bias and Asia never printed a valid break, enter with
     # that bias instead of skipping no_break.
     seasonal_join: bool = False
+    week2_trend: bool = False
+    trend_flat_pts: float = 1500.0
+    trend_sessions: int = 10
+    # Gold news days (backtest/xau_news_days.json). off = ignore.
+    # tag = stamp only. filter = skip the whole local day.
+    news_mode: str = "off"  # off | tag | filter
+    news_set: str = "scheduled"  # scheduled | all
 
 
 def _normalize_params(params: OvernightParams) -> OvernightParams:
@@ -101,6 +116,17 @@ def _normalize_params(params: OvernightParams) -> OvernightParams:
         params.break_on_wick = True
     params.seasonal_mode = normalize_seasonal_mode(params.seasonal_mode)
     params.seasonal_join = bool(params.seasonal_join)
+    params.week2_trend = bool(params.week2_trend)
+    params.news_mode = normalize_news_mode(params.news_mode)
+    params.news_set = normalize_news_set(params.news_set)
+    try:
+        params.trend_flat_pts = float(params.trend_flat_pts)
+    except (TypeError, ValueError):
+        params.trend_flat_pts = 1500.0
+    try:
+        params.trend_sessions = max(5, int(params.trend_sessions or 10))
+    except (TypeError, ValueError):
+        params.trend_sessions = 10
     return params
 
 
@@ -223,6 +249,13 @@ class OvernightTrade:
     decision: str = ""
     seasonal_regime: Optional[str] = None
     seasonal_label: Optional[str] = None
+    trend_state: Optional[str] = None
+    trend_side: Optional[str] = None
+    trend_move_pts: Optional[float] = None
+    bias_conflict: bool = False
+    bias_side: Optional[str] = None
+    news_kind: Optional[str] = None
+    news_title: Optional[str] = None
 
 
 @dataclass
@@ -250,6 +283,13 @@ class OvernightSkip:
     detail: Optional[str] = None
     seasonal_regime: Optional[str] = None
     seasonal_label: Optional[str] = None
+    trend_state: Optional[str] = None
+    trend_side: Optional[str] = None
+    trend_move_pts: Optional[float] = None
+    bias_conflict: bool = False
+    bias_side: Optional[str] = None
+    news_kind: Optional[str] = None
+    news_title: Optional[str] = None
 
 
 def _local(ts: datetime, tz: ZoneInfo) -> datetime:
@@ -461,6 +501,13 @@ def _mk_skip(
     detail: Optional[str] = None,
     seasonal_regime: Optional[str] = None,
     seasonal_label: Optional[str] = None,
+    trend_state: Optional[str] = None,
+    trend_side: Optional[str] = None,
+    trend_move_pts: Optional[float] = None,
+    bias_conflict: bool = False,
+    bias_side: Optional[str] = None,
+    news_kind: Optional[str] = None,
+    news_title: Optional[str] = None,
 ) -> OvernightSkip:
     return OvernightSkip(
         local_date=day.isoformat(),
@@ -486,6 +533,13 @@ def _mk_skip(
         detail=detail,
         seasonal_regime=seasonal_regime,
         seasonal_label=seasonal_label,
+        trend_state=trend_state,
+        trend_side=trend_side,
+        trend_move_pts=_round_or_none(trend_move_pts, 1),
+        bias_conflict=bool(bias_conflict),
+        bias_side=bias_side,
+        news_kind=news_kind,
+        news_title=news_title,
     )
 
 
@@ -742,6 +796,37 @@ def run_overnight(
     trades: List[OvernightTrade] = []
     skips: List[OvernightSkip] = []
     traded_days: set = set()
+    dailies = (
+        build_daily_closes(ticks, params.timezone) if params.week2_trend else []
+    )
+    use_season = params.seasonal_mode != "off"
+    use_week2 = bool(params.week2_trend)
+
+    def day_bias(d: date):
+        if not use_season and not use_week2:
+            return None
+        return snapshot_bias(
+            d,
+            dailies=dailies,
+            use_season=use_season,
+            use_week2=use_week2,
+            flat_pts=params.trend_flat_pts,
+            sessions=params.trend_sessions,
+            ps=ps,
+        )
+
+    def stamp_bias(snap) -> Dict[str, Any]:
+        if snap is None:
+            return {}
+        return {
+            "seasonal_regime": snap.season_regime if use_season else None,
+            "seasonal_label": snap.season_label if use_season else None,
+            "trend_state": snap.trend_state if use_week2 else None,
+            "trend_side": snap.trend_side if use_week2 else None,
+            "trend_move_pts": snap.trend_move_pts if use_week2 else None,
+            "bias_conflict": bool(snap.conflict),
+            "bias_side": snap.filter_side,
+        }
 
     dates = sorted(by_day.keys())
     open_times = [c.open_time for c in completed]
@@ -763,6 +848,31 @@ def run_overnight(
         seasonal_mode = params.seasonal_mode
         regime = month_regime(day) if seasonal_mode != "off" else "neutral"
         regime_lbl = seasonal_label(regime, day) if seasonal_mode != "off" else None
+        bias_snap = day_bias(day)
+        bias_kw = stamp_bias(bias_snap)
+        news_mode = params.news_mode
+        news_events = (
+            events_on(day, kinds=kinds_for_set(params.news_set))
+            if news_mode != "off"
+            else []
+        )
+        news_kind, news_title = format_news(news_events)
+        news_kw = (
+            {"news_kind": news_kind, "news_title": news_title}
+            if news_mode != "off" and news_events
+            else {}
+        )
+        day_kw = {**bias_kw, **news_kw}
+        if news_mode == "filter" and news_events:
+            skips.append(
+                _mk_skip(
+                    day,
+                    "news_day",
+                    detail=news_title,
+                    **day_kw,
+                )
+            )
+            continue
 
         day_candles = by_day[day]
         if not day_candles:
@@ -770,8 +880,7 @@ def run_overnight(
                 _mk_skip(
                     day,
                     "no_candles",
-                    seasonal_regime=regime if seasonal_mode != "off" else None,
-                    seasonal_label=regime_lbl,
+                    **day_kw,
                 )
             )
             continue
@@ -803,8 +912,7 @@ def run_overnight(
                     day,
                     "thin_asia",
                     detail=f"{len(asia_candles)} candles",
-                    seasonal_regime=regime if seasonal_mode != "off" else None,
-                    seasonal_label=regime_lbl,
+                    **day_kw,
                 )
             )
             continue
@@ -820,8 +928,7 @@ def run_overnight(
                     asia_high=asia_high,
                     asia_low=asia_low,
                     asia_range_pts=asia_range_pts,
-                    seasonal_regime=regime if seasonal_mode != "off" else None,
-                    seasonal_label=regime_lbl,
+                    **day_kw,
                 )
             )
             continue
@@ -858,9 +965,8 @@ def run_overnight(
         above_asia, below_asia = _asia_extensions(after_asia, asia_high, asia_low, ps)
 
         def skip_break(reason: str, **extra: Any) -> OvernightSkip:
-            if seasonal_mode != "off":
-                extra.setdefault("seasonal_regime", regime)
-                extra.setdefault("seasonal_label", regime_lbl)
+            for k, v in day_kw.items():
+                extra.setdefault(k, v)
             fav = adv = fav_px = adv_px = None
             bp = extra.get("break_pts")
             if break_candle is not None and side is not None:
@@ -925,11 +1031,12 @@ def run_overnight(
 
         seasonal_join = False
         if break_candle is None or side is None:
-            join_side = (
-                bias_side(regime)
-                if bool(params.seasonal_join) and seasonal_mode != "off"
-                else None
-            )
+            join_side = None
+            if bool(params.seasonal_join) and (seasonal_mode != "off" or use_week2):
+                if bias_snap is not None and not bias_snap.conflict:
+                    join_side = bias_snap.filter_side
+                elif seasonal_mode != "off":
+                    join_side = bias_side(regime)
             if join_side is None:
                 skips.append(
                     _mk_skip(
@@ -940,8 +1047,7 @@ def run_overnight(
                         asia_range_pts=asia_range_pts,
                         max_above_asia_pts=above_asia,
                         max_below_asia_pts=below_asia,
-                        seasonal_regime=regime if seasonal_mode != "off" else None,
-                        seasonal_label=regime_lbl,
+                        **day_kw,
                     )
                 )
                 continue
@@ -956,8 +1062,7 @@ def run_overnight(
                         asia_range_pts=asia_range_pts,
                         max_above_asia_pts=above_asia,
                         max_below_asia_pts=below_asia,
-                        seasonal_regime=regime,
-                        seasonal_label=regime_lbl,
+                        **day_kw,
                     )
                 )
                 continue
@@ -972,8 +1077,7 @@ def run_overnight(
                         asia_range_pts=asia_range_pts,
                         max_above_asia_pts=above_asia,
                         max_below_asia_pts=below_asia,
-                        seasonal_regime=regime,
-                        seasonal_label=regime_lbl,
+                        **day_kw,
                     )
                 )
                 continue
@@ -981,9 +1085,15 @@ def run_overnight(
             break_candle = post_asia[-1] if post_asia else asia_candles[-1]
             seasonal_join = True
 
-        if (not seasonal_join) and seasonal_mode == "filter" and against_bias(regime, side):
-            skips.append(skip_break("seasonal_bias"))
-            continue
+        if (not seasonal_join) and seasonal_mode == "filter":
+            filt = (
+                bias_snap.filter_side
+                if bias_snap is not None
+                else bias_side(regime)
+            )
+            if filt and side != filt:
+                skips.append(skip_break("seasonal_bias"))
+                continue
 
         if params.side_filter == "long" and side != "UP":
             skips.append(skip_break("side_filter"))
@@ -1220,8 +1330,9 @@ def run_overnight(
             use_higher_close=_resume_enabled(params),
             resume_closes=_resume_need(params),
         )
-        if regime_lbl:
-            decision = (decision + " · " if decision else "") + regime_lbl
+        note = bias_snap.decision_note() if bias_snap is not None else regime_lbl
+        if note:
+            decision = (decision + " · " if decision else "") + note
 
         sl, tp, sl_pts, tp_pts = _compute_sl_tp(
             side, entry_px, asia_high, asia_low, params, ps
@@ -1306,8 +1417,15 @@ def run_overnight(
                 max_adv_pts=round(max_adv, 1),
                 max_fav_price=round(best_px, 5),
                 max_adv_price=round(worst_px, 5),
-                seasonal_regime=regime if seasonal_mode != "off" else None,
-                seasonal_label=regime_lbl,
+                seasonal_regime=bias_kw.get("seasonal_regime"),
+                seasonal_label=bias_kw.get("seasonal_label"),
+                trend_state=bias_kw.get("trend_state"),
+                trend_side=bias_kw.get("trend_side"),
+                trend_move_pts=bias_kw.get("trend_move_pts"),
+                bias_conflict=bool(bias_kw.get("bias_conflict")),
+                bias_side=bias_kw.get("bias_side"),
+                news_kind=day_kw.get("news_kind"),
+                news_title=day_kw.get("news_title"),
             )
         )
         traded_days.add(day)

@@ -109,7 +109,7 @@ class BatchRequest(BaseModel):
     spike_neo_rows: List[Dict[str, Any]] = Field(default_factory=list)
     impulse_retrace_rows: List[Dict[str, Any]] = Field(default_factory=list)
     range_wick_rows: List[Dict[str, Any]] = Field(default_factory=list)
-    filters: Optional[Dict[str, Any]] = None
+    filters: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
 @app.get("/api/health")
@@ -490,6 +490,11 @@ class OvernightRunRequest(BaseModel):
     side_filter: str = "both"
     seasonal_mode: str = "off"
     seasonal_join: bool = False
+    week2_trend: bool = False
+    trend_flat_pts: float = 1500.0
+    trend_sessions: int = 10
+    news_mode: str = "off"
+    news_set: str = "scheduled"
     workers: int = 3
     force_download: bool = False
 
@@ -538,6 +543,11 @@ def overnight_run(body: OvernightRunRequest):
         side_filter=str(body.side_filter or "both"),
         seasonal_mode=str(body.seasonal_mode or "off"),
         seasonal_join=bool(body.seasonal_join),
+        week2_trend=bool(body.week2_trend),
+        trend_flat_pts=float(body.trend_flat_pts or 1500.0),
+        trend_sessions=max(5, int(body.trend_sessions or 10)),
+        news_mode=str(body.news_mode or "off"),
+        news_set=str(body.news_set or "scheduled"),
         workers=max(1, min(6, int(body.workers or 1))),
         force_download=bool(body.force_download),
     )

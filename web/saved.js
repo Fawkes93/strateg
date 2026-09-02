@@ -126,8 +126,35 @@
     });
   }
 
+  function playDone() {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      var ctx = playDone._ctx || new Ctx();
+      playDone._ctx = ctx;
+      if (ctx.state === "suspended") ctx.resume();
+      var now = ctx.currentTime;
+      [523.25, 659.25].forEach(function (freq, i) {
+        var o = ctx.createOscillator();
+        var g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(0.12, now + 0.02 + i * 0.12);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.35 + i * 0.15);
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.start(now + i * 0.12);
+        o.stop(now + 0.45 + i * 0.15);
+      });
+    } catch (e) {
+      /* autoplay policies / no audio — ignore */
+    }
+  }
+
   global.StrategSaved = {
     bindPicker: bindPicker,
     loadedNote: loadedNote,
+    playDone: playDone,
   };
 })(window);

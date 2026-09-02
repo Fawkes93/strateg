@@ -230,6 +230,8 @@
         Optional full grid = every range × every spike.
         Report: <strong>top 3 T by clean %</strong> per engine, by date range.
         Avg/sum pts use a hard SL at opposite% × T — dirty hits (T after the stop) count as losses.
+        Seasonal month + 2-week trend apply only to <strong>Spike Neo</strong> and <strong>Impulse retrace</strong>.
+        If they disagree, both are tagged and the run keeps both sides; otherwise against-sides are filtered.
       </p>
 
       <div class="grid">
@@ -287,6 +289,24 @@
             <option value="2">2</option>
             <option value="4" selected>4</option>
           </select>
+        </label>
+        <label>
+          Seasonal month
+          <select id="sw-seasonal-mode"
+            title="Applies to Spike Neo and Impulse retrace. Jan/Aug long, May/Jun short. Filter skips the against-side unless 2-week trend disagrees.">
+            <option value="off" selected>off</option>
+            <option value="tag">tag only</option>
+            <option value="filter">filter against-side</option>
+          </select>
+        </label>
+        <label class="chk">2-week trend
+          <input type="checkbox" id="sw-week2"
+            title="Close-to-close over ~10 sessions. If it disagrees with the month, both are tagged and neither side is filtered. Spike Neo + impulse retrace only." />
+        </label>
+        <label>
+          Trend flat (pts)
+          <input type="number" id="sw-trend-flat" value="1500" min="0" step="100"
+            title="2-week net move below this is flat. Gold default 1500 pts = $15." />
         </label>
       </div>
       <p class="hint muted">
@@ -1239,14 +1259,14 @@
     Research = alerts. Sweep = grid. Session clock = 7am Moldova. Spike fade = fade big spikes. Micro fade = stall then fade. Micro burst = join a 1–3s mini wave. Cool-off = 15m run, reverse or join.
   </footer>
 
-  <script src="/static/saved.js?v=20260901a"></script>
-  <script src="/static/app.js?v=20260901d"></script>
-  <script src="/static/sweep.js?v=20260901c"></script>
-  <script src="/static/session.js?v=20260901a"></script>
-  <script src="/static/spike_fade.js?v=20260901a"></script>
-  <script src="/static/micro_momentum.js?v=20260901a"></script>
-  <script src="/static/micro_burst.js?v=20260901a"></script>
-  <script src="/static/overnight.js?v=20260902a"></script>
-  <script src="/static/cooloff.js?v=20260901c"></script>
+  <script src="/static/saved.js?v=20260902a"></script>
+  <script src="/static/app.js?v=20260902a"></script>
+  <script src="/static/sweep.js?v=20260902b"></script>
+  <script src="/static/session.js?v=20260902a"></script>
+  <script src="/static/spike_fade.js?v=20260902a"></script>
+  <script src="/static/micro_momentum.js?v=20260902a"></script>
+  <script src="/static/micro_burst.js?v=20260902a"></script>
+  <script src="/static/overnight.js?v=20260902d"></script>
+  <script src="/static/cooloff.js?v=20260902a"></script>
 </body>
 </html>
