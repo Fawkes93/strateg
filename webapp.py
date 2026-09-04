@@ -577,6 +577,8 @@ class CoolOffRunRequest(BaseModel):
     invert: bool = False
     min_run: int = 5
     max_tolerance: int = 2
+    min_run_range_pts: float = 0.0
+    max_run_range_pts: float = 0.0
     reverse_frac: float = 0.30
     reverse_min_bars: int = 2
     reverse_max_bars: int = 3
@@ -603,6 +605,10 @@ def cooloff_status(
 
 @app.post("/api/cooloff/run")
 def cooloff_run(body: CoolOffRunRequest):
+    min_run_range_pts = max(0.0, float(body.min_run_range_pts or 0.0))
+    max_run_range_pts = max(0.0, float(body.max_run_range_pts or 0.0))
+    if max_run_range_pts > 0 and max_run_range_pts < min_run_range_pts:
+        raise HTTPException(status_code=422, detail="Maximum run range must be at least the minimum run range")
     params = CoolOffJobParams(
         symbol=body.symbol,
         date_from=body.date_from,
@@ -610,6 +616,8 @@ def cooloff_run(body: CoolOffRunRequest):
         invert=bool(body.invert),
         min_run=max(2, int(body.min_run)),
         max_tolerance=max(0, int(body.max_tolerance)),
+        min_run_range_pts=min_run_range_pts,
+        max_run_range_pts=max_run_range_pts,
         reverse_frac=float(body.reverse_frac),
         reverse_min_bars=max(1, int(body.reverse_min_bars)),
         reverse_max_bars=max(1, int(body.reverse_max_bars)),

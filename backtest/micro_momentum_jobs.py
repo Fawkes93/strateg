@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional, Sequence
 from backtest.batch import is_batch_running
 from backtest.dukascopy import drop_cached_pack, normalize_duka_symbol, reaktor_symbol
 from backtest.micro_momentum import BurstParams, BurstTrade, run_micro_momentum, summarize_burst
-from backtest.runner import DEFAULT_RESULTS, _parse_range, load_ticks
+from backtest.runner import DEFAULT_RESULTS, _parse_range, load_ticks, unique_result_path
 from backtest.spike_fade_jobs import (
     _assign_slot,
     _idle_lane,
@@ -721,7 +721,8 @@ def _run(params: MicroJobParams) -> None:
         )
         DEFAULT_RESULTS.mkdir(parents=True, exist_ok=True)
         tag = f"micro_{params.symbol}_{params.date_from}_{params.date_to}"
-        path = DEFAULT_RESULTS / f"{tag}.json"
+        path, run_id = unique_result_path(tag)
+        result["run_id"] = run_id
         path.write_text(json.dumps(result, default=str, separators=(",", ":")))
         result["saved_to"] = str(path)
 

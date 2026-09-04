@@ -150,6 +150,47 @@ def test_join_on_forming_bar_when_shallow_pullback_reclaims_hh():
     assert t["pause_bars"] == 2
     assert t["retrace"] < 0.30
     assert t["exit_reason"] == "tp"
+    assert t["max_fav_price"] >= t["entry"]
+    assert t["max_adv_price"] <= t["entry"]
+    assert t["max_fav_pts"] > 0
+    assert t["max_adv_pts"] >= 0
+
+
+def test_full_high_low_run_range_filter_limits_entries():
+    """Range bounds use the run's lowest low and highest high, in points."""
+    ticks = _up_run_ticks()
+    ticks += _bar_ticks(5, 3348, 3349, 3342, 3344)
+    t6 = T0 + TF * 6
+    ticks += [_tick(t6 + timedelta(seconds=1), 3344), _tick(t6 + timedelta(seconds=10), 3350.02)]
+    ticks += _follow_through(6, 3350.02, 0.08)
+
+    # The test run spans 3299 to 3350 = 5,100 XAU/USD points.
+    assert run_cooloff(ticks, symbol="XAU/USD", params=_params(min_run_range_pts=5100, max_run_range_pts=5100))["trades"] == 1
+    assert run_cooloff(ticks, symbol="XAU/USD", params=_params(min_run_range_pts=5101))["trades"] == 0
+    assert run_cooloff(ticks, symbol="XAU/USD", params=_params(max_run_range_pts=5099))["trades"] == 0
+
+
+def test_zero_tp_allows_the_trail_to_manage_the_exit():
+    ticks = _up_run_ticks()
+    ticks += _bar_ticks(5, 3348, 3349, 3342, 3344)
+    t6 = T0 + TF * 6
+    ticks += [
+        _tick(t6 + timedelta(seconds=1), 3344),
+        _tick(t6 + timedelta(seconds=10), 3350.02),  # join long
+        _tick(t6 + timedelta(seconds=15), 3354.02),  # arm at +400 pts
+        _tick(t6 + timedelta(seconds=20), 3355.02),  # trail rises to 3351.02
+        _tick(t6 + timedelta(seconds=25), 3351.02),  # tag trailing stop
+    ]
+    res = run_cooloff(
+        ticks,
+        symbol="XAU/USD",
+        params=_params(tp_pts=0, sl_pts=1000, trail_pts=400, trail_arm_pts=400),
+    )
+    assert res["trades"] == 1
+    trade = res["rows"][0]
+    assert trade["tp"] is None
+    assert trade["exit_reason"] == "trail"
+    assert trade["pts"] == 100
 
 
 def test_invert_flips_reverse_fill():

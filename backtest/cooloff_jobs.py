@@ -24,7 +24,7 @@ from backtest.dukascopy import (
     parse_ymd,
     reaktor_symbol,
 )
-from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS, _parse_range, load_ticks
+from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS, _parse_range, load_ticks, unique_result_path
 from backtest.spike_fade_jobs import (
     _assign_slot,
     _idle_lane,
@@ -61,6 +61,8 @@ class CoolOffJobParams:
     invert: bool = False
     min_run: int = 5
     max_tolerance: int = 2
+    min_run_range_pts: float = 0.0
+    max_run_range_pts: float = 0.0
     reverse_frac: float = 0.30
     reverse_min_bars: int = 2
     reverse_max_bars: int = 3
@@ -263,6 +265,8 @@ def _params_to_engine(params: CoolOffJobParams) -> CoolOffParams:
         invert=bool(params.invert),
         min_run=int(params.min_run),
         max_tolerance=int(params.max_tolerance),
+        min_run_range_pts=float(params.min_run_range_pts or 0.0),
+        max_run_range_pts=float(params.max_run_range_pts or 0.0),
         reverse_frac=float(params.reverse_frac),
         reverse_min_bars=int(params.reverse_min_bars),
         reverse_max_bars=int(params.reverse_max_bars),
@@ -739,7 +743,8 @@ def _run(params: CoolOffJobParams) -> None:
         )
         DEFAULT_RESULTS.mkdir(parents=True, exist_ok=True)
         tag = f"cooloff_{params.symbol}_{params.date_from}_{params.date_to}"
-        path = DEFAULT_RESULTS / f"{tag}.json"
+        path, run_id = unique_result_path(tag)
+        result["run_id"] = run_id
         path.write_text(json.dumps(result, default=str, separators=(",", ":")))
         result["saved_to"] = str(path)
 

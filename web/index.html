@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Strateg — local forward research</title>
-  <link rel="stylesheet" href="/static/app.css?v=20260901c" />
+  <link rel="stylesheet" href="/static/app.css?v=20260904a" />
 </head>
 <body>
   <header class="top">
@@ -1138,6 +1138,16 @@
             title="Opposite-color bars allowed inside the run." />
         </label>
         <label>
+          Run range min (pts)
+          <input type="number" id="co-range-min" value="0" min="0" step="50"
+            title="Full run range: highest candle high minus lowest candle low. 0 = no minimum." />
+        </label>
+        <label>
+          Run range max (pts)
+          <input type="number" id="co-range-max" value="0" min="0" step="50"
+            title="Full run range: highest candle high minus lowest candle low. 0 = no maximum." />
+        </label>
+        <label>
           Reverse at (% of run)
           <input type="number" id="co-rev-pct" value="30" min="5" max="90" step="1" />
         </label>
@@ -1159,7 +1169,8 @@
         </label>
         <label>
           TP (pts)
-          <input type="number" id="co-tp" value="500" min="50" step="50" />
+          <input type="number" id="co-tp" value="500" min="0" step="50"
+            title="0 = off; use this when the trailing stop should manage exits." />
         </label>
         <label>
           SL (pts)
@@ -1229,7 +1240,17 @@
       </div>
       <p class="muted" id="co-meta">No run yet.</p>
       <div class="hero-grid" id="co-hero"></div>
-      <h3>Trades</h3>
+      <div class="results-head">
+        <h3>Trades</h3>
+        <label class="inline-control">
+          Show
+          <select id="co-kind-filter" title="Filter displayed Cool-off trades">
+            <option value="all">All trades</option>
+            <option value="join">Join only</option>
+            <option value="reverse">Reverse only</option>
+          </select>
+        </label>
+      </div>
       <div class="table-wrap">
         <table id="co-table">
           <thead>
@@ -1243,11 +1264,19 @@
               <th>Pause</th>
               <th>Entry</th>
               <th>Exit</th>
+              <th>Max fav pts</th>
+              <th>Max adv pts</th>
               <th class="co-sort" data-sort="reason">Reason <span class="dir"></span></th>
               <th>P/L pts</th>
             </tr>
           </thead>
           <tbody></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="12">Total shown P/L</td>
+              <td id="co-total-pts">—</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </section>
@@ -1267,6 +1296,6 @@
   <script src="/static/micro_momentum.js?v=20260902a"></script>
   <script src="/static/micro_burst.js?v=20260902a"></script>
   <script src="/static/overnight.js?v=20260902d"></script>
-  <script src="/static/cooloff.js?v=20260902a"></script>
+  <script src="/static/cooloff.js?v=20260904c"></script>
 </body>
 </html>

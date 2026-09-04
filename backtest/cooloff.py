@@ -36,6 +36,8 @@ class CoolOffParams:
     invert: bool = False  # True = fill the opposite side of the setup
     min_run: int = 5
     max_tolerance: int = 2
+    min_run_range_pts: float = 0.0  # 0 = no lower bound; measured high-to-low
+    max_run_range_pts: float = 0.0  # 0 = no upper bound; measured high-to-low
     reverse_frac: float = 0.30
     reverse_min_bars: int = 2
     reverse_max_bars: int = 3
@@ -66,7 +68,7 @@ class CoolOffTrade:
     reverse_px: float
     join_px: float
     entry: float
-    tp: float
+    tp: Optional[float]
     sl: float
     tp_pts: float
     sl_pts: float
@@ -76,6 +78,9 @@ class CoolOffTrade:
     exit_reason: Optional[str] = None
     pts: float = 0.0
     max_fav_pts: float = 0.0
+    max_adv_pts: float = 0.0
+    max_fav_price: Optional[float] = None
+    max_adv_price: Optional[float] = None
     hold_sec: Optional[float] = None
 
 
@@ -212,11 +217,21 @@ def _make_watch(
     run: Sequence[Candle],
     tol: int,
     pause_start: datetime,
-    reverse_frac: float,
+    params: CoolOffParams,
     bull: bool,
+    ps: float,
 ) -> Optional[_Watch]:
-    lv = run_levels(run, bull=bull, reverse_frac=reverse_frac)
+    lv = run_levels(run, bull=bull, reverse_frac=float(params.reverse_frac))
     if lv is None:
+        return None
+    # This deliberately uses the full candle span, rather than the directional
+    # open-to-extreme move used for the retracement calculation below.
+    full_range_pts = (lv["run_high"] - lv["run_low"]) / ps
+    min_range_pts = max(0.0, float(params.min_run_range_pts or 0.0))
+    max_range_pts = max(0.0, float(params.max_run_range_pts or 0.0))
+    if full_range_pts + 1e-9 < min_range_pts:
+        return None
+    if max_range_pts > 1e-12 and full_range_pts - 1e-9 > max_range_pts:
         return None
     extreme0 = lv["run_high"] if bull else lv["run_low"]
     return _Watch(
@@ -291,11 +306,11 @@ def _watch_from_completed_dir(
     completed: Sequence[Candle],
     params: CoolOffParams,
     bull: bool,
+    ps: float,
 ) -> Optional[_Watch]:
     max_pause = max(int(params.join_max_bars), int(params.reverse_max_bars))
     min_run = int(params.min_run)
     max_tol = int(params.max_tolerance)
-    frac = float(params.reverse_frac)
     for n in range(1, max_pause + 1):
         if len(completed) < min_run + n:
             continue
@@ -308,7 +323,7 @@ def _watch_from_completed_dir(
         if extracted is None:
             continue
         run, tol = extracted
-        w = _make_watch(run, tol, completed[-n].open_time, frac, bull)
+        w = _make_watch(run, tol, completed[-n].open_time, params, bull, ps)
         if w is None:
             continue
         for p in completed[-n:]:
@@ -320,9 +335,10 @@ def _watch_from_completed_dir(
 def _watch_from_completed(
     completed: Sequence[Candle],
     params: CoolOffParams,
+    ps: float,
 ) -> Optional[_Watch]:
-    up = _watch_from_completed_dir(completed, params, True)
-    dn = _watch_from_completed_dir(completed, params, False)
+    up = _watch_from_completed_dir(completed, params, True, ps)
+    dn = _watch_from_completed_dir(completed, params, False, ps)
     if up and dn:
         return up if up.run_length >= dn.run_length else dn
     return up or dn
@@ -332,6 +348,13 @@ def _fav_pts(side: str, entry: float, px: float, ps: float) -> float:
     if side == "UP":
         return (px - entry) / ps
     return (entry - px) / ps
+
+
+def _adv_pts(side: str, entry: float, px: float, ps: float) -> float:
+    """Distance in points moved against the position."""
+    if side == "UP":
+        return (entry - px) / ps
+    return (px - entry) / ps
 
 
 def _hit_level(side: str, px: float, level: float, is_sl: bool) -> bool:
@@ -390,7 +413,9 @@ def run_cooloff(
     rev_hi = max(rev_lo, int(params.reverse_max_bars))
     join_lo = max(1, int(params.join_min_bars))
     join_hi = max(join_lo, int(params.join_max_bars))
-    tp_off = max(1.0, float(params.tp_pts))
+    # A zero TP is useful when the trailing stop is intended to manage the
+    # entire exit.  Previously it was silently coerced to one point.
+    tp_off = max(0.0, float(params.tp_pts))
     sl_off = max(1.0, float(params.sl_pts))
     trail_pts = max(0.0, float(params.trail_pts or 0.0))
     arm_pts = max(0.0, float(params.trail_arm_pts or 0.0))
@@ -412,6 +437,9 @@ def run_cooloff(
     active_run: Optional[Tuple[List[Candle], int, bool]] = None
     consumed_pause: Optional[datetime] = None
     best_fav = 0.0
+    best_adv = 0.0
+    best_fav_px: Optional[float] = None
+    best_adv_px: Optional[float] = None
     trail_armed = False
     trail_level: Optional[float] = None
     cooldown_until: Optional[datetime] = None
@@ -419,13 +447,16 @@ def run_cooloff(
     last_yield = time.monotonic()
 
     def close_trade(tr: CoolOffTrade, ts: datetime, px: float, reason: str) -> None:
-        nonlocal open_t, best_fav, trail_armed, trail_level, cooldown_until
+        nonlocal open_t, best_fav, best_adv, best_fav_px, best_adv_px, trail_armed, trail_level, cooldown_until
         pts = _fav_pts(tr.side, tr.entry, px, ps)
         tr.exit_ts = ts.isoformat()
         tr.exit = round(px, 5)
         tr.exit_reason = reason
         tr.pts = round(pts, 1)
         tr.max_fav_pts = round(best_fav, 1)
+        tr.max_adv_pts = round(best_adv, 1)
+        tr.max_fav_price = round(best_fav_px if best_fav_px is not None else tr.entry, 5)
+        tr.max_adv_price = round(best_adv_px if best_adv_px is not None else tr.entry, 5)
         try:
             t0 = datetime.fromisoformat(tr.entry_ts)
             if t0.tzinfo is None:
@@ -436,6 +467,9 @@ def run_cooloff(
         trades.append(tr)
         open_t = None
         best_fav = 0.0
+        best_adv = 0.0
+        best_fav_px = None
+        best_adv_px = None
         trail_armed = False
         trail_level = None
         if cd > 1e-12:
@@ -449,14 +483,14 @@ def run_cooloff(
         pause_i: int,
         retrace: float,
     ) -> None:
-        nonlocal open_t, best_fav, trail_armed, trail_level, watch, consumed_pause
+        nonlocal open_t, best_fav, best_adv, best_fav_px, best_adv_px, trail_armed, trail_level, watch, consumed_pause
         natural = w.direction if kind == "join" else _flip(w.direction)
         side = _flip(natural) if invert else natural
         if side == "UP":
-            tp = px + tp_off * ps
+            tp = px + tp_off * ps if tp_off > 1e-12 else None
             sl = px - sl_off * ps
         else:
-            tp = px - tp_off * ps
+            tp = px - tp_off * ps if tp_off > 1e-12 else None
             sl = px + sl_off * ps
         open_t = CoolOffTrade(
             entry_ts=ts.isoformat(),
@@ -473,12 +507,15 @@ def run_cooloff(
             reverse_px=round(w.reverse_px, 5),
             join_px=round(w.join_px, 5),
             entry=round(px, 5),
-            tp=round(tp, 5),
+            tp=round(tp, 5) if tp is not None else None,
             sl=round(sl, 5),
             tp_pts=round(tp_off, 1),
             sl_pts=round(sl_off, 1),
         )
         best_fav = 0.0
+        best_adv = 0.0
+        best_fav_px = px
+        best_adv_px = px
         trail_armed = False
         trail_level = None
         consumed_pause = w.pause_start
@@ -492,6 +529,11 @@ def run_cooloff(
             fav = _fav_pts(open_t.side, open_t.entry, px, ps)
             if fav > best_fav:
                 best_fav = fav
+                best_fav_px = px
+            adv = _adv_pts(open_t.side, open_t.entry, px, ps)
+            if adv > best_adv:
+                best_adv = adv
+                best_adv_px = px
             entry_dt = datetime.fromisoformat(open_t.entry_ts)
             if entry_dt.tzinfo is None:
                 entry_dt = entry_dt.replace(tzinfo=timezone.utc)
@@ -520,7 +562,7 @@ def run_cooloff(
                                 close_trade(open_t, ts, trail_level, "trail")
                 if open_t is not None and _hit_level(open_t.side, px, open_t.sl, True):
                     close_trade(open_t, ts, open_t.sl, "sl")
-                elif open_t is not None and _hit_level(open_t.side, px, open_t.tp, False):
+                elif open_t is not None and open_t.tp is not None and _hit_level(open_t.side, px, open_t.tp, False):
                     close_trade(open_t, ts, open_t.tp, "tp")
 
         closed = builder.add_price(px, ts)
@@ -558,7 +600,7 @@ def run_cooloff(
                     active_run = extracted
                 else:
                     active_run = None
-                    nxt = _watch_from_completed(completed, params)
+                    nxt = _watch_from_completed(completed, params, ps)
                     if nxt is not None and nxt.pause_start != consumed_pause:
                         watch = nxt
 
@@ -581,7 +623,7 @@ def run_cooloff(
             if watch is None and active_run is not None and forming is not None:
                 if forming.open_time != consumed_pause:
                     run, tol, run_bull = active_run
-                    probe = _make_watch(run, tol, forming.open_time, rev_frac, run_bull)
+                    probe = _make_watch(run, tol, forming.open_time, params, run_bull, ps)
                     if probe is not None:
                         _touch_watch(probe, forming.low, forming.high)
                         _touch_watch(probe, px, px)

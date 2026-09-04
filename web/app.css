@@ -669,6 +669,8 @@ th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: 
 tr.highlight td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .yes { color: var(--good); }
 .no { color: var(--bad); }
+.co-fav { color: var(--good); }
+.co-adv { color: #c792ea; }
 .ob-adv { color: var(--bad); }
 .ob-warn { color: var(--warn); }
 td.ob-decision {

@@ -15,7 +15,7 @@ from backtest.dukascopy import (
     reaktor_symbol,
 )
 from backtest.h1 import utc_hours_for_local_window
-from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS
+from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS, unique_result_path
 from backtest.session_clock import SessionParams, SessionSkip, SessionTrade, run_session, summarize_session
 
 
@@ -210,7 +210,8 @@ def _run(params: SessionJobParams) -> None:
 
         DEFAULT_RESULTS.mkdir(parents=True, exist_ok=True)
         tag = f"session_{params.symbol}_{params.date_from}_{params.date_to}"
-        path = DEFAULT_RESULTS / f"{tag}.json"
+        path, run_id = unique_result_path(tag)
+        result["run_id"] = run_id
         import json
 
         path.write_text(json.dumps(result, indent=2, default=str))

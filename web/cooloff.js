@@ -24,6 +24,8 @@
     "co-invert",
     "co-min-run",
     "co-tol",
+    "co-range-min",
+    "co-range-max",
     "co-rev-pct",
     "co-rev-min",
     "co-rev-max",
@@ -251,10 +253,12 @@
     const meta = $("co-meta");
     const hero = $("co-hero");
     const tb = $("co-table") && $("co-table").querySelector("tbody");
+    const totalEl = $("co-total-pts");
     if (!result) {
       if (meta) meta.textContent = "No run yet.";
       if (hero) hero.innerHTML = "";
       if (tb) tb.innerHTML = "";
+      if (totalEl) totalEl.textContent = "—";
       return;
     }
     if (meta) {
@@ -300,10 +304,17 @@
     if (!tb) return;
     tb.innerHTML = "";
     updateSortHeaders();
-    const rows = sortedRows(result.rows || []);
+    const kindFilter = ($("co-kind-filter") && $("co-kind-filter").value) || "all";
+    const rows = sortedRows(result.rows || []).filter(function (row) {
+      return kindFilter === "all" || row.kind === kindFilter;
+    });
     if (!rows.length) {
       tb.innerHTML =
-        '<tr><td colspan="11" class="muted">No trades in this window</td></tr>';
+        '<tr><td colspan="13" class="muted">No trades in this window</td></tr>';
+      if (totalEl) {
+        totalEl.textContent = "0 pts";
+        totalEl.className = "";
+      }
       return;
     }
     rows.forEach(function (t) {
@@ -329,6 +340,10 @@
         (t.entry != null ? t.entry : "—") +
         "</td><td>" +
         (t.exit != null ? t.exit : "—") +
+        '</td><td class="co-fav" title="Largest favorable move in points before exit or the max-hold timeout">' +
+        (t.max_fav_pts != null ? t.max_fav_pts : "—") +
+        '</td><td class="co-adv" title="Largest adverse move in points before exit or the max-hold timeout">' +
+        (t.max_adv_pts != null ? t.max_adv_pts : "—") +
         "</td><td>" +
         (t.exit_reason || "—") +
         '</td><td class="' +
@@ -338,6 +353,13 @@
         "</td>";
       tb.appendChild(tr);
     });
+    const totalPts = rows.reduce(function (sum, trade) {
+      return sum + (Number(trade.pts) || 0);
+    }, 0);
+    if (totalEl) {
+      totalEl.textContent = totalPts.toFixed(1) + " pts";
+      totalEl.className = totalPts > 0 ? "yes" : totalPts < 0 ? "no" : "";
+    }
   }
 
   const LANE_HUES = [204, 158, 286, 22, 142, 338];
@@ -492,6 +514,11 @@
   loadForm();
   bindFormPersist();
   bindSortHeaders();
+  if ($("co-kind-filter")) {
+    $("co-kind-filter").addEventListener("change", function () {
+      if (lastResult) render(lastResult);
+    });
+  }
 
   if ($("co-run")) {
     $("co-run").addEventListener("click", async () => {
@@ -502,6 +529,8 @@
         invert: ($("co-invert") && $("co-invert").value) === "1",
         min_run: Number($("co-min-run").value),
         max_tolerance: Number($("co-tol").value),
+        min_run_range_pts: Number($("co-range-min").value) || 0,
+        max_run_range_pts: Number($("co-range-max").value) || 0,
         reverse_frac: Number($("co-rev-pct").value) / 100,
         reverse_min_bars: Number($("co-rev-min").value),
         reverse_max_bars: Number($("co-rev-max").value),

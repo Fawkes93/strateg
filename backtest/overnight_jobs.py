@@ -31,7 +31,7 @@ from backtest.overnight_break import (
     run_overnight,
     summarize_overnight,
 )
-from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS, _parse_range, load_ticks
+from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS, _parse_range, load_ticks, unique_result_path
 from backtest.seasonality import TREND_LOOKBACK_DAYS
 
 # Extra hours before each month pack so EMA / Asia DST still work in a worker
@@ -870,7 +870,8 @@ def _run(params: OvernightJobParams) -> None:
 
         DEFAULT_RESULTS.mkdir(parents=True, exist_ok=True)
         tag = f"overnight_{params.symbol}_{params.date_from}_{params.date_to}"
-        path = DEFAULT_RESULTS / f"{tag}.json"
+        path, run_id = unique_result_path(tag)
+        result["run_id"] = run_id
         path.write_text(json.dumps(result, indent=2, default=str))
         result["saved_to"] = str(path)
 

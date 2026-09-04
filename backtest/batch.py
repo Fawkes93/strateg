@@ -30,6 +30,7 @@ from backtest.runner import (
     load_ticks,
     research_from_ticks,
     top_ts_by_clean,
+    unique_result_path,
 )
 from backtest.seasonality import lookback_from
 
@@ -1378,10 +1379,8 @@ def _finalize_report(
         ),
     }
 
-    path = (
-        DEFAULT_RESULTS
-        / f"batch_{symbol}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}.json"
-    )
+    path, run_id = unique_result_path(f"batch_{symbol}")
+    report["run_id"] = run_id
     path.write_text(json.dumps(report, indent=2, default=str))
     report["saved_to"] = str(path)
     return report

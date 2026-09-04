@@ -7,9 +7,10 @@ from __future__ import annotations
 
 import json
 import time
+from uuid import uuid4
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from backtest import config as signal_config
 from backtest.dukascopy import (
@@ -36,6 +37,12 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CACHE = ROOT / "data" / "dukascopy"
 DEFAULT_PACKS = ROOT / "data" / "tick_packs"
 DEFAULT_RESULTS = ROOT / "results"
+
+
+def unique_result_path(tag: str) -> Tuple[Path, str]:
+    """Return a collision-resistant result path and its readable run ID."""
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "_" + uuid4().hex[:8]
+    return DEFAULT_RESULTS / f"{tag}_{run_id}.json", run_id
 
 ProgressCb = Optional[Callable[..., None]]
 
@@ -451,7 +458,8 @@ def research_from_ticks(
     result = assemble(partial=False, replay_ticks_done=n)
     if save_json:
         tag = f"{symbol_duka}_{date_from}_{date_to}_forward"
-        out_path = DEFAULT_RESULTS / f"summary_{tag}.json"
+        out_path, run_id = unique_result_path(f"summary_{tag}")
+        result["run_id"] = run_id
         out_path.write_text(json.dumps(result, indent=2, default=str))
         result["saved_to"] = str(out_path)
 

@@ -35,7 +35,7 @@ def classify_filename(name: str) -> Optional[str]:
         return None
     if n.startswith("batch_"):
         return "batch_sweep"
-    if n.startswith("summary_") and n.endswith("_forward.json"):
+    if n.startswith("summary_") and (n.endswith("_forward.json") or "_forward_" in n):
         return "research"
     if n.startswith("session_"):
         return "session_clock"
