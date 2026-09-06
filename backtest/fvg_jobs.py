@@ -50,6 +50,7 @@ class FvgJobParams:
     side_filter: str = "both"
     max_wait_bars: int = 24
     fvg_after_raid_bars: int = 8
+    entry_hours_utc: Optional[List[int]] = None
     workers: int = 3
     force_download: bool = False
 
@@ -440,6 +441,11 @@ def _run(params: FvgJobParams) -> None:
             raise RuntimeError("Empty date range")
         n_m = len(chunks)
         thr = list(params.thresholds or [100.0, 200.0, 500.0, 800.0, 1000.0, 1200.0, 1500.0, 2000.0])
+        eh = params.entry_hours_utc
+        if eh is not None:
+            eh = [int(h) for h in eh]
+            if not eh:
+                eh = None
         fp = IfvgParams(
             timeframe_min=int(params.timeframe_min or 15),
             swing_lookback=max(1, int(params.swing_lookback or 3)),
@@ -451,6 +457,7 @@ def _run(params: FvgJobParams) -> None:
             side_filter=str(params.side_filter or "both"),
             max_wait_bars=max(1, int(params.max_wait_bars or 24)),
             fvg_after_raid_bars=max(1, int(params.fvg_after_raid_bars or 8)),
+            entry_hours_utc=eh,
         )
         all_rows: List[dict] = []
         total_ticks = 0

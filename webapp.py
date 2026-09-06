@@ -675,6 +675,7 @@ class FvgRunRequest(BaseModel):
     side_filter: str = "both"
     max_wait_bars: int = 24
     fvg_after_raid_bars: int = 8
+    entry_hours_utc: Optional[list[int]] = None
     workers: int = 3
     force_download: bool = False
 
@@ -690,6 +691,11 @@ def fvg_status(
 @app.post("/api/fvg/run")
 def fvg_run(body: FvgRunRequest):
     thr = list(body.thresholds or [500.0])
+    eh = body.entry_hours_utc
+    if eh is not None:
+        eh = [int(h) for h in eh]
+        if not eh:
+            eh = None
     params = FvgJobParams(
         symbol=body.symbol,
         date_from=body.date_from,
@@ -704,6 +710,7 @@ def fvg_run(body: FvgRunRequest):
         side_filter=str(body.side_filter or "both"),
         max_wait_bars=max(1, int(body.max_wait_bars or 24)),
         fvg_after_raid_bars=max(1, int(body.fvg_after_raid_bars or 8)),
+        entry_hours_utc=eh,
         workers=max(1, min(6, int(body.workers or 1))),
         force_download=bool(body.force_download),
     )

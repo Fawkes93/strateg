@@ -9,9 +9,12 @@ from backtest.fvg import (
     IfvgParams,
     _bearish_fvg,
     _bullish_fvg,
+    _entry_hour_allowed,
     _is_swing_high,
     _is_swing_low,
+    _normalize_entry_hours_utc,
     build_tf_candles,
+    run_ifvg,
 )
 from backtest.dukascopy import Tick
 from backtest import saved_results as sr
@@ -93,3 +96,76 @@ def test_stop_when_idle():
 
 def test_classify_ifvg_filename():
     assert sr.classify_filename("ifvg_XAUUSD_2025-05-01_2025-06-01.json") == "fvg"
+
+
+def test_normalize_entry_hours_utc():
+    assert _normalize_entry_hours_utc(None) is None
+    assert _normalize_entry_hours_utc([]) is None
+    assert _normalize_entry_hours_utc([4, 15, 17, 19, 22]) == {4, 15, 17, 19, 22}
+    assert _normalize_entry_hours_utc([4, 4, 28]) == {4}  # 28 % 24 → 4
+    assert _normalize_entry_hours_utc([15, 39]) == {15}  # 39 % 24 → 15
+
+
+def test_entry_hour_allowed():
+    assert _entry_hour_allowed(datetime(2025, 5, 1, 4, 30, tzinfo=timezone.utc), None) is True
+    assert _entry_hour_allowed(datetime(2025, 5, 1, 4, 30, tzinfo=timezone.utc), set()) is True
+    allowed = {4, 15, 17}
+    assert _entry_hour_allowed(datetime(2025, 5, 1, 4, 0, tzinfo=timezone.utc), allowed) is True
+    assert _entry_hour_allowed(datetime(2025, 5, 1, 15, 59, tzinfo=timezone.utc), allowed) is True
+    assert _entry_hour_allowed(datetime(2025, 5, 1, 10, 0, tzinfo=timezone.utc), allowed) is False
+
+
+def test_ifvg_params_entry_hours_default():
+    p = IfvgParams()
+    assert p.entry_hours_utc is None
+    p2 = IfvgParams(entry_hours_utc=[4, 15, 17, 19, 22])
+    assert p2.entry_hours_utc == [4, 15, 17, 19, 22]
+
+
+def test_run_ifvg_entry_hours_serializes_and_filters():
+    """Param wires through summarize; flat ticks produce no trades either way."""
+    start = datetime(2025, 5, 5, 8, 0, tzinfo=timezone.utc)
+    ticks = []
+    px = 2000.0
+    for m in range(0, 60):
+        ts = start + timedelta(minutes=m)
+        ticks.append(Tick(ts=ts, bid=px, ask=px))
+    out_all = run_ifvg(
+        ticks,
+        symbol="XAUUSD",
+        params=IfvgParams(
+            timeframe_min=15,
+            swing_lookback=2,
+            hours=1.0,
+            thresholds=[100.0],
+            skip_ignored=False,
+            entry_hours_utc=None,
+        ),
+    )
+    out_filt = run_ifvg(
+        ticks,
+        symbol="XAUUSD",
+        params=IfvgParams(
+            timeframe_min=15,
+            swing_lookback=2,
+            hours=1.0,
+            thresholds=[100.0],
+            skip_ignored=False,
+            entry_hours_utc=[4, 15, 17, 19, 22],
+        ),
+    )
+    assert out_all["params"]["entry_hours_utc"] is None
+    assert out_filt["params"]["entry_hours_utc"] == [4, 15, 17, 19, 22]
+    assert out_filt["trades"] == 0
+    assert out_filt["trades"] <= out_all["trades"]
+
+
+def test_fvg_job_params_entry_hours_serialize():
+    from dataclasses import asdict
+    from backtest.fvg_jobs import FvgJobParams
+
+    p = FvgJobParams(entry_hours_utc=[4, 15, 17, 19, 22])
+    d = asdict(p)
+    assert d["entry_hours_utc"] == [4, 15, 17, 19, 22]
+    p2 = FvgJobParams()
+    assert asdict(p2)["entry_hours_utc"] is None
