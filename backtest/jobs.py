@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from backtest.batch import is_batch_running
 from backtest.runner import run_research
+from backtest.job_memory import release_job_memory, retain_result, slim_state_result_inplace
 
 
 @dataclass
@@ -82,7 +83,7 @@ def load_saved(result: Dict[str, Any], *, name: str = "") -> Dict[str, Any]:
     with _lock:
         if _state.running:
             return {"ok": False, "error": "Research job is running — wait until it finishes"}
-        _state.result = result
+        _state.result = retain_result(result)
         _state.progress = JobProgress(
             phase="done",
             message=f"Loaded {name}" if name else "Loaded saved run",
@@ -167,7 +168,7 @@ def _run_job(params: JobParams) -> None:
             progress=_set_progress,
         )
         with _lock:
-            _state.result = result
+            _state.result = retain_result(result)
         _set_progress(
             phase="done",
             message=f"Done · {result.get('alerts')} alerts · {result.get('ticks'):,} ticks",
@@ -184,5 +185,10 @@ def _run_job(params: JobParams) -> None:
             finished_at=datetime.now(timezone.utc).isoformat(),
         )
     finally:
+        try:
+            release_job_memory()
+        except Exception:
+            pass
         with _lock:
+            slim_state_result_inplace(_state)
             _state.running = False

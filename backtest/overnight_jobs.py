@@ -32,6 +32,7 @@ from backtest.overnight_break import (
     summarize_overnight,
 )
 from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS, _parse_range, load_ticks, unique_result_path
+from backtest.job_memory import release_job_memory, retain_result, slim_state_result_inplace
 from backtest.seasonality import TREND_LOOKBACK_DAYS
 
 # Extra hours before each month pack so EMA / Asia DST still work in a worker
@@ -141,7 +142,7 @@ def load_saved(result: Dict[str, Any], *, name: str = "") -> Dict[str, Any]:
         if _state.running:
             return {"ok": False, "error": "Overnight break is running — stop it first"}
         _cancel.clear()
-        _state.result = result
+        _state.result = retain_result(result)
         _state.progress = OvernightJobProgress(
             phase="done",
             message=f"Loaded {name}" if name else "Loaded saved run",
@@ -881,7 +882,7 @@ def _run(params: OvernightJobParams) -> None:
         result["saved_to"] = str(path)
 
         with _lock:
-            _state.result = result
+            _state.result = retain_result(result)
         if cancelled:
             _set_progress(
                 phase="cancelled",
@@ -916,5 +917,10 @@ def _run(params: OvernightJobParams) -> None:
         )
     finally:
         _force_kill_pool()
+        try:
+            release_job_memory()
+        except Exception:
+            pass
         with _lock:
+            slim_state_result_inplace(_state)
             _state.running = False
