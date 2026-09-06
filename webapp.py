@@ -676,6 +676,7 @@ class FvgRunRequest(BaseModel):
     max_wait_bars: int = 24
     fvg_after_raid_bars: int = 8
     entry_hours_utc: Optional[list[int]] = None
+    entry_weekdays: Optional[list[int]] = None
     workers: int = 3
     force_download: bool = False
 
@@ -696,6 +697,11 @@ def fvg_run(body: FvgRunRequest):
         eh = [int(h) for h in eh]
         if not eh:
             eh = None
+    ew = body.entry_weekdays
+    if ew is not None:
+        ew = [int(d) for d in ew]
+        if not ew:
+            ew = None
     params = FvgJobParams(
         symbol=body.symbol,
         date_from=body.date_from,
@@ -711,6 +717,7 @@ def fvg_run(body: FvgRunRequest):
         max_wait_bars=max(1, int(body.max_wait_bars or 24)),
         fvg_after_raid_bars=max(1, int(body.fvg_after_raid_bars or 8)),
         entry_hours_utc=eh,
+        entry_weekdays=ew,
         workers=max(1, min(6, int(body.workers or 1))),
         force_download=bool(body.force_download),
     )

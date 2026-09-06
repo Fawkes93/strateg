@@ -10,9 +10,11 @@ from backtest.fvg import (
     _bearish_fvg,
     _bullish_fvg,
     _entry_hour_allowed,
+    _entry_weekday_allowed,
     _is_swing_high,
     _is_swing_low,
     _normalize_entry_hours_utc,
+    _normalize_entry_weekdays,
     build_tf_candles,
     run_ifvg,
 )
@@ -169,3 +171,85 @@ def test_fvg_job_params_entry_hours_serialize():
     assert d["entry_hours_utc"] == [4, 15, 17, 19, 22]
     p2 = FvgJobParams()
     assert asdict(p2)["entry_hours_utc"] is None
+
+def test_normalize_entry_weekdays():
+    assert _normalize_entry_weekdays(None) is None
+    assert _normalize_entry_weekdays([]) is None
+    assert _normalize_entry_weekdays([0]) == {0}
+    assert _normalize_entry_weekdays([0, 1, 0]) == {0, 1}
+    assert _normalize_entry_weekdays([0, 7]) == {0}  # 7 % 7 → 0
+    assert _normalize_entry_weekdays([6, 13]) == {6}  # 13 % 7 → 6
+
+
+def test_entry_weekday_allowed():
+    # 2025-05-05 is a Monday (weekday 0)
+    mon = datetime(2025, 5, 5, 10, 0, tzinfo=timezone.utc)
+    tue = datetime(2025, 5, 6, 10, 0, tzinfo=timezone.utc)
+    assert mon.weekday() == 0
+    assert tue.weekday() == 1
+    assert _entry_weekday_allowed(mon, None) is True
+    assert _entry_weekday_allowed(mon, set()) is True
+    assert _entry_weekday_allowed(mon, {0}) is True
+    assert _entry_weekday_allowed(tue, {0}) is False
+    assert _entry_weekday_allowed(tue, {0, 1}) is True
+    assert _entry_weekday_allowed(mon, {1, 2}) is False
+
+
+def test_ifvg_params_entry_weekdays_default():
+    p = IfvgParams()
+    assert p.entry_weekdays is None
+    p2 = IfvgParams(entry_weekdays=[0], entry_hours_utc=[7, 8, 9, 10, 11, 12])
+    assert p2.entry_weekdays == [0]
+    assert p2.entry_hours_utc == [7, 8, 9, 10, 11, 12]
+
+
+def test_run_ifvg_entry_weekdays_serializes():
+    """Param wires through summarize; flat ticks produce no trades either way."""
+    start = datetime(2025, 5, 5, 8, 0, tzinfo=timezone.utc)  # Monday
+    ticks = []
+    px = 2000.0
+    for m in range(0, 60):
+        ts = start + timedelta(minutes=m)
+        ticks.append(Tick(ts=ts, bid=px, ask=px))
+    out_all = run_ifvg(
+        ticks,
+        symbol="XAUUSD",
+        params=IfvgParams(
+            timeframe_min=15,
+            swing_lookback=2,
+            hours=1.0,
+            thresholds=[100.0],
+            skip_ignored=False,
+            entry_weekdays=None,
+        ),
+    )
+    out_filt = run_ifvg(
+        ticks,
+        symbol="XAUUSD",
+        params=IfvgParams(
+            timeframe_min=15,
+            swing_lookback=2,
+            hours=1.0,
+            thresholds=[100.0],
+            skip_ignored=False,
+            entry_weekdays=[0],
+            entry_hours_utc=[7, 8, 9, 10, 11, 12],
+        ),
+    )
+    assert out_all["params"]["entry_weekdays"] is None
+    assert out_filt["params"]["entry_weekdays"] == [0]
+    assert out_filt["params"]["entry_hours_utc"] == [7, 8, 9, 10, 11, 12]
+    assert out_filt["trades"] == 0
+    assert out_filt["trades"] <= out_all["trades"]
+
+
+def test_fvg_job_params_entry_weekdays_serialize():
+    from dataclasses import asdict
+    from backtest.fvg_jobs import FvgJobParams
+
+    p = FvgJobParams(entry_weekdays=[0], entry_hours_utc=[7, 8, 9, 10, 11, 12])
+    d = asdict(p)
+    assert d["entry_weekdays"] == [0]
+    assert d["entry_hours_utc"] == [7, 8, 9, 10, 11, 12]
+    p2 = FvgJobParams()
+    assert asdict(p2)["entry_weekdays"] is None

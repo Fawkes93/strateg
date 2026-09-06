@@ -32,6 +32,7 @@
     "fvg-max-wait",
     "fvg-raid-bars",
     "fvg-entry-hours",
+    "fvg-entry-weekdays",
     "fvg-workers",
     "fvg-force",
   ];
@@ -180,6 +181,27 @@
       if (!seen[h]) {
         seen[h] = true;
         out.push(h);
+      }
+    });
+    return out.length ? out : null;
+  }
+
+  /** Comma/space list of weekdays 0=Mon..6=Sun; empty → null (all days). */
+  function parseEntryWeekdays(raw) {
+    const days = String(raw || "")
+      .split(/[,;\s]+/)
+      .map(function (x) {
+        return Number(x);
+      })
+      .filter(function (x) {
+        return Number.isInteger(x) && x >= 0 && x <= 6;
+      });
+    const seen = {};
+    const out = [];
+    days.forEach(function (d) {
+      if (!seen[d]) {
+        seen[d] = true;
+        out.push(d);
       }
     });
     return out.length ? out : null;
@@ -605,7 +627,11 @@
         </label>
         <label>Entry hours UTC
           <input type="text" id="fvg-entry-hours" value="" placeholder="empty = all"
-            title="UTC hours to allow entries, e.g. 4,15,17,19,22. Empty = all hours. May–Sep 2025 T=100: {4,15,17,19,22} → 66% clean n=100; expand {4,5,8,15,17,22} → 62% n=148. Validate on 2025 and 2026 windows before treating as defaults." />
+            title="UTC hours to allow entries, e.g. 4,15,17,19,22 or 7,8,9,10,11,12. Empty = all hours. Example edge: Mon + 7–12 UTC. Validate on 2025 and 2026 windows before treating as defaults." />
+        </label>
+        <label>Entry weekdays (UTC)
+          <input type="text" id="fvg-entry-weekdays" value="" placeholder="empty = all; e.g. 0 or 0,1"
+            title="UTC weekdays 0=Mon..6=Sun. Empty = all days. Research example: Monday (0) + entry hours 7–12 UTC → ~68% / ~64% clean at T=100 on 2025 May–Sep and 2026 Jun–Sep samples. Validate on 2025 and 2026 before treating as defaults." />
         </label>
         <label>Workers
           <input type="number" id="fvg-workers" value="3" min="1" max="6" step="1" />
@@ -735,6 +761,9 @@
       const entryHours = parseEntryHours(
         $("fvg-entry-hours") ? $("fvg-entry-hours").value : ""
       );
+      const entryWeekdays = parseEntryWeekdays(
+        $("fvg-entry-weekdays") ? $("fvg-entry-weekdays").value : ""
+      );
       const body = {
         symbol: $("fvg-symbol").value,
         date_from: $("fvg-from").value,
@@ -750,6 +779,7 @@
         max_wait_bars: Number($("fvg-max-wait").value) || 24,
         fvg_after_raid_bars: Number($("fvg-raid-bars").value) || 8,
         entry_hours_utc: entryHours,
+        entry_weekdays: entryWeekdays,
         workers: Number($("fvg-workers").value) || 3,
         force_download: $("fvg-force") && $("fvg-force").checked,
       };

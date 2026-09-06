@@ -51,6 +51,7 @@ class FvgJobParams:
     max_wait_bars: int = 24
     fvg_after_raid_bars: int = 8
     entry_hours_utc: Optional[List[int]] = None
+    entry_weekdays: Optional[List[int]] = None
     workers: int = 3
     force_download: bool = False
 
@@ -446,6 +447,11 @@ def _run(params: FvgJobParams) -> None:
             eh = [int(h) for h in eh]
             if not eh:
                 eh = None
+        ew = params.entry_weekdays
+        if ew is not None:
+            ew = [int(d) for d in ew]
+            if not ew:
+                ew = None
         fp = IfvgParams(
             timeframe_min=int(params.timeframe_min or 15),
             swing_lookback=max(1, int(params.swing_lookback or 3)),
@@ -458,6 +464,7 @@ def _run(params: FvgJobParams) -> None:
             max_wait_bars=max(1, int(params.max_wait_bars or 24)),
             fvg_after_raid_bars=max(1, int(params.fvg_after_raid_bars or 8)),
             entry_hours_utc=eh,
+            entry_weekdays=ew,
         )
         all_rows: List[dict] = []
         total_ticks = 0
