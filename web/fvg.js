@@ -31,6 +31,7 @@
     "fvg-side",
     "fvg-max-wait",
     "fvg-raid-bars",
+    "fvg-entry-hours",
     "fvg-workers",
     "fvg-force",
   ];
@@ -161,6 +162,27 @@
       .filter(function (x) {
         return isFinite(x) && x > 0;
       });
+  }
+
+  /** Comma/space list of UTC hours 0–23; empty → null (all hours). */
+  function parseEntryHours(raw) {
+    const hours = String(raw || "")
+      .split(/[,;\s]+/)
+      .map(function (x) {
+        return Number(x);
+      })
+      .filter(function (x) {
+        return Number.isInteger(x) && x >= 0 && x <= 23;
+      });
+    const seen = {};
+    const out = [];
+    hours.forEach(function (h) {
+      if (!seen[h]) {
+        seen[h] = true;
+        out.push(h);
+      }
+    });
+    return out.length ? out : null;
   }
 
   function headlineScore(result, t) {
@@ -513,6 +535,8 @@
       <p class="hint">
         Not plain FVG. Candles from ticks at 15m; 30/60/240 are aggregated from 15m.
         SL field is meta only — clean uses opposite% × T in the forward walk.
+        Optional <strong>entry hours UTC</strong> filters fills by tick hour (empty = all).
+        May–Sep 2025 example (not hardcoded): <code>4,15,17,19,22</code> — validate on 2025 <em>and</em> 2026 windows before adopting as defaults.
       </p>
     </section>
 
@@ -578,6 +602,10 @@
         </label>
         <label>FVG after raid (bars)
           <input type="number" id="fvg-raid-bars" value="8" min="1" max="40" step="1" />
+        </label>
+        <label>Entry hours UTC
+          <input type="text" id="fvg-entry-hours" value="" placeholder="empty = all"
+            title="UTC hours to allow entries, e.g. 4,15,17,19,22. Empty = all hours. May–Sep 2025 T=100: {4,15,17,19,22} → 66% clean n=100; expand {4,5,8,15,17,22} → 62% n=148. Validate on 2025 and 2026 windows before treating as defaults." />
         </label>
         <label>Workers
           <input type="number" id="fvg-workers" value="3" min="1" max="6" step="1" />
@@ -704,6 +732,9 @@
     $("fvg-run").addEventListener("click", async () => {
       const thr = parseThresholds($("fvg-thresholds").value);
       const adversePct = Number($("fvg-adverse").value);
+      const entryHours = parseEntryHours(
+        $("fvg-entry-hours") ? $("fvg-entry-hours").value : ""
+      );
       const body = {
         symbol: $("fvg-symbol").value,
         date_from: $("fvg-from").value,
@@ -718,6 +749,7 @@
         side_filter: $("fvg-side").value,
         max_wait_bars: Number($("fvg-max-wait").value) || 24,
         fvg_after_raid_bars: Number($("fvg-raid-bars").value) || 8,
+        entry_hours_utc: entryHours,
         workers: Number($("fvg-workers").value) || 3,
         force_download: $("fvg-force") && $("fvg-force").checked,
       };

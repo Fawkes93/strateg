@@ -38,6 +38,9 @@ Injected UI tab (`web/fvg.js`) for **Inverse FVG after a liquidity raid** (SSL/B
 Candles: 15m from ticks; 30/60/240 via `backtest/aggregate.py` (ported from Reaktor).  
 Scoring matches Research: look-ahead hours + T pts + opposite% hit/clean. Endpoints: `GET/POST /api/fvg`, `/api/fvg/run`, `/api/fvg/stop`.
 
+Optional param **`entry_hours_utc`** (list of ints, or empty/omit = all hours): only fire an entry when the fill tick’s UTC hour is in the set.  
+May–Sep 2025 post-analysis (589 trades, T=100) suggested `{4,15,17,19,22}` → 66% clean n=100, or expanded `{4,5,8,15,17,22}` → 62% n=148 — **example suggestions only, not hardcoded**. Re-check on **2025 and 2026** XAUUSD windows before treating any set as a default.
+
 ## CLI (same engine)
 
 ```bash

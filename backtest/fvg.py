@@ -35,6 +35,20 @@ from backtest.trades import AlertSignal
 
 ALLOWED_TF = frozenset({15, 30, 60, 240})
 
+def _normalize_entry_hours_utc(hours: Optional[Sequence[int]]) -> Optional[set]:
+    """Return a set of allowed UTC hours, or None for no filter."""
+    if not hours:
+        return None
+    out = {int(h) % 24 for h in hours if h is not None}
+    return out or None
+
+
+def _entry_hour_allowed(ts, allowed: Optional[set]) -> bool:
+    """True if entry_hours_utc is unset/empty or ts's UTC hour is in the set."""
+    if not allowed:
+        return True
+    return to_utc(ts).hour in allowed
+
 
 @dataclass
 class IfvgParams:
@@ -51,6 +65,8 @@ class IfvgParams:
     max_wait_bars: int = 24
     fvg_after_raid_bars: int = 8
     skip_ignored: bool = True
+    # None or empty = allow all UTC hours; else only enter when tick hour is in set.
+    entry_hours_utc: Optional[List[int]] = None
 
 
 @dataclass
@@ -430,6 +446,7 @@ def run_ifvg(
     entry_mode = (params.entry_mode or "first_touch").lower()
     sl_mode = (params.sl_mode or "far_edge").lower()
     side_f = (params.side_filter or "both").lower()
+    entry_hours = _normalize_entry_hours_utc(params.entry_hours_utc)
 
     swing_lows: List[Tuple[int, float]] = []
     swing_highs: List[Tuple[int, float]] = []
@@ -572,6 +589,8 @@ def run_ifvg(
                                     if not pend.ce_touched:
                                         continue
                                 if _in_long_zone(px, pend.p, pend.ce):
+                                    if not _entry_hour_allowed(ticks[ti].ts, entry_hours):
+                                        continue
                                     sl = _sl_price("UP", pend.distal, pend.ce, sl_mode, ps)
                                     sig = IfvgSignal(
                                         entry_ts=_iso(ticks[ti].ts),
@@ -617,6 +636,8 @@ def run_ifvg(
                                     if not pend.ce_touched:
                                         continue
                                 if _in_short_zone(px, pend.p, pend.ce):
+                                    if not _entry_hour_allowed(ticks[ti].ts, entry_hours):
+                                        continue
                                     sl = _sl_price("DOWN", pend.distal, pend.ce, sl_mode, ps)
                                     sig = IfvgSignal(
                                         entry_ts=_iso(ticks[ti].ts),
