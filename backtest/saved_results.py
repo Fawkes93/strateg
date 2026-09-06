@@ -20,6 +20,7 @@ KNOWN_KINDS = frozenset(
         "micro_momentum",
         "overnight_break",
         "cooloff",
+        "fvg",
     }
 )
 
@@ -45,6 +46,8 @@ def classify_filename(name: str) -> Optional[str]:
         return "overnight_break"
     if n.startswith("cooloff_"):
         return "cooloff"
+    if n.startswith("ifvg_"):
+        return "fvg"
     if n.startswith("micro_"):
         return "micro"
     return None
@@ -181,6 +184,10 @@ def load_into_job(kind: str, name: str) -> Dict[str, Any]:
         out = load_saved(data, name=name)
     elif kind == "cooloff":
         from backtest.cooloff_jobs import load_saved
+
+        out = load_saved(data, name=name)
+    elif kind == "fvg":
+        from backtest.fvg_jobs import load_saved
 
         out = load_saved(data, name=name)
     else:

@@ -488,7 +488,7 @@
         if (panel) panel.classList.toggle("hidden", tab !== "overnight");
         // when opening overnight, hide other known panels
         if (tab === "overnight") {
-          ["tab-research", "tab-sweep", "tab-session", "tab-spikefade", "tab-micro", "tab-burst", "tab-cooloff"].forEach((id) => {
+          ["tab-research", "tab-sweep", "tab-session", "tab-spikefade", "tab-micro", "tab-burst", "tab-cooloff", "tab-fvg"].forEach((id) => {
             const el = $(id);
             if (el) el.classList.add("hidden");
           });

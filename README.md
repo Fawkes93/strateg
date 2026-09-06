@@ -31,6 +31,13 @@ Progress bar shows download → replay → forward scoring.
 
 Default week in the UI: **2025-03-03 → 2025-03-10** (March week; change freely).
 
+
+## Inverse FVG tab
+
+Injected UI tab (`web/fvg.js`) for **Inverse FVG after a liquidity raid** (SSL/BSL → FVG → close through P → retrace into CE↔P).  
+Candles: 15m from ticks; 30/60/240 via `backtest/aggregate.py` (ported from Reaktor).  
+Scoring matches Research: look-ahead hours + T pts + opposite% hit/clean. Endpoints: `GET/POST /api/fvg`, `/api/fvg/run`, `/api/fvg/stop`.
+
 ## CLI (same engine)
 
 ```bash

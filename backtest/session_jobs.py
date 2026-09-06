@@ -119,6 +119,11 @@ def start_session_job(params: SessionJobParams) -> Dict[str, Any]:
 
         if is_cooloff_running():
             return {"ok": False, "error": "Cool-off is running"}
+
+        from backtest.fvg_jobs import is_fvg_running
+
+        if is_fvg_running():
+            return {"ok": False, "error": "IFVG is running"}
         _state.params = params
         _state.result = None
         _state.running = True
