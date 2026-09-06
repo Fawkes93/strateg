@@ -756,6 +756,11 @@ def drop_cached_pack(
     _MEM_PACKS.pop(pack_key(symbol, start, end), None)
 
 
+def clear_mem_packs() -> None:
+    """Drop every in-process tick pack (call when a job finishes)."""
+    _MEM_PACKS.clear()
+
+
 def store_cached_pack(
     symbol: str,
     start: datetime,

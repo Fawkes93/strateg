@@ -24,14 +24,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from backtest.config import _base_for_symbol
-from backtest.dukascopy import parse_ymd, reaktor_symbol
+from backtest.dukascopy import drop_cached_pack, normalize_duka_symbol, parse_ymd, reaktor_symbol
 from backtest.runner import (
     DEFAULT_RESULTS,
+    _parse_range,
     load_ticks,
     research_from_ticks,
     top_ts_by_clean,
     unique_result_path,
 )
+from backtest.job_memory import release_job_memory
 from backtest.seasonality import lookback_from
 
 # Short UI names → full config keys
@@ -620,6 +622,7 @@ def _run_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> None:
     try:
         report = _pipeline_batch(cfg, items)
         with _lock:
+            # Keep full variant summary rows for Sweep UI; ticks already released in finally.
             _state.report = report
         cancelled = bool(report.get("cancelled")) or _cancel.is_set()
         done_n = int(report.get("run_count") or 0)
@@ -650,6 +653,10 @@ def _run_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> None:
     finally:
         _force_kill_pool()
         _cancel.clear()
+        try:
+            release_job_memory()
+        except Exception:
+            pass
         with _lock:
             _state.running = False
 
@@ -867,100 +874,119 @@ def _run_date_group_job(job: Dict[str, Any]) -> List[Dict[str, Any]]:
 
     rows: List[Dict[str, Any]] = []
     emit("load", message=f"Load {date_from}→{date_to} · {len(items)} variants")
-    try:
-        ticks = load_ticks(
-            symbol=symbol,
-            date_from=date_from,
-            date_to=date_to,
-            force_download=False,
-            progress=None,
-        )
-    except Exception as e:
-        for item in items:
-            rows.extend(_error_rows(item, e))
-            emit(
-                "item_done",
-                n=1,
-                ok=False,
-                label=str(item.get("label") or ""),
-                message=str(e)[:120],
-            )
-        return rows
-
-    emit("loaded", ticks=len(ticks), message=f"Pack {len(ticks):,} ticks · {date_from}→{date_to}")
-
+    ticks = None
     lookback_ticks = None
-    if bool((job.get("filters") or {}).get("week2_trend")):
+    try:
         try:
-            prefix = load_ticks(
-                symbol=symbol,
-                date_from=lookback_from(date_from),
-                date_to=date_from,
-                force_download=False,
-                progress=None,
-            )
-            cutoff = parse_ymd(date_from)
-            lookback_ticks = [t for t in prefix if t.ts < cutoff]
-        except Exception:
-            lookback_ticks = None
-
-    for vi, item in enumerate(items):
-        engines = list(item.get("engines") or ["candle", "spike"])
-        signal = _item_signal(item, filters, symbol)
-        label = str(item.get("label") or "")
-        emit(
-            "item_start",
-            label=label,
-            variant=vi + 1,
-            variants=len(items),
-            message=f"Replay {date_from}→{date_to} · {label}",
-        )
-
-        last_emit = [0.0]
-
-        def sub_progress(label=label, **kwargs: Any) -> None:
-            # throttle mid-replay heartbeats (~every 5% of overall research pct)
-            pct = float(kwargs.get("pct") or 0)
-            if pct - last_emit[0] < 5.0 and pct < 99.0:
-                return
-            last_emit[0] = pct
-            emit(
-                "item_tick",
-                label=label,
-                sub_pct=pct,
-                message=str(kwargs.get("message") or f"Replay {label}"),
-            )
-
-        try:
-            res = research_from_ticks(
-                ticks,
+            ticks = load_ticks(
                 symbol=symbol,
                 date_from=date_from,
                 date_to=date_to,
-                engines=engines,
-                hours=hours,
-                thresholds=thresholds,
-                adverse_mult=adverse,
-                sl_manage=sl_manage,
-                sl_manage_at_frac=sl_manage_at_frac,
-                sl_manage_lock_pts=sl_manage_lock_pts,
-                signal=signal,
-                include_detail=False,
-                save_json=False,
-                progress=sub_progress,
-                lookback_ticks=lookback_ticks,
+                force_download=False,
+                progress=None,
             )
-            rows.extend(_rows_from_result(item, res, top_n=top_n))
-            emit("item_done", n=1, ok=True, label=label, message=label)
         except Exception as e:
-            rows.extend(_error_rows(item, e))
+            for item in items:
+                rows.extend(_error_rows(item, e))
+                emit(
+                    "item_done",
+                    n=1,
+                    ok=False,
+                    label=str(item.get("label") or ""),
+                    message=str(e)[:120],
+                )
+            return rows
+
+        emit(
+            "loaded",
+            ticks=len(ticks),
+            message=f"Pack {len(ticks):,} ticks · {date_from}→{date_to}",
+        )
+
+        if bool((job.get("filters") or {}).get("week2_trend")):
+            try:
+                prefix = load_ticks(
+                    symbol=symbol,
+                    date_from=lookback_from(date_from),
+                    date_to=date_from,
+                    force_download=False,
+                    progress=None,
+                )
+                cutoff = parse_ymd(date_from)
+                lookback_ticks = [t for t in prefix if t.ts < cutoff]
+                del prefix
+            except Exception:
+                lookback_ticks = None
+
+        for vi, item in enumerate(items):
+            engines = list(item.get("engines") or ["candle", "spike"])
+            signal = _item_signal(item, filters, symbol)
+            label = str(item.get("label") or "")
             emit(
-                "item_done",
-                n=1,
-                ok=False,
+                "item_start",
                 label=label,
-                message=str(e)[:120],
+                variant=vi + 1,
+                variants=len(items),
+                message=f"Replay {date_from}→{date_to} · {label}",
             )
+
+            last_emit = [0.0]
+
+            def sub_progress(label=label, **kwargs: Any) -> None:
+                # throttle mid-replay heartbeats (~every 5% of overall research pct)
+                pct = float(kwargs.get("pct") or 0)
+                if pct - last_emit[0] < 5.0 and pct < 99.0:
+                    return
+                last_emit[0] = pct
+                emit(
+                    "item_tick",
+                    label=label,
+                    sub_pct=pct,
+                    message=str(kwargs.get("message") or f"Replay {label}"),
+                )
+
+            try:
+                res = research_from_ticks(
+                    ticks,
+                    symbol=symbol,
+                    date_from=date_from,
+                    date_to=date_to,
+                    engines=engines,
+                    hours=hours,
+                    thresholds=thresholds,
+                    adverse_mult=adverse,
+                    sl_manage=sl_manage,
+                    sl_manage_at_frac=sl_manage_at_frac,
+                    sl_manage_lock_pts=sl_manage_lock_pts,
+                    signal=signal,
+                    include_detail=False,
+                    save_json=False,
+                    progress=sub_progress,
+                    lookback_ticks=lookback_ticks,
+                )
+                rows.extend(_rows_from_result(item, res, top_n=top_n))
+                emit("item_done", n=1, ok=True, label=label, message=label)
+            except Exception as e:
+                rows.extend(_error_rows(item, e))
+                emit(
+                    "item_done",
+                    n=1,
+                    ok=False,
+                    label=label,
+                    message=str(e)[:120],
+                )
+    finally:
+        # Free tick arrays in this process (main for workers=1; child otherwise).
+        ticks = None
+        lookback_ticks = None
+        try:
+            start, end = _parse_range(date_from, date_to)
+            drop_cached_pack(normalize_duka_symbol(symbol), start, end)
+        except Exception:
+            pass
+        import gc as _gc
+
+        _gc.collect()
     return rows
 
 
@@ -1037,6 +1063,7 @@ def _pipeline_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> Dict[st
             )
 
     if _cancel.is_set():
+        release_job_memory()
         return _finalize_report(
             symbol, hours, thresholds, adverse, top_n, filters,
             results_rows, total, workers, cancelled=True,
@@ -1044,6 +1071,12 @@ def _pipeline_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> Dict[st
             sl_manage_at_frac=sl_manage_at_frac,
             sl_manage_lock_pts=sl_manage_lock_pts,
         )
+
+    # Warm phase only needed disk packs; multi-process workers reload from disk.
+    # Drop main-process packs before spawning workers (or before single-thread replay
+    # reloads the active group) so an 8GB laptop is not holding every month at once.
+    from backtest.dukascopy import clear_mem_packs
+    clear_mem_packs()
 
     # --- Phase 2: replay (group by date; optionally multi-process)
     jobs_meta = _split_for_workers(date_groups, workers)

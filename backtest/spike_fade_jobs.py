@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from backtest.batch import is_batch_running
 from backtest.dukascopy import drop_cached_pack, normalize_duka_symbol, reaktor_symbol
 from backtest.runner import DEFAULT_RESULTS, _parse_range, load_ticks, unique_result_path
+from backtest.job_memory import release_job_memory, retain_result, slim_state_result_inplace
 from backtest.spike_fade import FadeParams, FadeTrade, run_spike_fade, summarize_fade
 
 
@@ -92,7 +93,7 @@ def get_spike_fade_state(*, include_rows: bool = False, row_limit: int = 300) ->
         }
     result = {k: v for k, v in raw.items() if k != "rows"}
     rows = raw.get("rows") or []
-    result["row_count"] = len(rows)
+    result["row_count"] = int(raw.get("row_count") or len(rows))
     if include_rows:
         result["rows"] = rows[: max(0, int(row_limit))]
         result["rows_truncated"] = len(rows) > len(result["rows"])
@@ -119,7 +120,7 @@ def load_saved(result: Dict[str, Any], *, name: str = "") -> Dict[str, Any]:
         if _state.running:
             return {"ok": False, "error": "Spike fade is running — stop it first"}
         _cancel.clear()
-        _state.result = result
+        _state.result = retain_result(result)
         _state.progress = SpikeFadeProgress(
             phase="done",
             message=f"Loaded {name}" if name else "Loaded saved run",
@@ -765,7 +766,7 @@ def _run(params: SpikeFadeJobParams) -> None:
         result["saved_to"] = str(path)
 
         with _lock:
-            _state.result = result
+            _state.result = retain_result(result)
         if cancelled:
             _set_progress(
                 phase="cancelled",
@@ -801,5 +802,10 @@ def _run(params: SpikeFadeJobParams) -> None:
             )
     finally:
         _force_kill_pool()
+        try:
+            release_job_memory()
+        except Exception:
+            pass
         with _lock:
+            slim_state_result_inplace(_state)
             _state.running = False

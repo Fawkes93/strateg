@@ -16,6 +16,7 @@ from backtest.dukascopy import (
 )
 from backtest.h1 import utc_hours_for_local_window
 from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS, unique_result_path
+from backtest.job_memory import release_job_memory, retain_result, slim_state_result_inplace
 from backtest.session_clock import SessionParams, SessionSkip, SessionTrade, run_session, summarize_session
 
 
@@ -77,7 +78,7 @@ def load_saved(result: Dict[str, Any], *, name: str = "") -> Dict[str, Any]:
     with _lock:
         if _state.running:
             return {"ok": False, "error": "Session clock is running — stop it first"}
-        _state.result = result
+        _state.result = retain_result(result)
         _state.progress = SessionJobProgress(
             phase="done",
             message=f"Loaded {name}" if name else "Loaded saved run",
@@ -223,7 +224,7 @@ def _run(params: SessionJobParams) -> None:
         result["saved_to"] = str(path)
 
         with _lock:
-            _state.result = result
+            _state.result = retain_result(result)
         _set_progress(
             phase="done",
             message=(
@@ -243,5 +244,10 @@ def _run(params: SessionJobParams) -> None:
             finished_at=datetime.now(timezone.utc).isoformat(),
         )
     finally:
+        try:
+            release_job_memory()
+        except Exception:
+            pass
         with _lock:
+            slim_state_result_inplace(_state)
             _state.running = False
