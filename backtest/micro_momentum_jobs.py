@@ -198,6 +198,11 @@ def start_micro_job(params: MicroJobParams) -> Dict[str, Any]:
         err = _busy_others()
         if err:
             return {"ok": False, "error": err}
+
+        from backtest.fvg_jobs import is_fvg_running
+
+        if is_fvg_running():
+            return {"ok": False, "error": "IFVG is running"}
         _cancel.clear()
         _state.params = params
         _state.result = None

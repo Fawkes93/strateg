@@ -62,6 +62,12 @@ from backtest.cooloff_jobs import (
     start_cooloff_job,
     stop_cooloff,
 )
+from backtest.fvg_jobs import (
+    FvgJobParams,
+    get_fvg_state,
+    start_fvg_job,
+    stop_fvg,
+)
 
 WEB_DIR = ROOT / "web"
 app = FastAPI(title="Strateg", version="0.5", docs_url="/docs")
@@ -642,6 +648,74 @@ def cooloff_run(body: CoolOffRunRequest):
 @app.post("/api/cooloff/stop")
 def cooloff_stop():
     out = stop_cooloff()
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "not running")
+    return out
+
+
+
+# ---------------------------------------------------------------------------
+# Inverse FVG (IFVG after liquidity raid)
+# ---------------------------------------------------------------------------
+
+
+class FvgRunRequest(BaseModel):
+    symbol: str = "XAUUSD"
+    date_from: str = "2025-05-01"
+    date_to: str = "2025-06-01"
+    timeframe_min: int = 15
+    swing_lookback: int = 3
+    entry_mode: str = "first_touch"
+    sl_mode: str = "far_edge"
+    hours: float = 6.0
+    thresholds: list[float] = Field(
+        default_factory=lambda: [100, 200, 500, 800, 1000, 1200, 1500, 2000]
+    )
+    adverse_mult: float = 1.0
+    side_filter: str = "both"
+    max_wait_bars: int = 24
+    fvg_after_raid_bars: int = 8
+    workers: int = 3
+    force_download: bool = False
+
+
+@app.get("/api/fvg")
+def fvg_status(
+    rows: int = Query(0),
+    limit: int = Query(400),
+):
+    return get_fvg_state(include_rows=bool(rows), row_limit=int(limit))
+
+
+@app.post("/api/fvg/run")
+def fvg_run(body: FvgRunRequest):
+    thr = list(body.thresholds or [500.0])
+    params = FvgJobParams(
+        symbol=body.symbol,
+        date_from=body.date_from,
+        date_to=body.date_to,
+        timeframe_min=int(body.timeframe_min or 15),
+        swing_lookback=max(1, int(body.swing_lookback or 3)),
+        entry_mode=str(body.entry_mode or "first_touch"),
+        sl_mode=str(body.sl_mode or "far_edge"),
+        hours=float(body.hours or 6.0),
+        thresholds=[float(x) for x in thr],
+        adverse_mult=float(body.adverse_mult if body.adverse_mult is not None else 1.0),
+        side_filter=str(body.side_filter or "both"),
+        max_wait_bars=max(1, int(body.max_wait_bars or 24)),
+        fvg_after_raid_bars=max(1, int(body.fvg_after_raid_bars or 8)),
+        workers=max(1, min(6, int(body.workers or 1))),
+        force_download=bool(body.force_download),
+    )
+    out = start_fvg_job(params)
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "busy")
+    return out
+
+
+@app.post("/api/fvg/stop")
+def fvg_stop():
+    out = stop_fvg()
     if not out.get("ok"):
         raise HTTPException(status_code=409, detail=out.get("error") or "not running")
     return out

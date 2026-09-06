@@ -182,6 +182,10 @@ def _busy_others() -> Optional[str]:
         return "Overnight break is running"
     if is_micro_running():
         return "Micro fade is running"
+    from backtest.fvg_jobs import is_fvg_running
+
+    if is_fvg_running():
+        return "IFVG is running"
     return None
 
 
@@ -193,6 +197,7 @@ def start_cooloff_job(params: CoolOffJobParams) -> Dict[str, Any]:
         err = _busy_others()
         if err:
             return {"ok": False, "error": err}
+
         _cancel.clear()
         _state.params = params
         _state.result = None
