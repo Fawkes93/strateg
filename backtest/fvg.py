@@ -50,6 +50,21 @@ def _entry_hour_allowed(ts, allowed: Optional[set]) -> bool:
     return to_utc(ts).hour in allowed
 
 
+def _normalize_entry_weekdays(days: Optional[Sequence[int]]) -> Optional[set]:
+    """Return a set of allowed UTC weekdays (0=Mon..6=Sun), or None for no filter."""
+    if not days:
+        return None
+    out = {int(d) % 7 for d in days if d is not None}
+    return out or None
+
+
+def _entry_weekday_allowed(ts, allowed: Optional[set]) -> bool:
+    """True if entry_weekdays is unset/empty or ts's UTC weekday is in the set."""
+    if not allowed:
+        return True
+    return to_utc(ts).weekday() in allowed
+
+
 @dataclass
 class IfvgParams:
     timeframe_min: int = 15
@@ -67,6 +82,8 @@ class IfvgParams:
     skip_ignored: bool = True
     # None or empty = allow all UTC hours; else only enter when tick hour is in set.
     entry_hours_utc: Optional[List[int]] = None
+    # 0=Mon..6=Sun; None or empty = all weekdays.
+    entry_weekdays: Optional[List[int]] = None
 
 
 @dataclass
@@ -447,6 +464,7 @@ def run_ifvg(
     sl_mode = (params.sl_mode or "far_edge").lower()
     side_f = (params.side_filter or "both").lower()
     entry_hours = _normalize_entry_hours_utc(params.entry_hours_utc)
+    entry_weekdays = _normalize_entry_weekdays(params.entry_weekdays)
 
     swing_lows: List[Tuple[int, float]] = []
     swing_highs: List[Tuple[int, float]] = []
@@ -591,6 +609,8 @@ def run_ifvg(
                                 if _in_long_zone(px, pend.p, pend.ce):
                                     if not _entry_hour_allowed(ticks[ti].ts, entry_hours):
                                         continue
+                                    if not _entry_weekday_allowed(ticks[ti].ts, entry_weekdays):
+                                        continue
                                     sl = _sl_price("UP", pend.distal, pend.ce, sl_mode, ps)
                                     sig = IfvgSignal(
                                         entry_ts=_iso(ticks[ti].ts),
@@ -637,6 +657,8 @@ def run_ifvg(
                                         continue
                                 if _in_short_zone(px, pend.p, pend.ce):
                                     if not _entry_hour_allowed(ticks[ti].ts, entry_hours):
+                                        continue
+                                    if not _entry_weekday_allowed(ticks[ti].ts, entry_weekdays):
                                         continue
                                     sl = _sl_price("DOWN", pend.distal, pend.ce, sl_mode, ps)
                                     sig = IfvgSignal(
