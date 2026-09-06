@@ -39,7 +39,9 @@ Candles: 15m from ticks; 30/60/240 via `backtest/aggregate.py` (ported from Reak
 Scoring matches Research: look-ahead hours + T pts + opposite% hit/clean. Endpoints: `GET/POST /api/fvg`, `/api/fvg/run`, `/api/fvg/stop`.
 
 Optional param **`entry_hours_utc`** (list of ints, or empty/omit = all hours): only fire an entry when the fill tick’s UTC hour is in the set.  
-May–Sep 2025 post-analysis (589 trades, T=100) suggested `{4,15,17,19,22}` → 66% clean n=100, or expanded `{4,5,8,15,17,22}` → 62% n=148 — **example suggestions only, not hardcoded**. Re-check on **2025 and 2026** XAUUSD windows before treating any set as a default.
+Optional param **`entry_weekdays`** (list of ints `0=Mon..6=Sun`, or empty/omit = all days): same filter on the fill tick’s UTC weekday (combinable with hours).  
+Research example (not hardcoded): Monday + hours UTC 7–12 → clean ~67.6% (2025 May–Sep n=37) / ~63.6% (2026 Jun–Sep n=22) at T=100; Monday-only ~62% / ~59%. Re-check on **2025 and 2026** XAUUSD windows before treating any set as a default.  
+Older hour-only note: May–Sep 2025 (589 trades, T=100) suggested `{4,15,17,19,22}` → 66% clean n=100, or expanded `{4,5,8,15,17,22}` → 62% n=148 — **example suggestions only**.
 
 ## CLI (same engine)
 
