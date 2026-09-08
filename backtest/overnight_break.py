@@ -178,6 +178,18 @@ def late_short_blocked(
     return True
 
 
+def require_zone(name: str) -> ZoneInfo:
+    """Resolve an IANA zone or raise a pip-install-tzdata error (do not fall back to UTC)."""
+    key = (name or "").strip() or "Europe/Bucharest"
+    try:
+        return ZoneInfo(key)
+    except Exception as e:
+        raise RuntimeError(
+            f"Timezone {key!r} is not available ({e}). "
+            "This Python is missing IANA tz data — install it with: python -m pip install tzdata"
+        ) from e
+
+
 def trail_arm_for_range(params: OvernightParams, asia_range_pts: float) -> float:
     """Profit (pts) required before the trail activates for this day's Asia range."""
     mode = (params.trail_arm_mode or "fixed").strip().lower()
@@ -201,7 +213,7 @@ def asia_window_start_utc(
     Bucharest 00:00 is 21:00 UTC the previous evening in summer, 22:00 in winter.
     If start > end the window wraps midnight and begins the previous local evening.
     """
-    tz = ZoneInfo(timezone_name)
+    tz = require_zone(timezone_name)
     day = local_day - timedelta(days=1) if asia_start_hour > asia_end_hour else local_day
     local_open = datetime.combine(day, time(asia_start_hour, 0), tzinfo=tz)
     return local_open.astimezone(timezone.utc)
@@ -743,7 +755,7 @@ def run_overnight(
     progress: Optional[Callable[..., None]] = None,
 ) -> Dict[str, Any]:
     params = _normalize_params(params or OvernightParams())
-    tz = ZoneInfo(params.timezone)
+    tz = require_zone(params.timezone)
     sym = symbol if "/" in symbol else reaktor_symbol(symbol)
     ps = point_size(sym)
     if ps <= 0 or not ticks:

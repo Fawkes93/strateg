@@ -169,6 +169,48 @@ def test_chunk_lookback_starts_five_days_before_month():
     assert winter == datetime(2025, 12, 27, 0, 0, tzinfo=timezone.utc)
 
 
+def test_empty_run_error_does_not_look_like_success():
+    from backtest.overnight_jobs import _empty_run_error, _rows_to_trades
+    from backtest.job_memory import retain_result
+
+    assert "No ticks loaded" in _empty_run_error([], total_ticks=0, n_months=3)
+    boom = _empty_run_error(
+        ["2026-08-01→2026-09-01: No time zone found"],
+        total_ticks=12,
+        n_months=1,
+    )
+    assert "No time zone found" in boom
+    assert "no Asia session days" in _empty_run_error([], total_ticks=99, n_months=1)
+    assert _rows_to_trades([{"not": "a trade"}, "bad"]) == []
+
+    slim = retain_result(
+        {
+            "kind": "overnight_break",
+            "trades": 14,
+            "skipped": 52,
+            "ticks": 1000,
+            "rows": [{"local_date": "2026-08-05", "pts": 1.0}] * 14,
+            "skips": [{"local_date": "2026-08-06", "reason": "no_break"}] * 52,
+        }
+    )
+    assert slim["trades"] == 14
+    assert slim["skipped"] == 52
+    assert len(slim["rows"]) == 14
+    assert slim["rows_truncated"] is False
+
+
+def test_require_zone_names_tzdata():
+    from backtest.overnight_break import require_zone
+
+    tz = require_zone("Europe/Bucharest")
+    assert str(tz) == "Europe/Bucharest"
+    try:
+        require_zone("Not/AZone")
+        raise AssertionError("expected missing zone to raise")
+    except RuntimeError as e:
+        assert "tzdata" in str(e).lower()
+
+
 def test_month_chunks_split_calendar_months():
     from backtest.overnight_jobs import _month_chunks
 

@@ -28,6 +28,7 @@ from backtest.overnight_break import (
     OvernightSkip,
     OvernightTrade,
     asia_window_start_utc,
+    require_zone,
     run_overnight,
     summarize_overnight,
 )
@@ -360,12 +361,48 @@ def _month_chunks(date_from: str, date_to: str) -> List[Tuple[str, str]]:
 
 def _rows_to_trades(rows: List[Dict[str, Any]]) -> List[OvernightTrade]:
     fields = OvernightTrade.__dataclass_fields__
-    return [OvernightTrade(**{k: r[k] for k in fields if k in r}) for r in rows]
+    out: List[OvernightTrade] = []
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        try:
+            out.append(OvernightTrade(**{k: r[k] for k in fields if k in r}))
+        except TypeError:
+            continue
+    return out
 
 
 def _rows_to_skips(rows: List[Dict[str, Any]]) -> List[OvernightSkip]:
     fields = OvernightSkip.__dataclass_fields__
-    return [OvernightSkip(**{k: r[k] for k in fields if k in r}) for r in rows]
+    out: List[OvernightSkip] = []
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        try:
+            out.append(OvernightSkip(**{k: r[k] for k in fields if k in r}))
+        except TypeError:
+            continue
+    return out
+
+
+def _empty_run_error(
+    errors: List[str],
+    *,
+    total_ticks: int,
+    n_months: int,
+) -> str:
+    """Message when a run finished with no trades and no skipped days."""
+    if errors:
+        return "Overnight break produced no days: " + "; ".join(errors)[:800]
+    if total_ticks <= 0:
+        return (
+            f"No ticks loaded for {n_months} month chunk(s). "
+            "Check the date range and tick packs / Dukascopy cache."
+        )
+    return (
+        f"Loaded {total_ticks:,} ticks across {n_months} month chunk(s) but found "
+        "no Asia session days (no trades and no skips)."
+    )
 
 
 def _job_index(d: Dict[str, Any], default: int = -1) -> int:
@@ -646,11 +683,17 @@ def _run(params: OvernightJobParams) -> None:
             nonlocal total_ticks, completed
             completed += 1
             total_ticks += int(out.get("ticks") or 0)
-            all_trades.extend(_rows_to_trades(out.get("rows") or []))
-            all_skips.extend(_rows_to_skips(out.get("skips") or []))
+            try:
+                all_trades.extend(_rows_to_trades(out.get("rows") or []))
+                all_skips.extend(_rows_to_skips(out.get("skips") or []))
+            except Exception as e:
+                errors.append(
+                    f"{out.get('date_from') or '?'}→{out.get('date_to') or '?'}: {e}"
+                )
             if not out.get("ok") and out.get("error"):
                 errors.append(str(out["error"]))
 
+        require_zone(op.timezone)
         if workers <= 1 or n_m <= 1:
             for i, (a, b) in enumerate(chunks):
                 if _cancel.is_set():
@@ -832,7 +875,12 @@ def _run(params: OvernightJobParams) -> None:
                         except (BrokenProcessPool, Exception) as e:
                             if _cancel.is_set():
                                 continue
-                            errors.append(str(e))
+                            payload = futs.get(fut) or {}
+                            errors.append(
+                                f"{payload.get('date_from') or '?'}→"
+                                f"{payload.get('date_to') or '?'}: {e}"
+                            )
+                            completed += 1
                             continue
                         ingest(out)
                         idx = _job_index(out, -1)
@@ -860,6 +908,11 @@ def _run(params: OvernightJobParams) -> None:
 
         all_trades.sort(key=lambda t: t.local_date)
         all_skips.sort(key=lambda s: (s.local_date or "", s.reason or ""))
+        cancelled = _cancel.is_set()
+        if not cancelled and not all_trades and not all_skips:
+            raise RuntimeError(
+                _empty_run_error(errors, total_ticks=total_ticks, n_months=n_m)
+            )
         result = summarize_overnight(
             all_trades,
             all_skips,
@@ -867,12 +920,13 @@ def _run(params: OvernightJobParams) -> None:
             symbol=reaktor_symbol(params.symbol),
             ticks=total_ticks,
         )
-        cancelled = _cancel.is_set()
         result["date_from"] = params.date_from
         result["date_to"] = params.date_to
         result["months"] = n_m
         result["cancelled"] = cancelled
         result["finished_at"] = datetime.now(timezone.utc).isoformat()
+        if errors:
+            result["month_errors"] = errors
 
         DEFAULT_RESULTS.mkdir(parents=True, exist_ok=True)
         tag = f"overnight_{params.symbol}_{params.date_from}_{params.date_to}"
@@ -896,12 +950,15 @@ def _run(params: OvernightJobParams) -> None:
                 lanes=[],
             )
         else:
+            done_msg = (
+                f"Done · {n_m} months · {result.get('trades')} trades · "
+                f"{result.get('skipped')} skipped"
+            )
+            if errors:
+                done_msg += " · " + str(len(errors)) + " month error(s): " + "; ".join(errors)[:180]
             _set_progress(
                 phase="done",
-                message=(
-                    f"Done · {n_m} months · {result.get('trades')} trades · "
-                    f"{result.get('skipped')} skipped"
-                ),
+                message=done_msg,
                 pct=100.0,
                 ticks=total_ticks,
                 trades=result.get("trades") or 0,

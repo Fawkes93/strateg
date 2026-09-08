@@ -767,6 +767,7 @@
       return;
     }
     if (meta) {
+      const monthErrs = result.month_errors || [];
       meta.textContent =
         (result.symbol || "") +
         " · " +
@@ -780,7 +781,10 @@
         " skipped · avg " +
         (result.avg_pts != null ? result.avg_pts : "—") +
         " pts" +
-        ((window.StrategSaved && window.StrategSaved.loadedNote(result)) || "");
+        ((window.StrategSaved && window.StrategSaved.loadedNote(result)) || "") +
+        (monthErrs.length
+          ? " · " + monthErrs.length + " month error(s): " + monthErrs.join("; ").slice(0, 240)
+          : "");
     }
     if (hero) {
       hero.innerHTML =
