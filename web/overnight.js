@@ -27,6 +27,8 @@
     "ob-max-wait",
     "ob-wait-from-break",
     "ob-timeout",
+    "ob-timeout-ema-dist",
+    "ob-timeout-min-break",
     "ob-higher-close",
     "ob-resume-closes",
     "ob-late-short-wait",
@@ -34,13 +36,15 @@
     "ob-side",
     "ob-seasonal-mode",
     "ob-seasonal-join",
-    "ob-week2",
+    "ob-week2-mode",
     "ob-trend-flat",
+    "ob-trend-eff",
     "ob-news-mode",
     "ob-news-set",
     "ob-sl-mode",
     "ob-sl-fixed",
     "ob-sl-range-mult",
+    "ob-sl-cap",
     "ob-tp-mode",
     "ob-tp-fixed",
     "ob-tp-range-mult",
@@ -91,6 +95,18 @@
         if ($("ob-pullback-mode")) $("ob-pullback-mode").value = "required";
         if ($("ob-higher-close")) $("ob-higher-close").checked = false;
       }
+      // Legacy 2-week checkbox → off/tag/filter select.
+      if ($("ob-sl-mode") && $("ob-sl-mode").value === "range_width") {
+        $("ob-sl-mode").value = "range";
+      }
+      if ($("ob-week2-mode") && cfg["ob-week2-mode"] == null && cfg["ob-week2"] != null) {
+        const on = !!cfg["ob-week2"];
+        $("ob-week2-mode").value = on
+          ? cfg["ob-seasonal-mode"] === "filter"
+            ? "filter"
+            : "tag"
+          : "off";
+      }
     } catch (e) {
       console.warn("overnight load failed", e);
     }
@@ -110,30 +126,72 @@
     const resume = $("ob-higher-close");
     const resumeCloses = $("ob-resume-closes");
     const timeout = $("ob-timeout");
+    const timeoutEma = $("ob-timeout-ema-dist");
+    const timeoutBreak = $("ob-timeout-min-break");
     if (resume) resume.disabled = mode === "off";
     if (resumeCloses) {
       resumeCloses.disabled = mode === "off" || (resume && !resume.checked);
     }
-    if (timeout) timeout.disabled = mode !== "preferred";
+    const timeoutOff = mode !== "preferred";
+    if (timeout) timeout.disabled = timeoutOff;
+    if (timeoutEma) timeoutEma.disabled = timeoutOff;
+    if (timeoutBreak) timeoutBreak.disabled = timeoutOff;
+  }
+
+  function syncSlControls() {
+    const mode = $("ob-sl-mode") && $("ob-sl-mode").value;
+    const fixed = $("ob-sl-fixed");
+    const mult = $("ob-sl-range-mult");
+    const cap = $("ob-sl-cap");
+    if (fixed) {
+      fixed.disabled = mode !== "fixed";
+      fixed.title =
+        mode === "fixed"
+          ? "Stop distance in pts."
+          : "Used as fallback when Asia opposite is on the wrong side of entry.";
+    }
+    if (mult) {
+      mult.disabled = mode !== "range";
+      mult.title =
+        mode === "range"
+          ? "SL distance = Asia width × this. 1 = the range itself."
+          : "Used when SL mode is Asia range.";
+    }
+    if (cap) {
+      cap.disabled = mode === "fixed";
+      cap.title =
+        mode === "fixed"
+          ? "Cap is for asia opposite and Asia range. 0 = off."
+          : "Max SL distance (pts). 0 = off. Pulls a too-wide Asia SL in to this many pts.";
+    }
   }
 
   function syncTrailArmControls() {
     const mode = $("ob-trail-arm-mode") && $("ob-trail-arm-mode").value;
     const fixed = $("ob-trail-arm");
     const cap = $("ob-trail-arm-cap");
+    const dist = $("ob-trail");
+    const fromFill = mode === "from_fill";
     if (fixed) {
-      fixed.disabled = false;
-      fixed.title =
-        mode === "asia"
+      fixed.disabled = fromFill || mode === "asia";
+      fixed.title = fromFill
+        ? "Ignored: trail starts at the fill."
+        : mode === "asia"
           ? "Ignored when Trail arm mode is Asia range (arm = Asia range, capped)."
           : "Profit (pts) before the trail turns on. 0 = off.";
     }
     if (cap) {
-      cap.disabled = false;
-      cap.title =
-        mode === "asia"
+      cap.disabled = fromFill || mode !== "asia";
+      cap.title = fromFill
+        ? "Ignored: from-fill has no arm cap."
+        : mode === "asia"
           ? "Max trail-arm when using Asia range. 0 = no cap."
-          : "Cap is used when Trail arm mode is Asia range. 0 = no cap. Always editable so you can set it before switching mode.";
+          : "Cap is used when Trail arm mode is Asia range. 0 = no cap.";
+    }
+    if (dist) {
+      dist.title = fromFill
+        ? "Gap behind the best price from the fill. 0 = use the initial SL (up 100 → remaining risk 1900 if SL was 2000)."
+        : "Gap behind the best price once the trail has armed.";
     }
   }
 
@@ -167,7 +225,7 @@
         Mid fill. One trade per day by default. Skips days with no valid break / no pullback (required mode).
         Seasonal month (optional): Jan/Aug long, May/Jun short. Filter skips the against-side break.
         Join inside box takes the combined bias side when price never left the Asia range.
-        2-week trend: if it disagrees with the month, both are called out and the day trades with no side filter.
+        2-week trend (optional, works without the month table): last close vs daily EMA, skip two-way paths (low efficiency). Filter skips the against-side. If month and 2-week both filter and disagree, neither side is skipped.
       </p>
     </section>
 
@@ -229,6 +287,14 @@
             <option value="worst">worst</option>
           </select>
         </label>
+        <label>Timeout max EMA dist (pts)
+          <input type="number" id="ob-timeout-ema-dist" value="0" min="0" step="50"
+            title="Preferred timeout only: skip if wait never got this close to EMA. 0 = off. Missing EMA scan also skips." />
+        </label>
+        <label>Timeout min break (pts)
+          <input type="number" id="ob-timeout-min-break" value="0" min="0" step="50"
+            title="Preferred timeout only: extra break size vs Asia. EMA-touch ignores this. 0 = no extra." />
+        </label>
         <label class="chk">Higher/lower close resume
           <input type="checkbox" id="ob-higher-close" checked />
         </label>
@@ -262,13 +328,21 @@
           <input type="checkbox" id="ob-seasonal-join"
             title="If the combined bias has a side and Asia never printed a valid break, enter with that side instead of skipping no_break. Off when month and 2-week disagree." />
         </label>
-        <label class="chk">2-week trend
-          <input type="checkbox" id="ob-week2"
-            title="Close-to-close over ~10 sessions before the Asia day. If it disagrees with the month, both are tagged and neither side is filtered." />
+        <label>2-week trend
+          <select id="ob-week2-mode"
+            title="Last close vs ~10-session EMA of daily closes, plus path efficiency. Off = ignore. Tag = stamp only. Filter = skip the against-side Asia break even if Seasonal month is off. If both filter and they disagree, no skip.">
+            <option value="off" selected>off</option>
+            <option value="tag">tag only</option>
+            <option value="filter">filter against-side</option>
+          </select>
         </label>
         <label>Trend flat (pts)
           <input type="number" id="ob-trend-flat" value="1500" min="0" step="100"
-            title="2-week net move below this is flat. Gold default 1500 pts = $15." />
+            title="2-week net close-to-close below this is flat (too small to care). Gold default 1500 pts = $15." />
+        </label>
+        <label>Trend efficiency min
+          <input type="number" id="ob-trend-eff" value="0.35" min="0" max="1" step="0.05"
+            title="|net| / sum of |daily changes| over the 2-week window. Below this = two-way chop, no side. 0 = off." />
         </label>
         <label>News days
           <select id="ob-news-mode"
@@ -288,15 +362,20 @@
         <label>SL mode
           <select id="ob-sl-mode">
             <option value="asia_opposite" selected>asia opposite</option>
+            <option value="range">Asia range</option>
             <option value="fixed">fixed pts</option>
-            <option value="range_width">range × mult</option>
           </select>
         </label>
         <label>SL fixed (pts)
           <input type="number" id="ob-sl-fixed" value="500" min="50" step="50" />
         </label>
         <label>SL range mult
-          <input type="number" id="ob-sl-range-mult" value="1" min="0.1" step="0.1" />
+          <input type="number" id="ob-sl-range-mult" value="1" min="0.1" step="0.1"
+            title="Asia range mode: SL distance = Asia width × this. 1 = the range itself." />
+        </label>
+        <label>SL cap (pts)
+          <input type="number" id="ob-sl-cap" value="0" min="0" step="50"
+            title="Max SL distance for asia opposite and Asia range. 0 = off. If the raw SL is farther, it is pulled in to this many pts." />
         </label>
         <label>TP mode
           <select id="ob-tp-mode">
@@ -318,6 +397,7 @@
           <select id="ob-trail-arm-mode">
             <option value="fixed" selected>fixed pts</option>
             <option value="asia">Asia range (capped)</option>
+            <option value="from_fill">from fill (walk SL with price)</option>
           </select>
         </label>
         <label>Trail arm (pts profit)
@@ -328,7 +408,8 @@
             title="Max trail-arm when mode is Asia range. 0 = no cap." />
         </label>
         <label>Trail distance (pts)
-          <input type="number" id="ob-trail" value="250" min="0" step="50" />
+          <input type="number" id="ob-trail" value="250" min="0" step="50"
+            title="Gap behind the best price once the trail is on. From-fill + 0 = use the initial SL (up 100 pts → remaining risk 1900 if SL was 2000)." />
         </label>
         <label>Max hold (hours)
           <input type="number" id="ob-max-hold" value="10" min="1" max="24" step="0.5" />
@@ -376,6 +457,7 @@
       </div>
       <p class="muted" id="ob-meta">No run yet.</p>
       <div class="hero-grid" id="ob-hero"></div>
+      <div class="ob-params" id="ob-run-params" hidden></div>
       <p class="table-note" id="ob-skip-breakdown"></p>
       <h3>By month</h3>
       <p class="table-note">Same stats as the overall run, split by local-date month.</p>
@@ -416,6 +498,7 @@
               <th>Entry</th>
               <th>Wait</th>
               <th>EMA</th>
+              <th>Closest EMA</th>
               <th>Decision</th>
               <th>Fill</th>
               <th>SL</th>
@@ -536,6 +619,210 @@
     timeout_market: "Timeout market",
     timeout_worst: "Timeout worst",
   };
+
+  const PARAM_FIELDS = [
+    ["timezone", "Timezone"],
+    ["asia_start_hour", "Asia start"],
+    ["asia_end_hour", "Asia end"],
+    ["min_asia_range_pts", "Min Asia pts"],
+    ["min_break_pts_above", "Min break up"],
+    ["min_break_pts_below", "Min break down"],
+    ["break_on_wick", "Wick break"],
+    ["max_break_candles_after", "Max break bars"],
+    ["pullback_mode", "Pullback"],
+    ["ema_period", "EMA"],
+    ["max_wait_candles", "Max wait"],
+    ["wait_from_break", "Wait from break"],
+    ["timeout_action", "Timeout action"],
+    ["timeout_max_ema_dist_pts", "Timeout max EMA dist"],
+    ["timeout_min_break_pts", "Timeout min break"],
+    ["use_higher_close", "Close resume"],
+    ["resume_closes", "Resume closes"],
+    ["skip_late_short_wait", "Late short wait ≥"],
+    ["skip_late_short_asia_pts", "Late short Asia <"],
+    ["side_filter", "Side"],
+    ["seasonal_mode", "Seasonal month"],
+    ["seasonal_join", "Join inside box"],
+    ["week2_mode", "2-week trend"],
+    ["trend_flat_pts", "Trend flat pts"],
+    ["trend_sessions", "Trend sessions"],
+    ["trend_efficiency_min", "Trend efficiency min"],
+    ["news_mode", "News"],
+    ["news_set", "News set"],
+    ["sl_mode", "SL mode"],
+    ["sl_fixed_pts", "SL fixed"],
+    ["sl_range_mult", "SL range ×"],
+    ["sl_cap_pts", "SL cap"],
+    ["tp_mode", "TP mode"],
+    ["tp_fixed_pts", "TP fixed"],
+    ["tp_range_mult", "TP range ×"],
+    ["tp_r_mult", "TP R ×"],
+    ["trail_arm_mode", "Trail arm mode"],
+    ["trail_arm_pts", "Trail arm pts"],
+    ["trail_arm_cap_pts", "Trail arm cap"],
+    ["trail_pts", "Trail pts"],
+    ["max_hold_hours", "Max hold h"],
+    ["flatten_hour", "Flatten hour"],
+    ["one_trade_per_day", "One per day"],
+  ];
+
+  const PARAM_FORM_IDS = {
+    asia_start_hour: "ob-asia-start",
+    asia_end_hour: "ob-asia-end",
+    min_asia_range_pts: "ob-min-asia",
+    min_break_pts_above: "ob-break-up",
+    min_break_pts_below: "ob-break-dn",
+    break_on_wick: "ob-break-wick",
+    max_break_candles_after: "ob-max-break-candles",
+    pullback_mode: "ob-pullback-mode",
+    ema_period: "ob-ema",
+    max_wait_candles: "ob-max-wait",
+    wait_from_break: "ob-wait-from-break",
+    timeout_action: "ob-timeout",
+    timeout_max_ema_dist_pts: "ob-timeout-ema-dist",
+    timeout_min_break_pts: "ob-timeout-min-break",
+    use_higher_close: "ob-higher-close",
+    resume_closes: "ob-resume-closes",
+    skip_late_short_wait: "ob-late-short-wait",
+    skip_late_short_asia_pts: "ob-late-short-asia",
+    side_filter: "ob-side",
+    seasonal_mode: "ob-seasonal-mode",
+    seasonal_join: "ob-seasonal-join",
+    week2_mode: "ob-week2-mode",
+    trend_flat_pts: "ob-trend-flat",
+    trend_efficiency_min: "ob-trend-eff",
+    news_mode: "ob-news-mode",
+    news_set: "ob-news-set",
+    sl_mode: "ob-sl-mode",
+    sl_fixed_pts: "ob-sl-fixed",
+    sl_range_mult: "ob-sl-range-mult",
+    sl_cap_pts: "ob-sl-cap",
+    tp_mode: "ob-tp-mode",
+    tp_fixed_pts: "ob-tp-fixed",
+    tp_range_mult: "ob-tp-range-mult",
+    tp_r_mult: "ob-tp-r-mult",
+    trail_arm_mode: "ob-trail-arm-mode",
+    trail_arm_pts: "ob-trail-arm",
+    trail_arm_cap_pts: "ob-trail-arm-cap",
+    trail_pts: "ob-trail",
+    max_hold_hours: "ob-max-hold",
+    flatten_hour: "ob-flatten",
+    one_trade_per_day: "ob-one-per-day",
+  };
+
+  function fmtParam(key, raw) {
+    if (raw == null || raw === "") return "—";
+    if (typeof raw === "boolean") return raw ? "yes" : "no";
+    if (key === "week2_mode" && (raw === "off" || raw === false)) return "off";
+    return String(raw);
+  }
+
+  function runParams(result) {
+    const p = Object.assign({}, (result && result.params) || {});
+    if (p.week2_mode == null) {
+      p.week2_mode = p.week2_trend ? "tag" : "off";
+    }
+    if (p.break_on_wick == null && p.require_close_outside != null) {
+      p.break_on_wick = !p.require_close_outside;
+    }
+    if (p.sl_mode === "range_width" || p.sl_mode === "asia_range") {
+      p.sl_mode = "range";
+    }
+    return p;
+  }
+
+  function paramEq(a, b) {
+    if (a === b) return true;
+    if (a == null && b == null) return true;
+    if (typeof a === "boolean" || typeof b === "boolean") return !!a === !!b;
+    if (a == null || b == null) return false;
+    const na = Number(a);
+    const nb = Number(b);
+    if (a !== "" && b !== "" && !Number.isNaN(na) && !Number.isNaN(nb)) {
+      return na === nb;
+    }
+    return String(a) === String(b);
+  }
+
+  function rangeKey(result) {
+    return (
+      dash(result && result.symbol) +
+      " · " +
+      dash(result && result.date_from) +
+      " → " +
+      dash(result && result.date_to)
+    );
+  }
+
+  let lastRunParamSnap = null;
+
+  function renderRunParams(result) {
+    const el = $("ob-run-params");
+    if (!el) return;
+    const p = runParams(result);
+    if (!result || !Object.keys(p).length) {
+      el.hidden = true;
+      el.innerHTML = "";
+      return;
+    }
+    const snap = { __range: rangeKey(result) };
+    PARAM_FIELDS.forEach(function (pair) {
+      snap[pair[0]] = p[pair[0]];
+    });
+    const prev = lastRunParamSnap;
+    const canDiff = prev != null;
+    const bits = [
+      '<div class="ob-params-title">Run settings</div>',
+    ];
+    if (result.symbol || result.date_from) {
+      bits.push(
+        '<div class="ob-param ob-param-wide' +
+          (canDiff && !paramEq(prev.__range, snap.__range) ? " is-changed" : "") +
+          '"><div class="k">Range</div><div class="v">' +
+          snap.__range +
+          "</div></div>"
+      );
+    }
+    PARAM_FIELDS.forEach(function (pair) {
+      const key = pair[0];
+      if (!Object.prototype.hasOwnProperty.call(p, key) && key !== "week2_mode") {
+        return;
+      }
+      const changed = canDiff && !paramEq(prev[key], snap[key]);
+      bits.push(
+        '<div class="ob-param' +
+          (changed ? " is-changed" : "") +
+          '"><div class="k">' +
+          pair[1] +
+          '</div><div class="v">' +
+          fmtParam(key, p[key]) +
+          "</div></div>"
+      );
+    });
+    el.innerHTML = bits.join("");
+    el.hidden = false;
+    lastRunParamSnap = snap;
+  }
+
+  function applyFormFromResult(result) {
+    if (!result) return;
+    const p = runParams(result);
+    if (result.symbol && $("ob-symbol")) $("ob-symbol").value = "XAUUSD";
+    if (result.date_from && $("ob-from")) $("ob-from").value = String(result.date_from).slice(0, 10);
+    if (result.date_to && $("ob-to")) $("ob-to").value = String(result.date_to).slice(0, 10);
+    Object.keys(PARAM_FORM_IDS).forEach(function (key) {
+      if (!Object.prototype.hasOwnProperty.call(p, key)) return;
+      const el = $(PARAM_FORM_IDS[key]);
+      if (!el) return;
+      const v = p[key];
+      if (el.type === "checkbox") el.checked = !!v;
+      else el.value = v == null ? "" : String(v);
+    });
+    syncPullbackControls();
+    syncTrailArmControls();
+    syncSlControls();
+    scheduleSave();
+  }
 
   function heroItem(label, value) {
     return (
@@ -760,6 +1047,7 @@
     if (!result) {
       if (meta) meta.textContent = "No run yet.";
       if (hero) hero.innerHTML = "";
+      renderRunParams(null);
       if (breakdown) breakdown.textContent = "";
       if (mb) mb.innerHTML = "";
       if (tb) tb.innerHTML = "";
@@ -797,6 +1085,7 @@
         heroItem("Avg loss", result.avg_loss_pts) +
         heroItem("Skipped", result.skipped);
     }
+    renderRunParams(result);
     if (breakdown) {
       const entries = result.entries || {};
       const entryParts = Object.keys(entries)
@@ -859,7 +1148,7 @@
       const rows = result.rows || [];
       if (!rows.length) {
         tb.innerHTML =
-          '<tr><td colspan="20" class="muted">No trades in this window</td></tr>';
+          '<tr><td colspan="21" class="muted">No trades in this window</td></tr>';
       } else {
         rows.forEach(function (t) {
           const tr = document.createElement("tr");
@@ -890,6 +1179,8 @@
             waitCell(t) +
             "</td><td>" +
             dash(t.ema) +
+            "</td><td>" +
+            dash(t.closest_ema_pts) +
             "</td>" +
             decisionTdHtml(decisionCell(t)) +
             "<td>" +
@@ -1062,6 +1353,8 @@
         max_wait_candles: Number($("ob-max-wait").value),
         wait_from_break: $("ob-wait-from-break") && $("ob-wait-from-break").checked,
         timeout_action: $("ob-timeout").value,
+        timeout_max_ema_dist_pts: Number(($("ob-timeout-ema-dist") && $("ob-timeout-ema-dist").value) || 0),
+        timeout_min_break_pts: Number(($("ob-timeout-min-break") && $("ob-timeout-min-break").value) || 0),
         use_higher_close: $("ob-higher-close") && $("ob-higher-close").checked,
         resume_closes: Math.max(1, Number($("ob-resume-closes") && $("ob-resume-closes").value) || 1),
         skip_late_short_wait: Math.max(0, Number($("ob-late-short-wait") && $("ob-late-short-wait").value) || 0),
@@ -1069,6 +1362,7 @@
         sl_mode: $("ob-sl-mode").value,
         sl_fixed_pts: Number($("ob-sl-fixed").value),
         sl_range_mult: Number($("ob-sl-range-mult").value),
+        sl_cap_pts: Number(($("ob-sl-cap") && $("ob-sl-cap").value) || 0),
         tp_mode: $("ob-tp-mode").value,
         tp_fixed_pts: Number($("ob-tp-fixed").value),
         tp_range_mult: Number($("ob-tp-range-mult").value),
@@ -1083,8 +1377,10 @@
         side_filter: $("ob-side").value,
         seasonal_mode: ($("ob-seasonal-mode") && $("ob-seasonal-mode").value) || "off",
         seasonal_join: $("ob-seasonal-join") && $("ob-seasonal-join").checked,
-        week2_trend: $("ob-week2") && $("ob-week2").checked,
+        week2_mode: ($("ob-week2-mode") && $("ob-week2-mode").value) || "off",
+        week2_trend: ($("ob-week2-mode") && $("ob-week2-mode").value) !== "off",
         trend_flat_pts: Number($("ob-trend-flat") && $("ob-trend-flat").value) || 1500,
+        trend_efficiency_min: Number($("ob-trend-eff") && $("ob-trend-eff").value) || 0,
         news_mode: ($("ob-news-mode") && $("ob-news-mode").value) || "off",
         news_set: ($("ob-news-set") && $("ob-news-set").value) || "scheduled",
         workers: Math.max(1, Math.min(6, Number($("ob-workers") && $("ob-workers").value) || 3)),
@@ -1123,12 +1419,15 @@
   bindFormPersist();
   syncPullbackControls();
   syncTrailArmControls();
+  syncSlControls();
   const modeEl = $("ob-pullback-mode");
   if (modeEl) modeEl.addEventListener("change", syncPullbackControls);
   const resumeEl = $("ob-higher-close");
   if (resumeEl) resumeEl.addEventListener("change", syncPullbackControls);
   const trailModeEl = $("ob-trail-arm-mode");
   if (trailModeEl) trailModeEl.addEventListener("change", syncTrailArmControls);
+  const slModeEl = $("ob-sl-mode");
+  if (slModeEl) slModeEl.addEventListener("change", syncSlControls);
   wireDecisionTips();
   wireTabs();
   wireRun();
@@ -1139,6 +1438,7 @@
       selectId: "ob-saved",
       buttonId: "ob-load",
       onLoaded: function (json) {
+        applyFormFromResult(json);
         render(json);
       },
     });

@@ -903,7 +903,8 @@ def _run_date_group_job(job: Dict[str, Any]) -> List[Dict[str, Any]]:
             message=f"Pack {len(ticks):,} ticks · {date_from}→{date_to}",
         )
 
-        if bool((job.get("filters") or {}).get("week2_trend")):
+        _flt = job.get("filters") or {}
+        if bool(_flt.get("week2_trend")) or str(_flt.get("week2_mode") or "off") != "off":
             try:
                 prefix = load_ticks(
                     symbol=symbol,

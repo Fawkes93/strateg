@@ -8,6 +8,7 @@ from backtest.overnight_break import (
     OvernightSkip,
     OvernightTrade,
     _asia_extensions,
+    _compute_sl_tp,
     _decision_line,
     _excursion_from,
     _mk_skip,
@@ -15,8 +16,11 @@ from backtest.overnight_break import (
     entry_label,
     late_short_blocked,
     run_overnight,
+    timeout_quality_blocked,
     summarize_overnight,
     trail_arm_for_range,
+    trail_setup,
+    _simulate_from_entry,
 )
 
 
@@ -523,6 +527,13 @@ def test_trail_arm_for_range_caps_asia_size():
     assert trail_arm_for_range(asia, 4000.0) == 2000.0
     uncapped = OvernightParams(trail_arm_mode="asia", trail_arm_cap_pts=0.0)
     assert trail_arm_for_range(uncapped, 4000.0) == 4000.0
+    from_fill = OvernightParams(trail_arm_mode="from_fill", trail_pts=0.0)
+    assert trail_arm_for_range(from_fill, 2500.0) == 0.0
+    arm, dist, immediate = trail_setup(from_fill, 2500.0, sl_pts=2000.0)
+    assert immediate is True and arm == 0.0 and dist == 2000.0
+    custom = OvernightParams(trail_arm_mode="from_fill", trail_pts=1000.0)
+    _arm, dist2, _im = trail_setup(custom, 2500.0, sl_pts=2000.0)
+    assert dist2 == 1000.0
 
 
 def test_asia_trail_arm_recorded_on_trade():
@@ -553,6 +564,42 @@ def test_asia_trail_arm_recorded_on_trade():
     expected = min(row["asia_range_pts"], 2000.0)
     assert row["trail_arm_used"] == expected
     assert expected != 400.0
+
+
+def test_from_fill_trail_tightens_one_for_one():
+    tz = ZoneInfo("UTC")
+    start = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    ticks = [
+        _tick(start, 3300.0),
+        _tick(start + timedelta(seconds=1), 3301.0),
+        _tick(start + timedelta(seconds=2), 3281.0),
+    ]
+    params = OvernightParams(
+        trail_arm_mode="from_fill",
+        trail_pts=0.0,
+        flatten_hour=23,
+        max_hold_hours=10.0,
+    )
+    reason, _ts, px, pts, armed, _fav, _adv, best, _worst = _simulate_from_entry(
+        ticks,
+        0,
+        side="UP",
+        entry=3300.0,
+        sl=3280.0,
+        tp=3400.0,
+        params=params,
+        ps=0.01,
+        tz=tz,
+        flatten_local=datetime(2025, 5, 6, 23, 0, tzinfo=tz),
+        trail_arm_pts=0.0,
+        trail_dist_pts=2000.0,
+        trail_from_fill=True,
+    )
+    assert armed is True
+    assert reason == "trail"
+    assert best == 3301.0
+    assert abs(px - 3281.0) < 1e-9
+    assert round(pts, 0) == -1900.0
 
 
 def _resume_only_params(**kwargs):
@@ -794,6 +841,182 @@ def test_late_short_off_enters_wait7():
     assert out["rows"][0]["entry_reason"] == "ema_touch"
 
 
+def _timeout_params(**kwargs):
+    base = dict(
+        timezone="UTC",
+        pullback_mode="preferred",
+        timeout_action="market",
+        use_higher_close=False,
+        ema_period=21,
+        min_asia_range_pts=300.0,
+        min_break_pts_below=200.0,
+        min_break_pts_above=200.0,
+        max_wait_candles=8,
+        max_break_candles_after=8,
+        flatten_hour=23,
+        max_hold_hours=14.0,
+        skip_late_short_wait=0,
+    )
+    base.update(kwargs)
+    return OvernightParams(**base)
+
+
+def test_sl_asia_opposite_cap_pulls_in():
+    p = OvernightParams(sl_mode="asia_opposite", sl_cap_pts=1800.0)
+    sl, _tp, sl_pts, _tp_pts = _compute_sl_tp(
+        "UP", 3325.0, 3320.0, 3300.0, p, 0.01
+    )
+    assert round(sl_pts, 1) == 1800.0
+    assert abs(sl - (3325.0 - 18.0)) < 1e-9
+
+
+def test_sl_asia_opposite_no_cap_uses_box():
+    p = OvernightParams(sl_mode="asia_opposite", sl_cap_pts=0.0)
+    sl, _tp, sl_pts, _tp_pts = _compute_sl_tp(
+        "UP", 3325.0, 3320.0, 3300.0, p, 0.01
+    )
+    assert sl == 3300.0
+    assert round(sl_pts, 1) == 2500.0
+
+
+def test_sl_range_is_asia_width():
+    p = OvernightParams(sl_mode="range", sl_range_mult=1.0, sl_cap_pts=0.0)
+    sl, _tp, sl_pts, _tp_pts = _compute_sl_tp(
+        "UP", 3325.0, 3320.0, 3300.0, p, 0.01
+    )
+    assert round(sl_pts, 1) == 2000.0
+    assert abs(sl - 3305.0) < 1e-9
+
+
+def test_sl_range_with_cap():
+    p = OvernightParams(sl_mode="range", sl_range_mult=1.0, sl_cap_pts=1500.0)
+    sl, _tp, sl_pts, _tp_pts = _compute_sl_tp(
+        "DOWN", 3290.0, 3320.0, 3300.0, p, 0.01
+    )
+    assert round(sl_pts, 1) == 1500.0
+    assert abs(sl - (3290.0 + 15.0)) < 1e-9
+
+
+def test_sl_range_mult_alias_uncapped():
+    p = OvernightParams(sl_mode="range_width", sl_range_mult=1.5, sl_cap_pts=0.0)
+    _sl, _tp, sl_pts, _tp_pts = _compute_sl_tp(
+        "UP", 3325.0, 3320.0, 3300.0, p, 0.01
+    )
+    assert round(sl_pts, 1) == 3000.0
+
+
+def test_sl_fixed_ignores_cap():
+    p = OvernightParams(sl_mode="fixed", sl_fixed_pts=500.0, sl_cap_pts=100.0)
+    _sl, _tp, sl_pts, _tp_pts = _compute_sl_tp(
+        "UP", 3325.0, 3320.0, 3300.0, p, 0.01
+    )
+    assert round(sl_pts, 1) == 500.0
+
+
+def test_timeout_quality_blocked_helper():
+    off = OvernightParams(timeout_max_ema_dist_pts=0.0, timeout_min_break_pts=0.0)
+    assert not timeout_quality_blocked(off, closest_ema_pts=None, break_pts=200.0)
+    assert not timeout_quality_blocked(off, closest_ema_pts=900.0, break_pts=200.0)
+    dist = OvernightParams(timeout_max_ema_dist_pts=300.0, timeout_min_break_pts=0.0)
+    assert timeout_quality_blocked(dist, closest_ema_pts=None, break_pts=500.0)
+    assert timeout_quality_blocked(dist, closest_ema_pts=301.0, break_pts=500.0)
+    assert not timeout_quality_blocked(dist, closest_ema_pts=300.0, break_pts=500.0)
+    brk = OvernightParams(timeout_max_ema_dist_pts=0.0, timeout_min_break_pts=300.0)
+    assert timeout_quality_blocked(brk, closest_ema_pts=None, break_pts=299.0)
+    assert not timeout_quality_blocked(brk, closest_ema_pts=None, break_pts=300.0)
+
+
+def test_timeout_market_ungated_still_fills():
+    ticks = _utc_down_break_ticks()
+    out = run_overnight(ticks, symbol="XAU/USD", params=_timeout_params())
+    assert out["trades"] == 1
+    row = out["rows"][0]
+    assert row["entry_reason"] == "timeout_market"
+    assert row["side"] == "DOWN"
+    assert row.get("closest_ema_pts") is not None
+    assert row["closest_ema_pts"] > 0
+
+
+def test_timeout_far_from_ema_skips():
+    ticks = _utc_down_break_ticks()
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_timeout_params(timeout_max_ema_dist_pts=50.0),
+    )
+    assert out["trades"] == 0
+    skips = [s for s in out["skips"] if s.get("side") == "DOWN"]
+    assert skips and skips[0]["reason"] == "no_pullback_timeout"
+    assert skips[0].get("closest_ema_pts") is not None
+    assert skips[0]["closest_ema_pts"] > 50.0
+
+
+def test_timeout_wide_ema_cap_still_fills():
+    ticks = _utc_down_break_ticks()
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_timeout_params(timeout_max_ema_dist_pts=20000.0),
+    )
+    assert out["trades"] == 1
+    assert out["rows"][0]["entry_reason"] == "timeout_market"
+
+
+def test_timeout_thin_break_skips():
+    ticks = _utc_down_break_ticks()
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_timeout_params(timeout_min_break_pts=20000.0),
+    )
+    assert out["trades"] == 0
+    skips = [s for s in out["skips"] if s.get("side") == "DOWN"]
+    assert skips and skips[0]["reason"] == "no_pullback_timeout"
+
+
+def test_timeout_min_break_below_actual_still_fills():
+    ticks = _utc_down_break_ticks()
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_timeout_params(timeout_min_break_pts=200.0),
+    )
+    assert out["trades"] == 1
+    assert out["rows"][0]["entry_reason"] == "timeout_market"
+    assert out["rows"][0]["break_pts"] >= 200.0
+
+
+def test_timeout_no_wait_scan_fails_ema_dist_gate():
+    ticks = _utc_down_break_ticks()
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_timeout_params(
+            max_break_candles_after=1,
+            timeout_max_ema_dist_pts=300.0,
+        ),
+    )
+    assert out["trades"] == 0
+    skips = [s for s in out["skips"] if s.get("side") == "DOWN"]
+    assert skips and skips[0]["reason"] == "no_pullback_timeout"
+    assert skips[0].get("closest_ema_pts") is None
+
+
+def test_timeout_gate_does_not_block_ema_touch():
+    ticks = _utc_down_break_ticks((3300.0, 3320.0, 3299.0, 3308.0))
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_timeout_params(
+            pullback_mode="required",
+            timeout_max_ema_dist_pts=1.0,
+            timeout_min_break_pts=20000.0,
+        ),
+    )
+    assert out["trades"] == 1
+    assert out["rows"][0]["entry_reason"] == "ema_touch"
+
+
 def _season_day_ticks(start_utc, high_bar, low_bar, first_post, break_side=None):
     overrides = {
         high_bar: (3310.0, 3320.0, 3308.0, 3315.0),
@@ -1019,6 +1242,66 @@ def test_january_down_agrees_with_down_trend_still_filtered():
     rows = [r for r in out["rows"] if r["local_date"] == "2025-01-06"]
     assert rows and rows[0]["side"] == "DOWN"
     assert rows[0]["bias_conflict"] is True
+
+
+def _falling_prefix(asof, n=12, start_px=3400.0, step=2.0):
+    from datetime import time as dtime
+
+    tz = ZoneInfo("Europe/Bucharest")
+    prefix = []
+    for i in range(n, 0, -1):
+        d = asof - timedelta(days=i)
+        loc = datetime.combine(d, dtime(16, 0), tzinfo=tz)
+        px = start_px - (n - i) * step
+        prefix.append(_tick(loc.astimezone(timezone.utc), px))
+    return prefix
+
+
+def test_week2_filter_skips_against_side_without_season():
+    ticks = _season_day_ticks(
+        datetime(2026, 3, 31, 21, 0, tzinfo=timezone.utc),
+        datetime(2026, 4, 1, 1, 0, tzinfo=timezone.utc),
+        datetime(2026, 4, 1, 2, 30, tzinfo=timezone.utc),
+        datetime(2026, 4, 1, 4, 0, tzinfo=timezone.utc),
+        break_side="UP",
+    )
+    out = run_overnight(
+        _falling_prefix(date(2026, 4, 1)) + ticks,
+        symbol="XAU/USD",
+        params=_season_params(
+            seasonal_mode="off",
+            week2_mode="filter",
+            trend_flat_pts=1500.0,
+            trend_efficiency_min=0.35,
+        ),
+    )
+    skips = [s for s in out["skips"] if s.get("local_date") == "2026-04-01"]
+    assert skips and skips[0]["reason"] == "seasonal_bias"
+    assert skips[0]["side"] == "UP"
+    assert skips[0].get("trend_side") == "DOWN"
+
+
+def test_week2_tag_without_season_still_takes_against_side():
+    ticks = _season_day_ticks(
+        datetime(2026, 3, 31, 21, 0, tzinfo=timezone.utc),
+        datetime(2026, 4, 1, 1, 0, tzinfo=timezone.utc),
+        datetime(2026, 4, 1, 2, 30, tzinfo=timezone.utc),
+        datetime(2026, 4, 1, 4, 0, tzinfo=timezone.utc),
+        break_side="UP",
+    )
+    out = run_overnight(
+        _falling_prefix(date(2026, 4, 1)) + ticks,
+        symbol="XAU/USD",
+        params=_season_params(
+            seasonal_mode="off",
+            week2_mode="tag",
+            trend_flat_pts=1500.0,
+            trend_efficiency_min=0.35,
+        ),
+    )
+    rows = [r for r in out["rows"] if r["local_date"] == "2026-04-01"]
+    assert rows and rows[0]["side"] == "UP"
+    assert rows[0].get("trend_side") == "DOWN"
 
 
 def test_week2_lookback_extends_when_enabled():

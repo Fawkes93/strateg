@@ -475,6 +475,8 @@ class OvernightRunRequest(BaseModel):
     max_wait_candles: int = 8
     wait_from_break: bool = False
     timeout_action: str = "skip"
+    timeout_max_ema_dist_pts: float = 0.0
+    timeout_min_break_pts: float = 0.0
     use_higher_close: bool = True
     resume_closes: int = 1
     skip_late_short_wait: int = 7
@@ -482,6 +484,7 @@ class OvernightRunRequest(BaseModel):
     sl_mode: str = "asia_opposite"
     sl_fixed_pts: float = 500.0
     sl_range_mult: float = 1.0
+    sl_cap_pts: float = 0.0
     tp_mode: str = "range_mult"
     tp_fixed_pts: float = 1000.0
     tp_range_mult: float = 1.5
@@ -497,8 +500,10 @@ class OvernightRunRequest(BaseModel):
     seasonal_mode: str = "off"
     seasonal_join: bool = False
     week2_trend: bool = False
+    week2_mode: str = "off"
     trend_flat_pts: float = 1500.0
     trend_sessions: int = 10
+    trend_efficiency_min: float = 0.35
     news_mode: str = "off"
     news_set: str = "scheduled"
     workers: int = 3
@@ -528,6 +533,8 @@ def overnight_run(body: OvernightRunRequest):
         max_wait_candles=int(body.max_wait_candles),
         wait_from_break=bool(body.wait_from_break),
         timeout_action=str(body.timeout_action or "skip"),
+        timeout_max_ema_dist_pts=float(body.timeout_max_ema_dist_pts or 0.0),
+        timeout_min_break_pts=float(body.timeout_min_break_pts or 0.0),
         use_higher_close=bool(body.use_higher_close),
         resume_closes=max(1, int(body.resume_closes or 1)),
         skip_late_short_wait=max(0, int(body.skip_late_short_wait or 0)),
@@ -535,6 +542,7 @@ def overnight_run(body: OvernightRunRequest):
         sl_mode=str(body.sl_mode or "asia_opposite"),
         sl_fixed_pts=float(body.sl_fixed_pts),
         sl_range_mult=float(body.sl_range_mult),
+        sl_cap_pts=float(body.sl_cap_pts or 0.0),
         tp_mode=str(body.tp_mode or "range_mult"),
         tp_fixed_pts=float(body.tp_fixed_pts),
         tp_range_mult=float(body.tp_range_mult),
@@ -550,8 +558,12 @@ def overnight_run(body: OvernightRunRequest):
         seasonal_mode=str(body.seasonal_mode or "off"),
         seasonal_join=bool(body.seasonal_join),
         week2_trend=bool(body.week2_trend),
+        week2_mode=str(body.week2_mode or "off"),
         trend_flat_pts=float(body.trend_flat_pts or 1500.0),
         trend_sessions=max(5, int(body.trend_sessions or 10)),
+        trend_efficiency_min=float(
+            body.trend_efficiency_min if body.trend_efficiency_min is not None else 0.35
+        ),
         news_mode=str(body.news_mode or "off"),
         news_set=str(body.news_set or "scheduled"),
         workers=max(1, min(6, int(body.workers or 1))),

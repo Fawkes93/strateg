@@ -12,8 +12,9 @@ Entry modes:
 Higher/lower close resume is a separate checkbox (ignored when mode is off).
 
 Trail arm:
-  fixed : trail_arm_pts profit before trail activates (0 = off)
-  asia  : arm = Asia range, capped at trail_arm_cap_pts (0 cap = uncapped)
+  fixed      : trail_arm_pts profit before trail activates (0 = off)
+  asia       : arm = Asia range, capped at trail_arm_cap_pts (0 cap = uncapped)
+  from_fill  : trail on from the fill. Distance = trail_pts, or the initial SL if 0.
 
 No partial take-profit.
 """
@@ -43,6 +44,7 @@ from backtest.seasonality import (
     build_daily_closes,
     month_regime,
     normalize_seasonal_mode,
+    normalize_week2_mode,
     seasonal_label,
     snapshot_bias,
 )
@@ -68,6 +70,11 @@ class OvernightParams:
     max_wait_candles: int = 8  # 15m candles after break
     wait_from_break: bool = False  # True = count wait from the break bar, not leftover post_asia
     timeout_action: str = "skip"  # skip | market | worst  (only for preferred)
+    # Preferred timeout quality. 0 = off (current ungated timeout).
+    # Dist: closest wait-scan approach to EMA (pts). None / farther → skip.
+    # Extra break floor applies only to timeout fills, not EMA-touch.
+    timeout_max_ema_dist_pts: float = 0.0
+    timeout_min_break_pts: float = 0.0
     use_higher_close: bool = True  # higher/lower close resume during wait
     resume_closes: int = 1  # consecutive directional closes required (1 = current)
     # Skip DOWN entries from this wait bar onward when Asia is below the cap.
@@ -75,17 +82,18 @@ class OvernightParams:
     skip_late_short_wait: int = 7
     skip_late_short_asia_pts: float = 3000.0
     # Risk
-    sl_mode: str = "asia_opposite"  # fixed | asia_opposite | range_width
+    sl_mode: str = "asia_opposite"  # fixed | asia_opposite | range | range_width
     sl_fixed_pts: float = 500.0
     sl_range_mult: float = 1.0
+    sl_cap_pts: float = 0.0  # max SL distance (pts). 0 = off. asia_opposite + range.
     tp_mode: str = "range_mult"  # fixed | range_mult | r_mult
     tp_fixed_pts: float = 1000.0
     tp_range_mult: float = 1.5
     tp_r_mult: float = 2.0
-    trail_arm_mode: str = "fixed"  # fixed | asia
+    trail_arm_mode: str = "fixed"  # fixed | asia | from_fill
     trail_arm_pts: float = 400.0  # profit before trail activates when mode=fixed (0 = off)
     trail_arm_cap_pts: float = 2000.0  # max arm when mode=asia (0 = no cap)
-    trail_pts: float = 250.0
+    trail_pts: float = 250.0  # gap behind best price. from_fill + 0 = use initial SL
     max_hold_hours: float = 10.0
     flatten_hour: int = 18  # local hour hard flatten
     one_trade_per_day: bool = True
@@ -96,9 +104,13 @@ class OvernightParams:
     # If the month has a bias and Asia never printed a valid break, enter with
     # that bias instead of skipping no_break.
     seasonal_join: bool = False
+    # 2-week tape (close vs daily EMA + efficiency). Independent of the month
+    # table: off | tag | filter. Legacy week2_trend=True maps in _normalize.
     week2_trend: bool = False
+    week2_mode: str = "off"  # off | tag | filter
     trend_flat_pts: float = 1500.0
     trend_sessions: int = 10
+    trend_efficiency_min: float = 0.35
     # Gold news days (backtest/xau_news_days.json). off = ignore.
     # tag = stamp only. filter = skip the whole local day.
     news_mode: str = "off"  # off | tag | filter
@@ -116,7 +128,12 @@ def _normalize_params(params: OvernightParams) -> OvernightParams:
         params.break_on_wick = True
     params.seasonal_mode = normalize_seasonal_mode(params.seasonal_mode)
     params.seasonal_join = bool(params.seasonal_join)
-    params.week2_trend = bool(params.week2_trend)
+    params.week2_mode = normalize_week2_mode(
+        getattr(params, "week2_mode", None),
+        week2_trend=bool(params.week2_trend),
+        seasonal_mode=params.seasonal_mode,
+    )
+    params.week2_trend = params.week2_mode != "off"
     params.news_mode = normalize_news_mode(params.news_mode)
     params.news_set = normalize_news_set(params.news_set)
     try:
@@ -127,6 +144,44 @@ def _normalize_params(params: OvernightParams) -> OvernightParams:
         params.trend_sessions = max(5, int(params.trend_sessions or 10))
     except (TypeError, ValueError):
         params.trend_sessions = 10
+    try:
+        params.trend_efficiency_min = max(
+            0.0, float(params.trend_efficiency_min if params.trend_efficiency_min is not None else 0.35)
+        )
+    except (TypeError, ValueError):
+        params.trend_efficiency_min = 0.35
+    try:
+        params.timeout_max_ema_dist_pts = max(
+            0.0, float(params.timeout_max_ema_dist_pts or 0.0)
+        )
+    except (TypeError, ValueError):
+        params.timeout_max_ema_dist_pts = 0.0
+    try:
+        params.timeout_min_break_pts = max(
+            0.0, float(params.timeout_min_break_pts or 0.0)
+        )
+    except (TypeError, ValueError):
+        params.timeout_min_break_pts = 0.0
+    mode = str(params.sl_mode or "asia_opposite").strip().lower()
+    if mode in ("range", "asia_range", "range_width"):
+        params.sl_mode = "range"
+    elif mode == "fixed":
+        params.sl_mode = "fixed"
+    else:
+        params.sl_mode = "asia_opposite"
+    try:
+        params.sl_cap_pts = max(0.0, float(params.sl_cap_pts or 0.0))
+    except (TypeError, ValueError):
+        params.sl_cap_pts = 0.0
+    tam = str(params.trail_arm_mode or "fixed").strip().lower()
+    if tam in ("from_fill", "from_start", "immediate", "now", "sl"):
+        params.trail_arm_mode = "from_fill"
+    elif tam == "asia":
+        params.trail_arm_mode = "asia"
+    elif tam == "off":
+        params.trail_arm_mode = "off"
+    else:
+        params.trail_arm_mode = "fixed"
     return params
 
 
@@ -178,6 +233,28 @@ def late_short_blocked(
     return True
 
 
+def timeout_quality_blocked(
+    params: OvernightParams,
+    *,
+    closest_ema_pts: Optional[float],
+    break_pts: Optional[float],
+) -> bool:
+    """True when a preferred timeout fill fails the EMA-distance / extra-break gate.
+
+    Dist cap 0 = off. Break floor 0 = no extra vs the existing min-break.
+    Missing closest_ema_pts fails a positive dist cap (no wait scan).
+    """
+    max_dist = float(params.timeout_max_ema_dist_pts or 0.0)
+    if max_dist > 0:
+        if closest_ema_pts is None or float(closest_ema_pts) > max_dist + 1e-9:
+            return True
+    min_break = float(params.timeout_min_break_pts or 0.0)
+    if min_break > 0:
+        if break_pts is None or float(break_pts) + 1e-9 < min_break:
+            return True
+    return False
+
+
 def require_zone(name: str) -> ZoneInfo:
     """Resolve an IANA zone or raise a pip-install-tzdata error (do not fall back to UTC)."""
     key = (name or "").strip() or "Europe/Bucharest"
@@ -191,8 +268,13 @@ def require_zone(name: str) -> ZoneInfo:
 
 
 def trail_arm_for_range(params: OvernightParams, asia_range_pts: float) -> float:
-    """Profit (pts) required before the trail activates for this day's Asia range."""
+    """Profit (pts) required before the trail activates for this day's Asia range.
+
+    from_fill returns 0 (armed at the fill, not 'trail off').
+    """
     mode = (params.trail_arm_mode or "fixed").strip().lower()
+    if mode in ("from_fill", "from_start", "immediate", "now", "sl", "off"):
+        return 0.0
     if mode == "asia":
         arm = float(asia_range_pts or 0.0)
         cap = float(params.trail_arm_cap_pts or 0.0)
@@ -200,6 +282,28 @@ def trail_arm_for_range(params: OvernightParams, asia_range_pts: float) -> float
             arm = min(arm, cap)
         return max(0.0, arm)
     return max(0.0, float(params.trail_arm_pts or 0.0))
+
+
+def trail_setup(
+    params: OvernightParams,
+    asia_range_pts: float,
+    sl_pts: float,
+) -> Tuple[float, float, bool]:
+    """Return (arm_pts, trail_dist_pts, from_fill).
+
+    from_fill: trail is on from the entry. trail_pts 0 → use the initial SL.
+    Otherwise arm_pts 0 means the trail stays off.
+    """
+    mode = (params.trail_arm_mode or "fixed").strip().lower()
+    if mode in ("from_fill", "from_start", "immediate", "now", "sl"):
+        dist = max(0.0, float(params.trail_pts or 0.0))
+        if dist <= 0:
+            dist = max(0.0, float(sl_pts or 0.0))
+        return 0.0, dist, True
+    if mode == "off":
+        return 0.0, 0.0, False
+    arm = trail_arm_for_range(params, asia_range_pts)
+    return arm, max(0.0, float(params.trail_pts or 0.0)), False
 
 
 def asia_window_start_utc(
@@ -256,6 +360,7 @@ class OvernightTrade:
     signal_close: Optional[float] = None
     break_pts: Optional[float] = None
     entry_vs_ema_pts: Optional[float] = None
+    closest_ema_pts: Optional[float] = None  # wait-scan closest; >0 = never touched
     close_vs_prev_pts: Optional[float] = None
     same_bar_ema: bool = False
     decision: str = ""
@@ -629,12 +734,16 @@ def _compute_sl_tp(
 ) -> Tuple[float, float, float, float]:
     range_pts = (asia_high - asia_low) / ps
 
+    sl_mode = str(params.sl_mode or "asia_opposite").strip().lower()
+    if sl_mode in ("range", "asia_range", "range_width"):
+        sl_mode = "range"
+
     # SL
-    if params.sl_mode == "fixed":
+    if sl_mode == "fixed":
         sl_dist = params.sl_fixed_pts * ps
         sl = entry - sl_dist if side == "UP" else entry + sl_dist
-    elif params.sl_mode == "range_width":
-        sl_dist = range_pts * params.sl_range_mult * ps
+    elif sl_mode == "range":
+        sl_dist = range_pts * float(params.sl_range_mult or 1.0) * ps
         sl = entry - sl_dist if side == "UP" else entry + sl_dist
     else:  # asia_opposite
         if side == "UP":
@@ -645,6 +754,18 @@ def _compute_sl_tp(
             sl = asia_high
             if sl <= entry:
                 sl = entry + params.sl_fixed_pts * ps
+
+    cap_pts = float(params.sl_cap_pts or 0.0)
+    if sl_mode != "fixed" and cap_pts > 0 and ps > 0:
+        cap = cap_pts * ps
+        if side == "UP":
+            floor = entry - cap
+            if sl < floor:
+                sl = floor
+        else:
+            ceil = entry + cap
+            if sl > ceil:
+                sl = ceil
 
     sl_pts = abs(entry - sl) / ps
 
@@ -674,6 +795,8 @@ def _simulate_from_entry(
     tz: ZoneInfo,
     flatten_local: datetime,
     trail_arm_pts: Optional[float] = None,
+    trail_dist_pts: Optional[float] = None,
+    trail_from_fill: bool = False,
 ) -> Tuple[str, datetime, float, float, bool, float, float, float, float]:
     """
     Walk ticks after fill.
@@ -689,6 +812,13 @@ def _simulate_from_entry(
     last_px = entry
     hold_deadline = ticks[start_index].ts + timedelta(hours=float(params.max_hold_hours))
     arm_pts = float(params.trail_arm_pts or 0.0) if trail_arm_pts is None else float(trail_arm_pts)
+    gap = float(params.trail_pts or 0.0) if trail_dist_pts is None else float(trail_dist_pts)
+    if trail_from_fill and gap > 0:
+        trail_armed = True
+        if side == "UP":
+            trail_level = entry - gap * ps
+        else:
+            trail_level = entry + gap * ps
 
     for i in range(start_index + 1, len(ticks)):
         t = ticks[i]
@@ -711,24 +841,24 @@ def _simulate_from_entry(
             return "flatten", t.ts, px, pts, trail_armed, max_fav, max_adv, best_px, worst_px
 
         # Trail arm
-        if arm_pts > 0 and not trail_armed and fav >= arm_pts:
+        if (not trail_from_fill) and arm_pts > 0 and not trail_armed and fav >= arm_pts and gap > 0:
             trail_armed = True
             if side == "UP":
-                trail_level = best_px - params.trail_pts * ps
+                trail_level = best_px - gap * ps
             else:
-                trail_level = best_px + params.trail_pts * ps
+                trail_level = best_px + gap * ps
 
         # Update trail
-        if trail_armed and trail_level is not None:
+        if trail_armed and trail_level is not None and gap > 0:
             if side == "UP":
-                new_trail = best_px - params.trail_pts * ps
+                new_trail = best_px - gap * ps
                 if new_trail > trail_level:
                     trail_level = new_trail
                 if px <= trail_level + 1e-12:
                     pts = _fav_pts(side, entry, trail_level, ps)
                     return "trail", t.ts, trail_level, pts, True, max_fav, max_adv, best_px, worst_px
             else:
-                new_trail = best_px + params.trail_pts * ps
+                new_trail = best_px + gap * ps
                 if new_trail < trail_level:
                     trail_level = new_trail
                 if px >= trail_level - 1e-12:
@@ -808,11 +938,11 @@ def run_overnight(
     trades: List[OvernightTrade] = []
     skips: List[OvernightSkip] = []
     traded_days: set = set()
-    dailies = (
-        build_daily_closes(ticks, params.timezone) if params.week2_trend else []
-    )
     use_season = params.seasonal_mode != "off"
-    use_week2 = bool(params.week2_trend)
+    use_week2 = params.week2_mode != "off"
+    dailies = (
+        build_daily_closes(ticks, params.timezone) if use_week2 else []
+    )
 
     def day_bias(d: date):
         if not use_season and not use_week2:
@@ -822,8 +952,11 @@ def run_overnight(
             dailies=dailies,
             use_season=use_season,
             use_week2=use_week2,
+            season_filter=params.seasonal_mode == "filter",
+            week2_filter=params.week2_mode == "filter",
             flat_pts=params.trend_flat_pts,
             sessions=params.trend_sessions,
+            efficiency_min=params.trend_efficiency_min,
             ps=ps,
         )
 
@@ -1044,7 +1177,7 @@ def run_overnight(
         seasonal_join = False
         if break_candle is None or side is None:
             join_side = None
-            if bool(params.seasonal_join) and (seasonal_mode != "off" or use_week2):
+            if bool(params.seasonal_join) and (seasonal_mode != "off" or params.week2_mode != "off"):
                 if bias_snap is not None and not bias_snap.conflict:
                     join_side = bias_snap.filter_side
                 elif seasonal_mode != "off":
@@ -1097,11 +1230,13 @@ def run_overnight(
             break_candle = post_asia[-1] if post_asia else asia_candles[-1]
             seasonal_join = True
 
-        if (not seasonal_join) and seasonal_mode == "filter":
+        if (not seasonal_join) and (
+            seasonal_mode == "filter" or params.week2_mode == "filter"
+        ):
             filt = (
                 bias_snap.filter_side
                 if bias_snap is not None
-                else bias_side(regime)
+                else (bias_side(regime) if seasonal_mode == "filter" else None)
             )
             if filt and side != filt:
                 skips.append(skip_break("seasonal_bias"))
@@ -1294,6 +1429,13 @@ def run_overnight(
                 if params.timeout_action == "skip":
                     skips.append(skip_break("no_pullback_timeout", **skip_diag))
                     continue
+                if timeout_quality_blocked(
+                    params,
+                    closest_ema_pts=closest_ema_pts,
+                    break_pts=break_pts,
+                ):
+                    skips.append(skip_break("no_pullback_timeout", **skip_diag))
+                    continue
                 if entry_idx >= n:
                     skips.append(skip_break("no_entry_tick", **skip_diag))
                     continue
@@ -1349,7 +1491,9 @@ def run_overnight(
         sl, tp, sl_pts, tp_pts = _compute_sl_tp(
             side, entry_px, asia_high, asia_low, params, ps
         )
-        trail_arm_used = trail_arm_for_range(params, asia_range_pts)
+        trail_arm_used, trail_dist_used, trail_from_fill = trail_setup(
+            params, asia_range_pts, sl_pts
+        )
 
         if _local(entry_ts, tz) >= flatten_local:
             skips.append(
@@ -1388,6 +1532,8 @@ def run_overnight(
             tz=tz,
             flatten_local=flatten_local,
             trail_arm_pts=trail_arm_used,
+            trail_dist_pts=trail_dist_used,
+            trail_from_fill=trail_from_fill,
         )
 
         trades.append(
@@ -1412,6 +1558,7 @@ def run_overnight(
                 signal_close=_round_or_none(sig_close, 5),
                 break_pts=_round_or_none(break_pts, 1),
                 entry_vs_ema_pts=_round_or_none(entry_vs_ema_pts, 1),
+                closest_ema_pts=_round_or_none(closest_ema_pts, 1),
                 close_vs_prev_pts=_round_or_none(close_vs_prev_pts, 1),
                 same_bar_ema=same_bar_ema,
                 decision=decision,

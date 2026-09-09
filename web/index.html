@@ -300,14 +300,24 @@
             <option value="filter">filter against-side</option>
           </select>
         </label>
-        <label class="chk">2-week trend
-          <input type="checkbox" id="sw-week2"
-            title="Close-to-close over ~10 sessions. If it disagrees with the month, both are tagged and neither side is filtered. Spike Neo + impulse retrace only." />
+        <label>
+          2-week trend
+          <select id="sw-week2-mode"
+            title="Last close vs daily EMA plus path efficiency. Filter works without Seasonal month. Spike Neo + impulse retrace only.">
+            <option value="off" selected>off</option>
+            <option value="tag">tag only</option>
+            <option value="filter">filter against-side</option>
+          </select>
         </label>
         <label>
           Trend flat (pts)
           <input type="number" id="sw-trend-flat" value="1500" min="0" step="100"
-            title="2-week net move below this is flat. Gold default 1500 pts = $15." />
+            title="2-week net close-to-close below this is flat. Gold default 1500 pts = $15." />
+        </label>
+        <label>
+          Trend efficiency min
+          <input type="number" id="sw-trend-eff" value="0.35" min="0" max="1" step="0.05"
+            title="|net| / sum |daily changes|. Below this = two-way, no side. 0 = off." />
         </label>
       </div>
       <p class="hint muted">

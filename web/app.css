@@ -629,6 +629,67 @@ button.secondary:disabled {
 .hero-unit { font-size: 0.75rem; font-weight: 500; color: var(--muted); }
 .hero-sub { color: var(--muted); font-size: 0.82rem; margin-top: 0.25rem; line-height: 1.35; }
 .table-note { margin: -0.25rem 0 0.5rem; font-size: 0.85rem; }
+.ob-params {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 0.45rem;
+  margin: 0.7rem 0 0.4rem;
+}
+.ob-params-title {
+  grid-column: 1 / -1;
+  margin: 0.15rem 0 0.05rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.ob-param {
+  background: color-mix(in srgb, var(--accent) 9%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border));
+  border-radius: 8px;
+  padding: 0.38rem 0.48rem;
+}
+.ob-param .k {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: color-mix(in srgb, var(--accent) 45%, var(--muted));
+}
+.ob-param .v {
+  font-size: 0.82rem;
+  font-weight: 650;
+  margin-top: 0.08rem;
+  word-break: break-word;
+  line-height: 1.25;
+}
+.ob-param-wide {
+  grid-column: span 2;
+}
+.ob-param.is-changed {
+  background: color-mix(in srgb, var(--warn) 18%, var(--card));
+  border-color: color-mix(in srgb, var(--warn) 58%, var(--border));
+  animation: ob-param-blink 0.5s ease-in-out 3;
+}
+.ob-param.is-changed .k {
+  color: color-mix(in srgb, var(--warn) 60%, var(--muted));
+}
+@keyframes ob-param-blink {
+  0%,
+  100% {
+    box-shadow: none;
+    filter: none;
+  }
+  50% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 80%, transparent);
+    filter: brightness(1.28);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ob-param.is-changed {
+    animation: none;
+  }
+}
 
 .type-tabs {
   display: flex;

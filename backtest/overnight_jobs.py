@@ -75,6 +75,8 @@ class OvernightJobParams:
     max_wait_candles: int = 8
     wait_from_break: bool = False
     timeout_action: str = "skip"
+    timeout_max_ema_dist_pts: float = 0.0
+    timeout_min_break_pts: float = 0.0
     use_higher_close: bool = True
     resume_closes: int = 1
     skip_late_short_wait: int = 7
@@ -83,6 +85,7 @@ class OvernightJobParams:
     sl_mode: str = "asia_opposite"
     sl_fixed_pts: float = 500.0
     sl_range_mult: float = 1.0
+    sl_cap_pts: float = 0.0
     tp_mode: str = "range_mult"
     tp_fixed_pts: float = 1000.0
     tp_range_mult: float = 1.5
@@ -98,8 +101,10 @@ class OvernightJobParams:
     seasonal_mode: str = "off"  # off | tag | filter
     seasonal_join: bool = False
     week2_trend: bool = False
+    week2_mode: str = "off"
     trend_flat_pts: float = 1500.0
     trend_sessions: int = 10
+    trend_efficiency_min: float = 0.35
     news_mode: str = "off"  # off | tag | filter
     news_set: str = "scheduled"  # scheduled | all
     workers: int = 3
@@ -308,7 +313,10 @@ def _chunk_lookback_start(date_from: str, op: OvernightParams) -> datetime:
         day, op.timezone, op.asia_start_hour, op.asia_end_hour
     )
     ema = parse_ymd(date_from) - _CHUNK_LOOKBACK
-    if getattr(op, "week2_trend", False):
+    w2 = bool(getattr(op, "week2_trend", False)) or str(
+        getattr(op, "week2_mode", "off") or "off"
+    ) not in ("", "off")
+    if w2:
         ema = min(ema, parse_ymd(date_from) - timedelta(days=TREND_LOOKBACK_DAYS))
     return min(asia, ema)
 
@@ -640,6 +648,8 @@ def _run(params: OvernightJobParams) -> None:
             max_wait_candles=int(params.max_wait_candles),
             wait_from_break=bool(params.wait_from_break),
             timeout_action=str(params.timeout_action or "skip"),
+            timeout_max_ema_dist_pts=float(params.timeout_max_ema_dist_pts or 0.0),
+            timeout_min_break_pts=float(params.timeout_min_break_pts or 0.0),
             use_higher_close=bool(params.use_higher_close),
             resume_closes=max(1, int(params.resume_closes or 1)),
             skip_late_short_wait=max(0, int(params.skip_late_short_wait or 0)),
@@ -647,6 +657,7 @@ def _run(params: OvernightJobParams) -> None:
             sl_mode=str(params.sl_mode or "asia_opposite"),
             sl_fixed_pts=float(params.sl_fixed_pts),
             sl_range_mult=float(params.sl_range_mult),
+            sl_cap_pts=float(params.sl_cap_pts or 0.0),
             tp_mode=str(params.tp_mode or "range_mult"),
             tp_fixed_pts=float(params.tp_fixed_pts),
             tp_range_mult=float(params.tp_range_mult),
@@ -662,8 +673,12 @@ def _run(params: OvernightJobParams) -> None:
             seasonal_mode=str(params.seasonal_mode or "off"),
             seasonal_join=bool(params.seasonal_join),
             week2_trend=bool(params.week2_trend),
+            week2_mode=str(params.week2_mode or "off"),
             trend_flat_pts=float(params.trend_flat_pts or 1500.0),
             trend_sessions=max(5, int(params.trend_sessions or 10)),
+            trend_efficiency_min=float(
+                params.trend_efficiency_min if params.trend_efficiency_min is not None else 0.35
+            ),
             news_mode=str(params.news_mode or "off"),
             news_set=str(params.news_set or "scheduled"),
         )
