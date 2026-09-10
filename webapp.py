@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local Strateg research UI — single run + overnight sweep + overnight break."""
+"""Local Strateg research UI — single run + overnight sweep + overnight break + Asia liquidity."""
 
 from __future__ import annotations
 
@@ -55,6 +55,18 @@ from backtest.overnight_jobs import (
     get_overnight_state,
     start_overnight_job,
     stop_overnight,
+)
+from backtest.asia_liquidity_jobs import (
+    AsiaLiqJobParams,
+    get_asia_liq_state,
+    start_asia_liq_job,
+    stop_asia_liq,
+)
+from backtest.impulse_fork_jobs import (
+    ForkJobParams,
+    get_fork_state,
+    start_fork_job,
+    stop_fork,
 )
 from backtest.cooloff_jobs import (
     CoolOffJobParams,
@@ -578,6 +590,189 @@ def overnight_run(body: OvernightRunRequest):
 @app.post("/api/overnight/stop")
 def overnight_stop():
     out = stop_overnight()
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "not running")
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Dual-Mode Asia Liquidity Engine
+# ---------------------------------------------------------------------------
+
+
+class AsiaLiqRunRequest(BaseModel):
+    symbol: str = "XAUUSD"
+    date_from: str = "2025-05-01"
+    date_to: str = "2025-08-01"
+    timezone: str = "UTC"
+    exec_timezone: str = "UTC"
+    asia_start_hour: int = 0
+    asia_end_hour: int = 7
+    london_wait_minutes: int = 30
+    signal_start_hour: int = 7
+    signal_end_hour: int = 11
+    mode_b_end_hour: int = 9
+    mode_b_end_minute: int = 30
+    flatten_hour: int = 16
+    atr_period: int = 14
+    box_atr_min: float = 0.25
+    box_atr_max: float = 0.85
+    compression_lookback: int = 20
+    htf_enabled: bool = True
+    htf_ema_period: int = 50
+    news_mode: str = "filter"
+    news_set: str = "scheduled"
+    news_blackout_minutes: int = 60
+    spread_filter: bool = True
+    spread_mult: float = 1.5
+    mode_a_enabled: bool = True
+    break_buffer_atr: float = 0.1
+    body_frac: float = 0.50
+    min_range_atr: float = 0.6
+    tp1_r: float = 1.0
+    tp2_r: float = 1.8
+    tp2_select: str = "nearer"
+    be_offset_r: float = 0.1
+    trail_swing_bars: int = 3
+    mode_b_enabled: bool = True
+    sweep_buffer_atr: float = 0.15
+    reclaim_bars: int = 4
+    mode_b_confirm: bool = True
+    sweep_stop_atr: float = 0.1
+    risk_pct: float = 0.5
+    start_equity: float = 1000.0
+    daily_halt_r: float = 1.5
+    weekly_halt_r: float = 4.0
+    workers: int = 3
+    force_download: bool = False
+
+
+@app.get("/api/asia-liquidity")
+def asia_liq_status():
+    return get_asia_liq_state()
+
+
+@app.post("/api/asia-liquidity/run")
+def asia_liq_run(body: AsiaLiqRunRequest):
+    params = AsiaLiqJobParams(
+        symbol=body.symbol,
+        date_from=body.date_from,
+        date_to=body.date_to,
+        timezone=str(body.timezone or "UTC"),
+        exec_timezone=str(body.exec_timezone or "UTC"),
+        asia_start_hour=int(body.asia_start_hour),
+        asia_end_hour=int(body.asia_end_hour),
+        london_wait_minutes=int(body.london_wait_minutes),
+        signal_start_hour=int(body.signal_start_hour),
+        signal_end_hour=int(body.signal_end_hour),
+        mode_b_end_hour=int(body.mode_b_end_hour),
+        mode_b_end_minute=int(body.mode_b_end_minute),
+        flatten_hour=int(body.flatten_hour),
+        atr_period=int(body.atr_period),
+        box_atr_min=float(body.box_atr_min),
+        box_atr_max=float(body.box_atr_max),
+        compression_lookback=int(body.compression_lookback),
+        htf_enabled=bool(body.htf_enabled),
+        htf_ema_period=int(body.htf_ema_period),
+        news_mode=str(body.news_mode or "filter"),
+        news_set=str(body.news_set or "scheduled"),
+        news_blackout_minutes=int(body.news_blackout_minutes),
+        spread_filter=bool(body.spread_filter),
+        spread_mult=float(body.spread_mult),
+        mode_a_enabled=bool(body.mode_a_enabled),
+        break_buffer_atr=float(body.break_buffer_atr),
+        body_frac=float(body.body_frac),
+        min_range_atr=float(body.min_range_atr),
+        tp1_r=float(body.tp1_r),
+        tp2_r=float(body.tp2_r),
+        tp2_select=str(body.tp2_select or "nearer"),
+        be_offset_r=float(body.be_offset_r),
+        trail_swing_bars=int(body.trail_swing_bars),
+        mode_b_enabled=bool(body.mode_b_enabled),
+        sweep_buffer_atr=float(body.sweep_buffer_atr),
+        reclaim_bars=int(body.reclaim_bars),
+        mode_b_confirm=bool(body.mode_b_confirm),
+        sweep_stop_atr=float(body.sweep_stop_atr),
+        risk_pct=float(body.risk_pct),
+        start_equity=float(body.start_equity),
+        daily_halt_r=float(body.daily_halt_r),
+        weekly_halt_r=float(body.weekly_halt_r),
+        workers=max(1, min(6, int(body.workers or 1))),
+        force_download=bool(body.force_download),
+    )
+    out = start_asia_liq_job(params)
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "busy")
+    return out
+
+
+@app.post("/api/asia-liquidity/stop")
+def asia_liq_stop():
+    out = stop_asia_liq()
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "not running")
+    return out
+
+
+class ImpulseForkRunRequest(BaseModel):
+    symbol: str = "XAUUSD"
+    date_from: str = "2026-06-01"
+    date_to: str = "2026-07-01"
+    window_sec: float = 3.0
+    min_blast_pts: float = 1100.0
+    snap_pts: float = 300.0
+    snap_sec: float = 10.0
+    join_retrace: float = 0.50
+    join_wait_sec: float = 90.0
+    fade_lag_sec: float = 1.0
+    fade_enabled: bool = True
+    join_enabled: bool = True
+    stand_aside_enabled: bool = True
+    stand_aside_n: int = 3
+    skip_london_utc: bool = True
+    risk_pct: float = 0.5
+    start_equity: float = 1000.0
+    workers: int = 3
+    force_download: bool = False
+
+
+@app.get("/api/impulse-fork")
+def fork_status():
+    return get_fork_state()
+
+
+@app.post("/api/impulse-fork/run")
+def fork_run(body: ImpulseForkRunRequest):
+    params = ForkJobParams(
+        symbol=body.symbol,
+        date_from=body.date_from,
+        date_to=body.date_to,
+        window_sec=float(body.window_sec),
+        min_blast_pts=float(body.min_blast_pts),
+        snap_pts=float(body.snap_pts),
+        snap_sec=float(body.snap_sec),
+        join_retrace=float(body.join_retrace),
+        join_wait_sec=float(body.join_wait_sec),
+        fade_lag_sec=float(body.fade_lag_sec),
+        fade_enabled=bool(body.fade_enabled),
+        join_enabled=bool(body.join_enabled),
+        stand_aside_enabled=bool(body.stand_aside_enabled),
+        stand_aside_n=int(body.stand_aside_n),
+        skip_london_utc=bool(body.skip_london_utc),
+        risk_pct=float(body.risk_pct),
+        start_equity=float(body.start_equity),
+        workers=max(1, min(6, int(body.workers or 1))),
+        force_download=bool(body.force_download),
+    )
+    out = start_fork_job(params)
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "busy")
+    return out
+
+
+@app.post("/api/impulse-fork/stop")
+def fork_stop():
+    out = stop_fork()
     if not out.get("ok"):
         raise HTTPException(status_code=409, detail=out.get("error") or "not running")
     return out

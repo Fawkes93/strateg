@@ -173,6 +173,14 @@ def start_fvg_job(params: FvgJobParams) -> Dict[str, Any]:
 
         if is_spike_fade_running():
             return {"ok": False, "error": "Spike fade is running"}
+        from backtest.asia_liquidity_jobs import is_asia_liq_running
+
+        if is_asia_liq_running():
+            return {"ok": False, "error": "Asia liquidity is running"}
+        from backtest.impulse_fork_jobs import is_fork_running
+
+        if is_fork_running():
+            return {"ok": False, "error": "Impulse fork is running"}
         _cancel.clear()
         _state.params = params
         _state.result = None

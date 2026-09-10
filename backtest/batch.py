@@ -593,6 +593,14 @@ def start_batch(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
         if is_cooloff_running():
             return {"ok": False, "error": "Cool-off is running"}
+        from backtest.asia_liquidity_jobs import is_asia_liq_running
+
+        if is_asia_liq_running():
+            return {"ok": False, "error": "Asia liquidity is running"}
+        from backtest.impulse_fork_jobs import is_fork_running
+
+        if is_fork_running():
+            return {"ok": False, "error": "Impulse fork is running"}
         items = build_work_items(cfg)
         _cancel.clear()
         _state.running = True

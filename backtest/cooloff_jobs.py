@@ -187,6 +187,14 @@ def _busy_others() -> Optional[str]:
 
     if is_fvg_running():
         return "IFVG is running"
+    from backtest.asia_liquidity_jobs import is_asia_liq_running
+
+    if is_asia_liq_running():
+        return "Asia liquidity is running"
+    from backtest.impulse_fork_jobs import is_fork_running
+
+    if is_fork_running():
+        return "Impulse fork is running"
     return None
 
 

@@ -527,6 +527,8 @@ def test_trail_arm_for_range_caps_asia_size():
     assert trail_arm_for_range(asia, 4000.0) == 2000.0
     uncapped = OvernightParams(trail_arm_mode="asia", trail_arm_cap_pts=0.0)
     assert trail_arm_for_range(uncapped, 4000.0) == 4000.0
+    off = OvernightParams(trail_arm_mode="off", trail_pts=400.0)
+    assert trail_setup(off, 2500.0, sl_pts=2000.0) == (0.0, 0.0, False)
     from_fill = OvernightParams(trail_arm_mode="from_fill", trail_pts=0.0)
     assert trail_arm_for_range(from_fill, 2500.0) == 0.0
     arm, dist, immediate = trail_setup(from_fill, 2500.0, sl_pts=2000.0)

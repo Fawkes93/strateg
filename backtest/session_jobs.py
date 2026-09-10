@@ -125,6 +125,14 @@ def start_session_job(params: SessionJobParams) -> Dict[str, Any]:
 
         if is_fvg_running():
             return {"ok": False, "error": "IFVG is running"}
+        from backtest.asia_liquidity_jobs import is_asia_liq_running
+
+        if is_asia_liq_running():
+            return {"ok": False, "error": "Asia liquidity is running"}
+        from backtest.impulse_fork_jobs import is_fork_running
+
+        if is_fork_running():
+            return {"ok": False, "error": "Impulse fork is running"}
         _state.params = params
         _state.result = None
         _state.running = True

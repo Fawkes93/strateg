@@ -43,6 +43,64 @@ Optional param **`entry_weekdays`** (list of ints `0=Mon..6=Sun`, or empty/omit 
 Research example (not hardcoded): Monday + hours UTC 7–12 → clean ~67.6% (2025 May–Sep n=37) / ~63.6% (2026 Jun–Sep n=22) at T=100; Monday-only ~62% / ~59%. Re-check on **2025 and 2026** XAUUSD windows before treating any set as a default.  
 Older hour-only note: May–Sep 2025 (589 trades, T=100) suggested `{4,15,17,19,22}` → 66% clean n=100, or expanded `{4,5,8,15,17,22}` → 62% n=148 — **example suggestions only**.
 
+## Asia liquidity tab
+
+Injected tab (`web/asia_liquidity.js`) for the **Dual-Mode Asia Liquidity Engine** — not the same bot as Overnight break.
+
+Overnight break is Bucharest-local Asia + EMA/higher-close pullback, pts, no partials.  
+This tab locks a session box and then takes **one** of two plays:
+
+- **Mode A** — continuation: 15m close through the box with body/range quality and 4H EMA50.
+- **Mode B** — sweep and reclaim: London takes stops beyond the box, then closes back inside (optional confirm bar).
+
+Never both on the same symbol the same day. Score **profit factor, average R, max DD**, and the Mode A vs Mode B split — not win rate first. If Mode B is near zero EV, disable it.
+
+**Box lock**
+
+- Default: Asia `00:00–07:00 UTC`, frozen at 07:00 UTC.
+- Alternate: Asia `00:00–07:00 Europe/Chisinau` (Moldova 07:00 = **04:00 UTC in summer**, **05:00 UTC in winter**). Execution still uses London UTC hours (signals 07:00–11:00 UTC, flatten 16:00 UTC) so a Moldova lock waits for London.
+
+**Filters (skip the day):** box height vs ATR(14, 15m), 20-session compression, gold news calendar (`backtest/xau_news_days.json`), optional spread stub. Live news veto belongs in Reaktor (it already pings a news API).
+
+**Run**
+
+```bash
+python webapp.py
+# → Asia liquidity tab · GET/POST /api/asia-liquidity, /run, /stop
+```
+
+Walk-forward (same fixed rules, no fit) is attached to each saved JSON. From a result file:
+
+```bash
+python -m backtest.asia_liquidity_wf results/asialiq_XAUUSD_….json
+```
+
+**Live stub** (deterministic JSON signal, no AI direction):
+
+```bash
+python live_signal.py --symbol XAUUSD --timezone UTC candles.json
+python live_signal.py --symbol XAUUSD --timezone Europe/Chisinau candles.json
+```
+
+**TradingView** second opinion: `pine/dual_mode_asia_liquidity.pine` (Pine 15m ≠ Dukascopy mids).
+
+**Forward into Reaktor**
+
+1. Confirm Mode A vs Mode B expectancy on the same years/symbols as the live Overnight bot.
+2. Keep only the mode/market that adds R.
+3. Wire `live_signal.py` JSON `{symbol, mode, side, entry, stop, tp1, tp2, size, reason}` to a webhook.
+4. Leave news blackout to Reaktor’s news API; do not add oscillators.
+
+## Impulse fork tab
+
+Injected tab (`web/impulse_fork.js`) — **not** an Asia box. Classify a 3s gold blast: snapback → fade; hold then 50% retrace → join; three one-way blasts → stand aside. News days allowed. Optional skip 07:00–10:00 UTC so live Asia owns London morning.
+
+Judge PF / avg R / max DD and the Fade vs Join split. Kill Join if its PF &lt; 1. Kill the book if combined PF &lt; 1.2.
+
+```bash
+# GET/POST /api/impulse-fork, /run, /stop
+```
+
 ## CLI (same engine)
 
 ```bash

@@ -731,6 +731,8 @@
             "tab-burst",
             "tab-cooloff",
             "tab-overnight",
+            "tab-asia-liq",
+            "tab-impulse-fork",
           ].forEach((id) => {
             const el = $(id);
             if (el) el.classList.add("hidden");

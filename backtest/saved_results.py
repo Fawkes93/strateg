@@ -19,6 +19,8 @@ KNOWN_KINDS = frozenset(
         "micro_fade",
         "micro_momentum",
         "overnight_break",
+        "asia_liquidity",
+        "impulse_fork",
         "cooloff",
         "fvg",
     }
@@ -44,6 +46,10 @@ def classify_filename(name: str) -> Optional[str]:
         return "spike_fade"
     if n.startswith("overnight_"):
         return "overnight_break"
+    if n.startswith("asialiq_"):
+        return "asia_liquidity"
+    if n.startswith("fork_"):
+        return "impulse_fork"
     if n.startswith("cooloff_"):
         return "cooloff"
     if n.startswith("ifvg_"):
@@ -180,6 +186,14 @@ def load_into_job(kind: str, name: str) -> Dict[str, Any]:
         out = load_saved(data, name=name)
     elif kind == "overnight_break":
         from backtest.overnight_jobs import load_saved
+
+        out = load_saved(data, name=name)
+    elif kind == "asia_liquidity":
+        from backtest.asia_liquidity_jobs import load_saved
+
+        out = load_saved(data, name=name)
+    elif kind == "impulse_fork":
+        from backtest.impulse_fork_jobs import load_saved
 
         out = load_saved(data, name=name)
     elif kind == "cooloff":

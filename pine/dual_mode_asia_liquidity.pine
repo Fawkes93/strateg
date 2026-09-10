@@ -1,0 +1,244 @@
+// Dual-Mode Asia Liquidity Engine
+// Pine v5 STRATEGY — second opinion vs Strateg's Dukascopy-tick backtest.
+// 15m candles here are not Dukascopy mids; use Strateg for the research number.
+// No RSI / MACD / Ichimoku. Edge is session structure + filters.
+//
+// Box lock: UTC 00:00–07:00 (default) or Europe/Chisinau 00:00–07:00
+// (Moldova 07:00 = 04:00 UTC in summer, 05:00 UTC in winter).
+// Execution clock stays UTC London hours unless you change the inputs.
+
+//@version=5
+strategy("Dual-Mode Asia Liquidity", overlay=true, pyramiding=0,
+     calc_on_every_tick=false, process_orders_on_close=true,
+     commission_type=strategy.commission.percent, commission_value=0.0,
+     slippage=1, default_qty_type=strategy.percent_of_equity, default_qty_value=0.5,
+     initial_capital=1000)
+
+boxTz          = input.string("UTC", "Box timezone", options=["UTC", "Europe/Chisinau"])
+asiaStartH     = input.int(0, "Asia start hour", minval=0, maxval=23)
+asiaEndH       = input.int(7, "Asia end / lock hour", minval=1, maxval=23)
+waitMin        = input.int(30, "London wait (minutes)", minval=0, maxval=90, step=15)
+sigStartH      = input.int(7, "Signal start hour (exec TZ)", minval=0, maxval=23)
+sigEndH        = input.int(11, "Signal end hour", minval=1, maxval=23)
+modeBEndH      = input.int(9, "Mode B end hour", minval=0, maxval=23)
+modeBEndM      = input.int(30, "Mode B end minute", minval=0, maxval=59)
+flattenH       = input.int(16, "Flatten hour", minval=8, maxval=23)
+execTz         = input.string("UTC", "Exec timezone", options=["UTC", "Europe/Chisinau"])
+
+atrLen         = input.int(14, "ATR period")
+boxMin         = input.float(0.25, "Box / ATR min")
+boxMax         = input.float(0.85, "Box / ATR max")
+compLook       = input.int(20, "Compression lookback (0=off)")
+useHtf         = input.bool(true, "4H EMA50 filter (Mode A)")
+htfLen         = input.int(50, "4H EMA period")
+
+modeAOn        = input.bool(true, "Enable Mode A")
+modeBOn        = input.bool(true, "Enable Mode B")
+brkBuf         = input.float(0.1, "Break buffer × ATR")
+bodyFrac       = input.float(0.50, "Body fraction")
+minRngAtr      = input.float(0.60, "Min candle range × ATR")
+tp2Near        = input.bool(true, "TP2 = nearer of 1.8R and box (off = farther)")
+beOffR         = input.float(0.10, "Stop to BE + this R after TP1")
+
+sweepBuf       = input.float(0.15, "Sweep buffer × ATR")
+reclaimN       = input.int(4, "Reclaim bars")
+modeBConfirm   = input.bool(true, "Mode B confirm bar")
+sweepStopAtr   = input.float(0.10, "Mode B stop beyond wick × ATR")
+riskPct        = input.float(0.5, "Risk % equity")
+
+atr = ta.atr(atrLen)
+htfClose = request.security(syminfo.tickerid, "240", close, lookahead=barmerge.lookahead_off)
+htfEma   = request.security(syminfo.tickerid, "240", ta.ema(close, htfLen), lookahead=barmerge.lookahead_off)
+htfSide  = htfClose > htfEma ? 1 : htfClose < htfEma ? -1 : 0
+
+// Lock on the bar that *closes* at 07:00 (06:45–07:00), not the 07:00 open bar.
+lockBar = hour(time_close, boxTz) == asiaEndH and minute(time_close, boxTz) == 0
+newDay  = ta.change(time(boxTz, "D")) != 0
+
+var float asiaHigh = na
+var float asiaLow  = na
+var float asiaMid  = na
+var float boxH     = na
+var float lockAtr  = na
+var bool  locked   = false
+var bool  traded   = false
+var int   dayMode  = 0  // 0 none, 1 A, 2 B
+var int   sweepDir = 0  // 1 highs, -1 lows
+var int   sweepBar = na
+var float sweepWick = na
+var int   pendingDir = 0
+var float pendingWick = na
+var float dayBoxH = na
+var array<float> priorBoxes = array.new_float()
+
+if newDay
+    if not na(dayBoxH)
+        array.push(priorBoxes, dayBoxH)
+        if array.size(priorBoxes) > 60
+            array.shift(priorBoxes)
+    locked := false
+    traded := false
+    dayMode := 0
+    sweepDir := 0
+    sweepBar := na
+    sweepWick := na
+    pendingDir := 0
+    pendingWick := na
+    asiaHigh := high
+    asiaLow := low
+    dayBoxH := na
+
+asiaOpen = hour(time, boxTz) >= asiaStartH and hour(time, boxTz) < asiaEndH
+if asiaOpen and not locked
+    asiaHigh := na(asiaHigh) ? high : math.max(asiaHigh, high)
+    asiaLow  := na(asiaLow)  ? low  : math.min(asiaLow, low)
+
+if lockBar and barstate.isconfirmed
+    locked := true
+    asiaMid := (asiaHigh + asiaLow) * 0.5
+    boxH := asiaHigh - asiaLow
+    lockAtr := atr
+    dayBoxH := boxH
+
+compressed = true
+if compLook > 0 and array.size(priorBoxes) >= compLook
+    sumB = 0.0
+    for i = 0 to compLook - 1
+        sumB += array.get(priorBoxes, array.size(priorBoxes) - 1 - i)
+    compressed := boxH < (sumB / compLook)
+else if compLook > 0
+    compressed := false
+
+boxOk = not na(lockAtr) and lockAtr > 0 and boxH >= boxMin * lockAtr and boxH <= boxMax * lockAtr
+gates = locked and boxOk and compressed
+
+execHour = hour(time, execTz)
+execMin  = minute(time, execTz)
+barCloseH = hour(time_close, execTz)
+barCloseM = minute(time_close, execTz)
+
+firstEntryOk = (barCloseH > sigStartH) or (barCloseH == sigStartH and barCloseM >= waitMin)
+inSignal = barCloseH < sigEndH and firstEntryOk
+modeBWindow = (barCloseH < modeBEndH) or (barCloseH == modeBEndH and barCloseM <= modeBEndM)
+flattenNow = barCloseH >= flattenH and strategy.position_size != 0
+
+bodyOk = (high - low) > 0 ? math.abs(close - open) / (high - low) >= bodyFrac : false
+rangeOk = not na(lockAtr) and (high - low) >= minRngAtr * lockAtr
+longA = close > asiaHigh + brkBuf * lockAtr and bodyOk and rangeOk
+shortA = close < asiaLow - brkBuf * lockAtr and bodyOk and rangeOk
+htfLong = not useHtf or htfSide > 0
+htfShort = not useHtf or htfSide < 0
+
+inside = close < asiaHigh and close > asiaLow
+highLiq = high >= asiaHigh + sweepBuf * lockAtr
+lowLiq  = low  <= asiaLow  - sweepBuf * lockAtr
+
+qtyFromStop(entryPx, stopPx) =>
+    riskCash = strategy.equity * (riskPct / 100.0)
+    dist = math.abs(entryPx - stopPx)
+    dist > 0 ? riskCash / dist : 0.0
+
+if barstate.isconfirmed and gates and not traded and strategy.position_size == 0
+    // Mode B confirm from previous reclaim
+    if pendingDir != 0 and modeBOn
+        rebreak = pendingDir == 1 ? high >= asiaHigh : low <= asiaLow
+        if not rebreak and inSignal and modeBWindow
+            sideShort = pendingDir == 1
+            sl = sideShort ? pendingWick + sweepStopAtr * lockAtr : pendingWick - sweepStopAtr * lockAtr
+            tp1 = asiaMid
+            tp2 = sideShort ? asiaLow : asiaHigh
+            q = qtyFromStop(close, sl)
+            if q > 0
+                if sideShort
+                    strategy.entry("B", strategy.short, qty=q)
+                else
+                    strategy.entry("B", strategy.long, qty=q)
+                strategy.exit("B-tp1", "B", qty_percent=50, limit=tp1, stop=sl)
+                strategy.exit("B-tp2", "B", limit=tp2, stop=sl)
+                traded := true
+                dayMode := 2
+        pendingDir := 0
+        sweepDir := 0
+
+    aBlockedLong = sweepDir == 1 or pendingDir == 1
+    aBlockedShort = sweepDir == -1 or pendingDir == -1
+
+    if not traded and modeAOn and inSignal
+        if longA and htfLong and not aBlockedLong
+            sl = asiaMid
+            rDist = math.abs(close - sl)
+            tp1 = close + rDist
+            distR = rDist * 1.8
+            distBox = boxH
+            dist2 = tp2Near ? math.min(distR, distBox) : math.max(distR, distBox)
+            tp2 = close + dist2
+            q = qtyFromStop(close, sl)
+            if q > 0
+                strategy.entry("A", strategy.long, qty=q)
+                strategy.exit("A-tp1", "A", qty_percent=50, limit=tp1, stop=sl)
+                strategy.exit("A-tp2", "A", limit=tp2, stop=sl)
+                traded := true
+                dayMode := 1
+        else if shortA and htfShort and not aBlockedShort
+            sl = asiaMid
+            rDist = math.abs(close - sl)
+            tp1 = close - rDist
+            distR = rDist * 1.8
+            distBox = boxH
+            dist2 = tp2Near ? math.min(distR, distBox) : math.max(distR, distBox)
+            tp2 = close - dist2
+            q = qtyFromStop(close, sl)
+            if q > 0
+                strategy.entry("A", strategy.short, qty=q)
+                strategy.exit("A-tp1", "A", qty_percent=50, limit=tp1, stop=sl)
+                strategy.exit("A-tp2", "A", limit=tp2, stop=sl)
+                traded := true
+                dayMode := 1
+
+    if not traded and modeBOn and modeBWindow
+        if sweepDir == 0
+            if highLiq
+                sweepDir := 1
+                sweepBar := bar_index
+                sweepWick := high
+            else if lowLiq
+                sweepDir := -1
+                sweepBar := bar_index
+                sweepWick := low
+        else
+            sweepWick := sweepDir == 1 ? math.max(sweepWick, high) : math.min(sweepWick, low)
+            if bar_index - sweepBar >= reclaimN
+                sweepDir := 0
+            else if inside
+                if modeBConfirm
+                    pendingDir := sweepDir
+                    pendingWick := sweepWick
+                else if inSignal
+                    sideShort = sweepDir == 1
+                    sl = sideShort ? sweepWick + sweepStopAtr * lockAtr : sweepWick - sweepStopAtr * lockAtr
+                    tp1 = asiaMid
+                    tp2 = sideShort ? asiaLow : asiaHigh
+                    q = qtyFromStop(close, sl)
+                    if q > 0
+                        if sideShort
+                            strategy.entry("B", strategy.short, qty=q)
+                        else
+                            strategy.entry("B", strategy.long, qty=q)
+                        strategy.exit("B-tp1", "B", qty_percent=50, limit=tp1, stop=sl)
+                        strategy.exit("B-tp2", "B", limit=tp2, stop=sl)
+                        traded := true
+                        dayMode := 2
+                    sweepDir := 0
+
+if flattenNow
+    strategy.close_all(comment="flatten")
+
+plot(locked ? asiaHigh : na, "AsiaHigh", color=color.new(color.teal, 0), style=plot.style_linebr)
+plot(locked ? asiaLow : na, "AsiaLow", color=color.new(color.teal, 0), style=plot.style_linebr)
+plot(locked ? asiaMid : na, "AsiaMid", color=color.new(color.gray, 40), style=plot.style_linebr)
+
+plotshape(dayMode == 1 and traded and barstate.isconfirmed, title="Mode A", style=shape.triangleup, location=location.belowbar, color=color.lime, size=size.tiny, text="A")
+plotshape(dayMode == 2 and traded and barstate.isconfirmed, title="Mode B", style=shape.triangledown, location=location.abovebar, color=color.orange, size=size.tiny, text="B")
+
+bgcolor(asiaOpen and not locked ? color.new(color.blue, 92) : na, title="Asia building")
+bgcolor(locked and not traded and inSignal ? color.new(color.yellow, 94) : na, title="Signal window")

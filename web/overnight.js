@@ -172,26 +172,34 @@
     const cap = $("ob-trail-arm-cap");
     const dist = $("ob-trail");
     const fromFill = mode === "from_fill";
+    const trailOff = mode === "off";
     if (fixed) {
-      fixed.disabled = fromFill || mode === "asia";
-      fixed.title = fromFill
-        ? "Ignored: trail starts at the fill."
-        : mode === "asia"
-          ? "Ignored when Trail arm mode is Asia range (arm = Asia range, capped)."
-          : "Profit (pts) before the trail turns on. 0 = off.";
+      fixed.disabled = trailOff || fromFill || mode === "asia";
+      fixed.title = trailOff
+        ? "Ignored: trail is off."
+        : fromFill
+          ? "Ignored: trail starts at the fill."
+          : mode === "asia"
+            ? "Ignored when Trail arm mode is Asia range (arm = Asia range, capped)."
+            : "Profit (pts) before the trail turns on. 0 = off.";
     }
     if (cap) {
-      cap.disabled = fromFill || mode !== "asia";
-      cap.title = fromFill
-        ? "Ignored: from-fill has no arm cap."
-        : mode === "asia"
-          ? "Max trail-arm when using Asia range. 0 = no cap."
-          : "Cap is used when Trail arm mode is Asia range. 0 = no cap.";
+      cap.disabled = trailOff || fromFill || mode !== "asia";
+      cap.title = trailOff
+        ? "Ignored: trail is off."
+        : fromFill
+          ? "Ignored: from-fill has no arm cap."
+          : mode === "asia"
+            ? "Max trail-arm when using Asia range. 0 = no cap."
+            : "Cap is used when Trail arm mode is Asia range. 0 = no cap.";
     }
     if (dist) {
-      dist.title = fromFill
-        ? "Gap behind the best price from the fill. 0 = use the initial SL (up 100 → remaining risk 1900 if SL was 2000)."
-        : "Gap behind the best price once the trail has armed.";
+      dist.disabled = trailOff;
+      dist.title = trailOff
+        ? "Ignored: trail is off."
+        : fromFill
+          ? "Gap behind the best price from the fill. 0 = use the initial SL (up 100 → remaining risk 1900 if SL was 2000)."
+          : "Gap behind the best price once the trail has armed.";
     }
   }
 
@@ -395,6 +403,7 @@
         </label>
         <label>Trail arm mode
           <select id="ob-trail-arm-mode">
+            <option value="off">off (no trail)</option>
             <option value="fixed" selected>fixed pts</option>
             <option value="asia">Asia range (capped)</option>
             <option value="from_fill">from fill (walk SL with price)</option>
@@ -571,7 +580,7 @@
         if (panel) panel.classList.toggle("hidden", tab !== "overnight");
         // when opening overnight, hide other known panels
         if (tab === "overnight") {
-          ["tab-research", "tab-sweep", "tab-session", "tab-spikefade", "tab-micro", "tab-burst", "tab-cooloff", "tab-fvg"].forEach((id) => {
+          ["tab-research", "tab-sweep", "tab-session", "tab-spikefade", "tab-micro", "tab-burst", "tab-cooloff", "tab-fvg", "tab-asia-liq", "tab-impulse-fork"].forEach((id) => {
             const el = $(id);
             if (el) el.classList.add("hidden");
           });
