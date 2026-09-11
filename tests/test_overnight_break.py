@@ -926,6 +926,10 @@ def test_timeout_quality_blocked_helper():
     brk = OvernightParams(timeout_max_ema_dist_pts=0.0, timeout_min_break_pts=300.0)
     assert timeout_quality_blocked(brk, closest_ema_pts=None, break_pts=299.0)
     assert not timeout_quality_blocked(brk, closest_ema_pts=None, break_pts=300.0)
+    pb = OvernightParams(timeout_min_pullback_pts=200.0)
+    assert timeout_quality_blocked(pb, closest_ema_pts=0.0, break_pts=500.0, last_wait_pullback_pts=None)
+    assert timeout_quality_blocked(pb, closest_ema_pts=0.0, break_pts=500.0, last_wait_pullback_pts=199.0)
+    assert not timeout_quality_blocked(pb, closest_ema_pts=0.0, break_pts=500.0, last_wait_pullback_pts=200.0)
 
 
 def test_timeout_market_ungated_still_fills():
@@ -1002,6 +1006,50 @@ def test_timeout_no_wait_scan_fails_ema_dist_gate():
     skips = [s for s in out["skips"] if s.get("side") == "DOWN"]
     assert skips and skips[0]["reason"] == "no_pullback_timeout"
     assert skips[0].get("closest_ema_pts") is None
+
+
+def test_timeout_min_pullback_skips_continuation():
+    # Last wait close 3296 vs break close 3300 = continuation down, not a short pullback.
+    ticks = _utc_down_break_ticks()
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_timeout_params(timeout_min_pullback_pts=50.0),
+    )
+    assert out["trades"] == 0
+    skips = [s for s in out["skips"] if s.get("side") == "DOWN"]
+    assert skips and skips[0]["reason"] == "no_pullback_timeout"
+    assert skips[0].get("last_wait_pullback_pts") is not None
+    assert skips[0]["last_wait_pullback_pts"] < 50.0
+
+
+def test_timeout_min_pullback_fills_when_last_wait_retraces():
+    # One wait bar: close 3304 vs break 3300 = +400 pts, high stays under EMA.
+    ticks = _utc_down_break_ticks((3302.0, 3304.0, 3301.0, 3304.0))
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_timeout_params(timeout_min_pullback_pts=200.0, max_wait_candles=1),
+    )
+    assert out["trades"] == 1
+    row = out["rows"][0]
+    assert row["entry_reason"] == "timeout_market"
+    assert row.get("last_wait_pullback_pts") is not None
+    assert row["last_wait_pullback_pts"] >= 200.0
+
+
+def test_timeout_min_pullback_does_not_block_ema_touch():
+    ticks = _utc_down_break_ticks((3300.0, 3320.0, 3299.0, 3308.0))
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_timeout_params(
+            pullback_mode="required",
+            timeout_min_pullback_pts=20000.0,
+        ),
+    )
+    assert out["trades"] == 1
+    assert out["rows"][0]["entry_reason"] == "ema_touch"
 
 
 def test_timeout_gate_does_not_block_ema_touch():

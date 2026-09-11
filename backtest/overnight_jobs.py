@@ -77,6 +77,7 @@ class OvernightJobParams:
     timeout_action: str = "skip"
     timeout_max_ema_dist_pts: float = 0.0
     timeout_min_break_pts: float = 0.0
+    timeout_min_pullback_pts: float = 0.0
     use_higher_close: bool = True
     resume_closes: int = 1
     skip_late_short_wait: int = 7
@@ -658,6 +659,7 @@ def _run(params: OvernightJobParams) -> None:
             timeout_action=str(params.timeout_action or "skip"),
             timeout_max_ema_dist_pts=float(params.timeout_max_ema_dist_pts or 0.0),
             timeout_min_break_pts=float(params.timeout_min_break_pts or 0.0),
+            timeout_min_pullback_pts=float(params.timeout_min_pullback_pts or 0.0),
             use_higher_close=bool(params.use_higher_close),
             resume_closes=max(1, int(params.resume_closes or 1)),
             skip_late_short_wait=max(0, int(params.skip_late_short_wait or 0)),

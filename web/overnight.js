@@ -29,6 +29,7 @@
     "ob-timeout",
     "ob-timeout-ema-dist",
     "ob-timeout-min-break",
+    "ob-timeout-min-pullback",
     "ob-higher-close",
     "ob-resume-closes",
     "ob-late-short-wait",
@@ -128,6 +129,7 @@
     const timeout = $("ob-timeout");
     const timeoutEma = $("ob-timeout-ema-dist");
     const timeoutBreak = $("ob-timeout-min-break");
+    const timeoutPullback = $("ob-timeout-min-pullback");
     if (resume) resume.disabled = mode === "off";
     if (resumeCloses) {
       resumeCloses.disabled = mode === "off" || (resume && !resume.checked);
@@ -136,6 +138,7 @@
     if (timeout) timeout.disabled = timeoutOff;
     if (timeoutEma) timeoutEma.disabled = timeoutOff;
     if (timeoutBreak) timeoutBreak.disabled = timeoutOff;
+    if (timeoutPullback) timeoutPullback.disabled = timeoutOff;
   }
 
   function syncSlControls() {
@@ -302,6 +305,10 @@
         <label>Timeout min break (pts)
           <input type="number" id="ob-timeout-min-break" value="0" min="0" step="50"
             title="Preferred timeout only: extra break size vs Asia. EMA-touch ignores this. 0 = no extra." />
+        </label>
+        <label>Timeout min pullback (pts)
+          <input type="number" id="ob-timeout-min-pullback" value="0" min="0" step="50"
+            title="Preferred timeout only: last wait candle close must be this many pts back from the break close (long: below, short: above). 0 = off. EMA/resume fills ignore this." />
         </label>
         <label class="chk">Higher/lower close resume
           <input type="checkbox" id="ob-higher-close" checked />
@@ -645,6 +652,7 @@
     ["timeout_action", "Timeout action"],
     ["timeout_max_ema_dist_pts", "Timeout max EMA dist"],
     ["timeout_min_break_pts", "Timeout min break"],
+    ["timeout_min_pullback_pts", "Timeout min pullback"],
     ["use_higher_close", "Close resume"],
     ["resume_closes", "Resume closes"],
     ["skip_late_short_wait", "Late short wait ≥"],
@@ -690,6 +698,7 @@
     timeout_action: "ob-timeout",
     timeout_max_ema_dist_pts: "ob-timeout-ema-dist",
     timeout_min_break_pts: "ob-timeout-min-break",
+    timeout_min_pullback_pts: "ob-timeout-min-pullback",
     use_higher_close: "ob-higher-close",
     resume_closes: "ob-resume-closes",
     skip_late_short_wait: "ob-late-short-wait",
@@ -1364,6 +1373,7 @@
         timeout_action: $("ob-timeout").value,
         timeout_max_ema_dist_pts: Number(($("ob-timeout-ema-dist") && $("ob-timeout-ema-dist").value) || 0),
         timeout_min_break_pts: Number(($("ob-timeout-min-break") && $("ob-timeout-min-break").value) || 0),
+        timeout_min_pullback_pts: Number(($("ob-timeout-min-pullback") && $("ob-timeout-min-pullback").value) || 0),
         use_higher_close: $("ob-higher-close") && $("ob-higher-close").checked,
         resume_closes: Math.max(1, Number($("ob-resume-closes") && $("ob-resume-closes").value) || 1),
         skip_late_short_wait: Math.max(0, Number($("ob-late-short-wait") && $("ob-late-short-wait").value) || 0),

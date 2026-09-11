@@ -75,6 +75,9 @@ class OvernightParams:
     # Extra break floor applies only to timeout fills, not EMA-touch.
     timeout_max_ema_dist_pts: float = 0.0
     timeout_min_break_pts: float = 0.0
+    # Preferred timeout: last wait close must be this many pts back from
+    # the break close (long: below, short: above). 0 = off.
+    timeout_min_pullback_pts: float = 0.0
     use_higher_close: bool = True  # higher/lower close resume during wait
     resume_closes: int = 1  # consecutive directional closes required (1 = current)
     # Skip DOWN entries from this wait bar onward when Asia is below the cap.
@@ -162,6 +165,12 @@ def _normalize_params(params: OvernightParams) -> OvernightParams:
         )
     except (TypeError, ValueError):
         params.timeout_min_break_pts = 0.0
+    try:
+        params.timeout_min_pullback_pts = max(
+            0.0, float(params.timeout_min_pullback_pts or 0.0)
+        )
+    except (TypeError, ValueError):
+        params.timeout_min_pullback_pts = 0.0
     mode = str(params.sl_mode or "asia_opposite").strip().lower()
     if mode in ("range", "asia_range", "range_width"):
         params.sl_mode = "range"
@@ -238,11 +247,13 @@ def timeout_quality_blocked(
     *,
     closest_ema_pts: Optional[float],
     break_pts: Optional[float],
+    last_wait_pullback_pts: Optional[float] = None,
 ) -> bool:
-    """True when a preferred timeout fill fails the EMA-distance / extra-break gate.
+    """True when a preferred timeout fill fails the EMA-distance / extra-break / pullback gate.
 
     Dist cap 0 = off. Break floor 0 = no extra vs the existing min-break.
-    Missing closest_ema_pts fails a positive dist cap (no wait scan).
+    Pullback floor 0 = off. Missing closest_ema_pts fails a positive dist cap (no wait scan).
+    Missing last_wait_pullback_pts fails a positive pullback floor.
     """
     max_dist = float(params.timeout_max_ema_dist_pts or 0.0)
     if max_dist > 0:
@@ -251,6 +262,10 @@ def timeout_quality_blocked(
     min_break = float(params.timeout_min_break_pts or 0.0)
     if min_break > 0:
         if break_pts is None or float(break_pts) + 1e-9 < min_break:
+            return True
+    min_pb = float(params.timeout_min_pullback_pts or 0.0)
+    if min_pb > 0:
+        if last_wait_pullback_pts is None or float(last_wait_pullback_pts) + 1e-9 < min_pb:
             return True
     return False
 
@@ -361,6 +376,7 @@ class OvernightTrade:
     break_pts: Optional[float] = None
     entry_vs_ema_pts: Optional[float] = None
     closest_ema_pts: Optional[float] = None  # wait-scan closest; >0 = never touched
+    last_wait_pullback_pts: Optional[float] = None  # last wait close vs break close
     close_vs_prev_pts: Optional[float] = None
     same_bar_ema: bool = False
     decision: str = ""
@@ -394,6 +410,7 @@ class OvernightSkip:
     wait_n: Optional[int] = None
     ema: Optional[float] = None
     closest_ema_pts: Optional[float] = None  # >0 = never touched, 0/neg = would have
+    last_wait_pullback_pts: Optional[float] = None
     best_resume_pts: Optional[float] = None  # best close vs prev in trade direction
     break_pts: Optional[float] = None
     decision: Optional[str] = None
@@ -612,6 +629,7 @@ def _mk_skip(
     wait_n: Optional[int] = None,
     ema: Optional[float] = None,
     closest_ema_pts: Optional[float] = None,
+    last_wait_pullback_pts: Optional[float] = None,
     best_resume_pts: Optional[float] = None,
     break_pts: Optional[float] = None,
     decision: Optional[str] = None,
@@ -644,6 +662,7 @@ def _mk_skip(
         wait_n=wait_n,
         ema=_round_or_none(ema, 5),
         closest_ema_pts=_round_or_none(closest_ema_pts, 1),
+        last_wait_pullback_pts=_round_or_none(last_wait_pullback_pts, 1),
         best_resume_pts=_round_or_none(best_resume_pts, 1),
         break_pts=_round_or_none(break_pts, 1),
         decision=decision,
@@ -1269,6 +1288,7 @@ def run_overnight(
 
         wait_i: Optional[int] = 0
         wait_n: Optional[int] = None
+        last_wait_pullback_pts: Optional[float] = None
         ema_at: Optional[float] = None
         prev_at: Optional[float] = None
         sig_close: Optional[float] = None
@@ -1311,6 +1331,12 @@ def run_overnight(
                     c for c in wait_candles if _local(c.open_time, tz) < flatten_local
                 ]
             wait_n = len(wait_candles)
+            if wait_candles:
+                last_close = wait_candles[-1].close
+                if side == "UP":
+                    last_wait_pullback_pts = (break_candle.close - last_close) / ps
+                else:
+                    last_wait_pullback_pts = (last_close - break_candle.close) / ps
             found = False
             blocked_late_short = False
             ema_val: Optional[float] = None
@@ -1413,6 +1439,7 @@ def run_overnight(
                 waited=waited,
                 ema=ema_val if wait_candles else None,
                 closest_ema_pts=closest_ema_pts,
+                last_wait_pullback_pts=last_wait_pullback_pts,
                 best_resume_pts=best_resume_pts,
                 break_pts=break_pts,
                 resume_closes=resume_need,
@@ -1433,6 +1460,7 @@ def run_overnight(
                     params,
                     closest_ema_pts=closest_ema_pts,
                     break_pts=break_pts,
+                    last_wait_pullback_pts=last_wait_pullback_pts,
                 ):
                     skips.append(skip_break("no_pullback_timeout", **skip_diag))
                     continue
@@ -1559,6 +1587,7 @@ def run_overnight(
                 break_pts=_round_or_none(break_pts, 1),
                 entry_vs_ema_pts=_round_or_none(entry_vs_ema_pts, 1),
                 closest_ema_pts=_round_or_none(closest_ema_pts, 1),
+                last_wait_pullback_pts=_round_or_none(last_wait_pullback_pts, 1),
                 close_vs_prev_pts=_round_or_none(close_vs_prev_pts, 1),
                 same_bar_ema=same_bar_ema,
                 decision=decision,
