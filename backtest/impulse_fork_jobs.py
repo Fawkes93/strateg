@@ -56,14 +56,33 @@ class ForkJobParams:
     snap_sec: float = 10.0
     join_retrace: float = 0.50
     join_wait_sec: float = 90.0
+    chase_ext: float = 0.50
     fade_lag_sec: float = 1.0
+    fade_sl_pct: float = 100.0
+    fade_sl_cap_pts: float = 1500.0
+    fade_tp_pct: float = 200.0
+    fade_tp_cap_pts: float = 3000.0
+    fade_trail_pts: float = 600.0
+    fade_trail_arm_pts: float = 750.0
+    fade_hold_sec: float = 250.0
+    join_stop_beyond: float = 0.15
+    join_tp1_r: float = 1.0
+    join_tp2_r: float = 1.5
+    join_be_r: float = 0.1
+    join_hold_sec: float = 1200.0
+    cooldown_sec: float = 30.0
+    weekend_blackout_min: float = 10.0
+    stand_aside_n: int = 3
+    skip_london_utc: bool = True
+    london_start_hour: int = 7
+    london_end_hour: int = 10
     fade_enabled: bool = True
     join_enabled: bool = True
     stand_aside_enabled: bool = True
-    stand_aside_n: int = 3
-    skip_london_utc: bool = True
     risk_pct: float = 0.5
     start_equity: float = 1_000.0
+    daily_halt_r: float = 1.5
+    weekly_halt_r: float = 4.0
     workers: int = 3
     force_download: bool = False
 
@@ -229,22 +248,9 @@ def stop_fork() -> Dict[str, Any]:
 
 
 def params_to_engine(params: ForkJobParams) -> ForkParams:
-    return ForkParams(
-        window_sec=float(params.window_sec),
-        min_blast_pts=float(params.min_blast_pts),
-        snap_pts=float(params.snap_pts),
-        snap_sec=float(params.snap_sec),
-        join_retrace=float(params.join_retrace),
-        join_wait_sec=float(params.join_wait_sec),
-        fade_lag_sec=float(params.fade_lag_sec),
-        fade_enabled=bool(params.fade_enabled),
-        join_enabled=bool(params.join_enabled),
-        stand_aside_enabled=bool(params.stand_aside_enabled),
-        stand_aside_n=int(params.stand_aside_n),
-        skip_london_utc=bool(params.skip_london_utc),
-        risk_pct=float(params.risk_pct),
-        start_equity=float(params.start_equity),
-    )
+    raw = asdict(params)
+    fields = ForkParams.__dataclass_fields__
+    return ForkParams(**{k: raw[k] for k in fields if k in raw})
 
 
 def _month_chunks(date_from: str, date_to: str) -> List[Tuple[str, str]]:

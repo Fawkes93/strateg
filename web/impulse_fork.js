@@ -20,12 +20,36 @@
     "if-to",
     "if-min-blast",
     "if-snap",
-    "if-fade",
-    "if-join",
-    "if-aside",
+    "if-window",
+    "if-snap-sec",
+    "if-chase",
+    "if-cooldown",
     "if-london",
+    "if-london-start",
+    "if-london-end",
+    "if-fade",
+    "if-fade-lag",
+    "if-fade-sl-pct",
+    "if-fade-sl-cap",
+    "if-fade-tp-pct",
+    "if-fade-tp-cap",
+    "if-fade-trail",
+    "if-fade-arm",
+    "if-fade-hold",
+    "if-join",
+    "if-join-stop",
+    "if-join-tp1",
+    "if-join-tp2",
+    "if-join-be",
+    "if-join-hold",
+    "if-join-retrace",
+    "if-join-wait",
+    "if-aside",
+    "if-aside-n",
     "if-risk",
     "if-equity",
+    "if-daily-halt",
+    "if-weekly-halt",
     "if-workers",
     "if-force",
   ];
@@ -109,17 +133,89 @@
         <label>Snapback (pts)
           <input type="number" id="if-snap" value="300" min="50" step="50" />
         </label>
-        <label class="chk">Fade <input type="checkbox" id="if-fade" checked /></label>
-        <label class="chk">Join <input type="checkbox" id="if-join" checked /></label>
-        <label class="chk">Stand aside <input type="checkbox" id="if-aside" checked /></label>
-        <label class="chk">Skip London 07–10 UTC
+        <label>Window (sec)
+          <input type="number" id="if-window" value="3" min="0.5" step="0.5" />
+        </label>
+        <label>Snap window (sec)
+          <input type="number" id="if-snap-sec" value="10" min="1" step="1" />
+        </label>
+        <label>Chase extension (× blast)
+          <input type="number" id="if-chase" value="0.5" min="0" step="0.1" />
+        </label>
+        <label>Cooldown (sec)
+          <input type="number" id="if-cooldown" value="30" min="0" step="5" />
+        </label>
+        <label class="chk">Skip London hours UTC
           <input type="checkbox" id="if-london" checked />
+        </label>
+        <label>London start hour UTC
+          <input type="number" id="if-london-start" value="7" min="0" max="23" />
+        </label>
+        <label>London end hour UTC
+          <input type="number" id="if-london-end" value="10" min="1" max="23" />
+        </label>
+        <label class="chk">Fade <input type="checkbox" id="if-fade" checked /></label>
+        <label>Fade lag (sec)
+          <input type="number" id="if-fade-lag" value="1" min="0" step="0.5" />
+        </label>
+        <label>Fade SL % of blast
+          <input type="number" id="if-fade-sl-pct" value="100" min="0" step="10" />
+        </label>
+        <label>Fade SL cap (pts)
+          <input type="number" id="if-fade-sl-cap" value="1500" min="0" step="50" />
+        </label>
+        <label>Fade TP % of blast
+          <input type="number" id="if-fade-tp-pct" value="200" min="0" step="10" />
+        </label>
+        <label>Fade TP cap (pts)
+          <input type="number" id="if-fade-tp-cap" value="3000" min="0" step="50" />
+        </label>
+        <label>Fade trail (pts)
+          <input type="number" id="if-fade-trail" value="600" min="0" step="50" />
+        </label>
+        <label>Fade trail arm (pts)
+          <input type="number" id="if-fade-arm" value="750" min="0" step="50" />
+        </label>
+        <label>Fade hold (sec)
+          <input type="number" id="if-fade-hold" value="250" min="10" step="10" />
+        </label>
+        <label class="chk">Join <input type="checkbox" id="if-join" checked /></label>
+        <label>Join stop beyond (× blast)
+          <input type="number" id="if-join-stop" value="0.15" min="0" step="0.05" />
+        </label>
+        <label>Join TP1 R
+          <input type="number" id="if-join-tp1" value="1" min="0.1" step="0.1" />
+        </label>
+        <label>Join TP2 R
+          <input type="number" id="if-join-tp2" value="1.5" min="0.1" step="0.1" />
+        </label>
+        <label>Join BE offset R
+          <input type="number" id="if-join-be" value="0.1" min="0" step="0.05" />
+        </label>
+        <label>Join hold (sec)
+          <input type="number" id="if-join-hold" value="1200" min="30" step="30" />
+        </label>
+        <label>Join retrace
+          <input type="number" id="if-join-retrace" value="0.5" min="0.1" max="0.9" step="0.05" />
+        </label>
+        <label>Join wait (sec)
+          <input type="number" id="if-join-wait" value="90" min="10" step="10" />
+        </label>
+        <label class="chk">Stand aside <input type="checkbox" id="if-aside" checked /></label>
+        <label>Stand aside after N
+          <input type="number" id="if-aside-n" value="3" min="1" max="10" />
         </label>
         <label>Risk % equity
           <input type="number" id="if-risk" value="0.5" min="0.1" max="20" step="0.1" />
         </label>
         <label>Start equity
           <input type="number" id="if-equity" value="1000" min="100" step="100" />
+        </label>
+        <label>Daily halt (R)
+          <input type="number" id="if-daily-halt" value="1.5" min="0" step="0.5" />
+        </label>
+        <label>Weekly halt (R)
+          <input type="number" id="if-weekly-halt" value="4" min="0" step="0.5" />
         </label>
         <label>Workers
           <input type="number" id="if-workers" value="3" min="1" max="6" />
@@ -310,22 +406,102 @@
     }
   }
 
+  function num(id, fallback) {
+    const el = $(id);
+    const v = el ? Number(el.value) : NaN;
+    return Number.isFinite(v) ? v : fallback;
+  }
+  function chk(id, fallback) {
+    const el = $(id);
+    return el ? !!el.checked : fallback;
+  }
+
   function collectBody() {
     return {
       symbol: ($("if-symbol") && $("if-symbol").value) || "XAUUSD",
       date_from: ($("if-from") && $("if-from").value) || "2026-06-01",
       date_to: ($("if-to") && $("if-to").value) || "2026-07-01",
-      min_blast_pts: Number($("if-min-blast") && $("if-min-blast").value) || 1100,
-      snap_pts: Number($("if-snap") && $("if-snap").value) || 300,
-      fade_enabled: !!($("if-fade") && $("if-fade").checked),
-      join_enabled: !!($("if-join") && $("if-join").checked),
-      stand_aside_enabled: !!($("if-aside") && $("if-aside").checked),
-      skip_london_utc: !!($("if-london") && $("if-london").checked),
-      risk_pct: Number($("if-risk") && $("if-risk").value) || 0.5,
-      start_equity: Number($("if-equity") && $("if-equity").value) || 1000,
-      workers: Number($("if-workers") && $("if-workers").value) || 3,
-      force_download: !!($("if-force") && $("if-force").checked),
+      min_blast_pts: num("if-min-blast", 1100),
+      snap_pts: num("if-snap", 300),
+      window_sec: num("if-window", 3),
+      snap_sec: num("if-snap-sec", 10),
+      chase_ext: num("if-chase", 0.5),
+      cooldown_sec: num("if-cooldown", 30),
+      skip_london_utc: chk("if-london", true),
+      london_start_hour: num("if-london-start", 7),
+      london_end_hour: num("if-london-end", 10),
+      fade_enabled: chk("if-fade", true),
+      fade_lag_sec: num("if-fade-lag", 1),
+      fade_sl_pct: num("if-fade-sl-pct", 100),
+      fade_sl_cap_pts: num("if-fade-sl-cap", 1500),
+      fade_tp_pct: num("if-fade-tp-pct", 200),
+      fade_tp_cap_pts: num("if-fade-tp-cap", 3000),
+      fade_trail_pts: num("if-fade-trail", 600),
+      fade_trail_arm_pts: num("if-fade-arm", 750),
+      fade_hold_sec: num("if-fade-hold", 250),
+      join_enabled: chk("if-join", true),
+      join_stop_beyond: num("if-join-stop", 0.15),
+      join_tp1_r: num("if-join-tp1", 1),
+      join_tp2_r: num("if-join-tp2", 1.5),
+      join_be_r: num("if-join-be", 0.1),
+      join_hold_sec: num("if-join-hold", 1200),
+      join_retrace: num("if-join-retrace", 0.5),
+      join_wait_sec: num("if-join-wait", 90),
+      stand_aside_enabled: chk("if-aside", true),
+      stand_aside_n: num("if-aside-n", 3),
+      risk_pct: num("if-risk", 0.5),
+      start_equity: num("if-equity", 1000),
+      daily_halt_r: num("if-daily-halt", 1.5),
+      weekly_halt_r: num("if-weekly-halt", 4),
+      workers: num("if-workers", 3),
+      force_download: chk("if-force", false),
     };
+  }
+
+  function applyFormFromResult(result) {
+    if (!result) return;
+    const p = result.params || {};
+    if (result.date_from && $("if-from")) $("if-from").value = String(result.date_from).slice(0, 10);
+    if (result.date_to && $("if-to")) $("if-to").value = String(result.date_to).slice(0, 10);
+    const map = {
+      min_blast_pts: "if-min-blast",
+      snap_pts: "if-snap",
+      window_sec: "if-window",
+      snap_sec: "if-snap-sec",
+      chase_ext: "if-chase",
+      cooldown_sec: "if-cooldown",
+      london_start_hour: "if-london-start",
+      london_end_hour: "if-london-end",
+      fade_lag_sec: "if-fade-lag",
+      fade_sl_pct: "if-fade-sl-pct",
+      fade_sl_cap_pts: "if-fade-sl-cap",
+      fade_tp_pct: "if-fade-tp-pct",
+      fade_tp_cap_pts: "if-fade-tp-cap",
+      fade_trail_pts: "if-fade-trail",
+      fade_trail_arm_pts: "if-fade-arm",
+      fade_hold_sec: "if-fade-hold",
+      join_stop_beyond: "if-join-stop",
+      join_tp1_r: "if-join-tp1",
+      join_tp2_r: "if-join-tp2",
+      join_be_r: "if-join-be",
+      join_hold_sec: "if-join-hold",
+      join_retrace: "if-join-retrace",
+      join_wait_sec: "if-join-wait",
+      stand_aside_n: "if-aside-n",
+      risk_pct: "if-risk",
+      start_equity: "if-equity",
+      daily_halt_r: "if-daily-halt",
+      weekly_halt_r: "if-weekly-halt",
+    };
+    Object.keys(map).forEach(function (k) {
+      if (p[k] == null || !$(map[k])) return;
+      $(map[k]).value = String(p[k]);
+    });
+    if ($("if-fade")) $("if-fade").checked = p.fade_enabled !== false;
+    if ($("if-join")) $("if-join").checked = p.join_enabled !== false;
+    if ($("if-aside")) $("if-aside").checked = p.stand_aside_enabled !== false;
+    if ($("if-london")) $("if-london").checked = p.skip_london_utc !== false;
+    scheduleSave();
   }
 
   async function poll() {
@@ -403,6 +579,7 @@
       selectId: "if-saved",
       buttonId: "if-load",
       onLoaded: function (json) {
+        applyFormFromResult(json);
         render(json);
       },
     });
