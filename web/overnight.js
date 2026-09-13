@@ -96,6 +96,10 @@
         if ($("ob-pullback-mode")) $("ob-pullback-mode").value = "required";
         if ($("ob-higher-close")) $("ob-higher-close").checked = false;
       }
+      // Removed timeout "worst" (hindsight fill). Live chase = market at last wait close.
+      if ($("ob-timeout") && $("ob-timeout").value === "worst") {
+        $("ob-timeout").value = "market";
+      }
       // Legacy 2-week checkbox → off/tag/filter select.
       if ($("ob-sl-mode") && $("ob-sl-mode").value === "range_width") {
         $("ob-sl-mode").value = "range";
@@ -229,7 +233,7 @@
       <ol>
         <li>Lock the Asia high/low in <strong>Europe/Bucharest</strong> (default 00:00–07:00).</li>
         <li>First completed 15m bar that clears Asia by min break pts = break signal (close only, or wick if the toggle is on).</li>
-        <li>Entry = first of: <em>EMA touch</em> or <em>higher/lower close resume</em> during the wait window (resume closes = consecutive directional closes; uncheck resume for EMA-only; break close if pullback = off). <em>Wait from break</em> counts max wait from the break bar instead of leftover Asia-break bars.</li>
+        <li>Entry = first of: <em>EMA touch</em> or <em>higher/lower close resume</em> during the wait window (resume closes = consecutive directional closes; uncheck resume for EMA-only; break close if pullback = off). Preferred timeout <em>market</em> waits the full window then fills the last wait-bar close. <em>Wait from break</em> counts max wait from the break bar instead of leftover Asia-break bars.</li>
         <li>No partial TP. Trail arms after a profit threshold (fixed pts, or Asia range with a cap), then trails. Flatten at local hour.</li>
       </ol>
       <p class="hint">
@@ -292,10 +296,10 @@
             title="Off = wait only inside leftover max-break-after-Asia bars. On = count max wait candles from the actual break bar (not clipped by a late break)." />
         </label>
         <label>Timeout action (preferred)
-          <select id="ob-timeout">
+          <select id="ob-timeout"
+            title="After max wait with no EMA/resume: skip, or market at the last wait-bar close (live chase).">
             <option value="skip" selected>skip</option>
             <option value="market">market</option>
-            <option value="worst">worst</option>
           </select>
         </label>
         <label>Timeout max EMA dist (pts)
@@ -500,8 +504,8 @@
       <p class="table-note">
         Entry = EMA touch, higher/lower close resume, or break close.
         Hover <strong>Decision</strong> for the full wait / EMA / close-vs-prev line.
-        Max adv = worst mid against the trade after entry.
-        Adv/SL = how much of the stop was used.
+        Max fav / max adv = best and worst mid vs fill (break close on skips) until flatten hour, even if the trade already exited.
+        Adv/SL = max adv vs SL pts (can exceed 100% when price kept going after the stop).
       </p>
       <div class="table-wrap">
         <table id="ob-table">
@@ -536,8 +540,8 @@
       <h3>Skipped / failed days</h3>
       <p class="table-note">
         Every day that did not produce a trade, with the same decision factors
-        (wait / EMA closest / best close vs prev). Opp peak after a break is from
-        the break close until flatten.
+        (wait / EMA closest / best close vs prev). Max fav / max adv after a break
+        are from the break close until flatten hour.
       </p>
       <div class="table-wrap">
         <table id="ob-skips">
@@ -633,7 +637,6 @@
     break_close: "Break close",
     seasonal_join: "Seasonal join (inside box)",
     timeout_market: "Timeout market",
-    timeout_worst: "Timeout worst",
   };
 
   const PARAM_FIELDS = [
@@ -834,6 +837,7 @@
       if (!el) return;
       const v = p[key];
       if (el.type === "checkbox") el.checked = !!v;
+      else if (key === "timeout_action" && v === "worst") el.value = "market";
       else el.value = v == null ? "" : String(v);
     });
     syncPullbackControls();
@@ -1370,7 +1374,7 @@
         ema_period: Number($("ob-ema").value),
         max_wait_candles: Number($("ob-max-wait").value),
         wait_from_break: $("ob-wait-from-break") && $("ob-wait-from-break").checked,
-        timeout_action: $("ob-timeout").value,
+        timeout_action: ($("ob-timeout").value === "worst") ? "market" : $("ob-timeout").value,
         timeout_max_ema_dist_pts: Number(($("ob-timeout-ema-dist") && $("ob-timeout-ema-dist").value) || 0),
         timeout_min_break_pts: Number(($("ob-timeout-min-break") && $("ob-timeout-min-break").value) || 0),
         timeout_min_pullback_pts: Number(($("ob-timeout-min-pullback") && $("ob-timeout-min-pullback").value) || 0),

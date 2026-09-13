@@ -7,7 +7,7 @@ Bucharest time Asia window → first 15m close outside with min break pts
 Entry modes:
   off       : enter on break candle close
   required  : must get EMA touch (or higher-close resume if enabled) within max wait, else skip
-  preferred : try pullback; on timeout enter at market (or skip / worst)
+  preferred : try pullback; on timeout skip, or enter at last wait-bar close (market)
 
 Higher/lower close resume is a separate checkbox (ignored when mode is off).
 
@@ -69,7 +69,7 @@ class OvernightParams:
     ema_tf_min: int = 15
     max_wait_candles: int = 8  # 15m candles after break
     wait_from_break: bool = False  # True = count wait from the break bar, not leftover post_asia
-    timeout_action: str = "skip"  # skip | market | worst  (only for preferred)
+    timeout_action: str = "skip"  # skip | market  (only for preferred)
     # Preferred timeout quality. 0 = off (current ungated timeout).
     # Dist: closest wait-scan approach to EMA (pts). None / farther → skip.
     # Extra break floor applies only to timeout fills, not EMA-touch.
@@ -171,6 +171,13 @@ def _normalize_params(params: OvernightParams) -> OvernightParams:
         )
     except (TypeError, ValueError):
         params.timeout_min_pullback_pts = 0.0
+    act = str(params.timeout_action or "skip").strip().lower()
+    # Legacy "worst" was a hindsight pullback fill; treat as live chase.
+    if act == "worst":
+        act = "market"
+    if act not in ("skip", "market"):
+        act = "skip"
+    params.timeout_action = act
     mode = str(params.sl_mode or "asia_opposite").strip().lower()
     if mode in ("range", "asia_range", "range_width"):
         params.sl_mode = "range"
@@ -351,7 +358,7 @@ class OvernightTrade:
     break_candle_close: float
     entry_ts: str
     entry: float
-    entry_reason: str  # break_close | ema_touch | higher_close | timeout_market | timeout_worst
+    entry_reason: str  # break_close | ema_touch | higher_close | timeout_market
     sl: float
     tp: float
     sl_pts: float
@@ -473,7 +480,6 @@ def entry_label(reason: str) -> str:
         "lower_close": "Lower close resume",
         "break_close": "Break close",
         "timeout_market": "Timeout market",
-        "timeout_worst": "Timeout worst",
         "seasonal_join": "Seasonal join (inside box)",
     }.get(reason, reason or "—")
 
@@ -702,11 +708,10 @@ def _excursion_from(
     ps: float,
     tz: ZoneInfo,
     flatten_local: datetime,
-    max_hold_hours: float,
 ) -> Tuple[float, float, float, float]:
     """
-    Walk ticks after start until flatten / max hold.
-    Returns max_fav_pts, max_adv_pts, fav_peak_px, adv_peak_px.
+    Walk ticks after start until flatten (inclusive of the flatten tick).
+    Ignores SL/TP/trail. Returns max_fav_pts, max_adv_pts, fav_peak_px, adv_peak_px.
     """
     max_fav = 0.0
     max_adv = 0.0
@@ -714,7 +719,6 @@ def _excursion_from(
     worst_px = entry
     if start_index < 0 or start_index >= len(ticks):
         return max_fav, max_adv, best_px, worst_px
-    hold_deadline = ticks[start_index].ts + timedelta(hours=float(max_hold_hours))
     for i in range(start_index + 1, len(ticks)):
         t = ticks[i]
         loc = _local(t.ts, tz)
@@ -727,7 +731,7 @@ def _excursion_from(
         if adv > max_adv:
             max_adv = adv
             worst_px = px
-        if loc >= flatten_local or t.ts >= hold_deadline:
+        if loc >= flatten_local:
             break
     return max_fav, max_adv, best_px, worst_px
 
@@ -1144,7 +1148,6 @@ def run_overnight(
                     ps=ps,
                     tz=tz,
                     flatten_local=flatten_local,
-                    max_hold_hours=params.max_hold_hours,
                 )
                 if bp is None:
                     bp = _break_pts_for(
@@ -1340,7 +1343,6 @@ def run_overnight(
             found = False
             blocked_late_short = False
             ema_val: Optional[float] = None
-            worst_px = _mid(ticks[entry_idx]) if entry_idx < n else break_candle.close
             resume_need = _resume_need(params)
             resume_streak = 0
 
@@ -1377,7 +1379,6 @@ def run_overnight(
                         px = _mid(ticks[ti])
                         if side == "UP":
                             dist = (px - ema_val) / ps
-                            worst_px = min(worst_px, px)
                             if px <= ema_val + 1e-9:
                                 ema_touched = True
                                 if ema_touch_idx is None:
@@ -1385,7 +1386,6 @@ def run_overnight(
                                     ema_touch_px = px
                         else:
                             dist = (ema_val - px) / ps
-                            worst_px = max(worst_px, px)
                             if px >= ema_val - 1e-9:
                                 ema_touched = True
                                 if ema_touch_idx is None:
@@ -1464,18 +1464,23 @@ def run_overnight(
                 ):
                     skips.append(skip_break("no_pullback_timeout", **skip_diag))
                     continue
-                if entry_idx >= n:
+                if not wait_candles:
+                    skips.append(skip_break("no_pullback_timeout", **skip_diag))
+                    continue
+                last_wait = wait_candles[-1]
+                close_i = find_tick_index(last_wait.close_time)
+                # close_time is exclusive (next bar open). Fill the last tick of the wait bar.
+                fill_i = close_i - 1
+                if fill_i < 0 or fill_i >= n or ticks[fill_i].ts < last_wait.open_time:
                     skips.append(skip_break("no_entry_tick", **skip_diag))
                     continue
-                if params.timeout_action == "worst":
-                    entry_px = worst_px
-                    entry_reason = "timeout_worst"
-                else:
-                    entry_px = _mid(ticks[entry_idx])
-                    entry_reason = "timeout_market"
-                entry_ts = ticks[entry_idx].ts
+                entry_idx = fill_i
+                entry_px = last_wait.close
+                entry_reason = "timeout_market"
+                entry_ts = ticks[fill_i].ts
                 wait_i = waited
                 ema_at = skip_diag["ema"]
+                sig_close = last_wait.close
 
         if entry_ts is None or entry_px is None:
             skips.append(skip_break("no_entry"))
@@ -1544,10 +1549,10 @@ def run_overnight(
             exit_px,
             pts,
             trail_armed,
-            max_fav,
-            max_adv,
-            best_px,
-            worst_px,
+            _sim_fav,
+            _sim_adv,
+            _sim_best,
+            _sim_worst,
         ) = _simulate_from_entry(
             ticks,
             entry_idx,
@@ -1562,6 +1567,15 @@ def run_overnight(
             trail_arm_pts=trail_arm_used,
             trail_dist_pts=trail_dist_used,
             trail_from_fill=trail_from_fill,
+        )
+        max_fav, max_adv, best_px, worst_px = _excursion_from(
+            ticks,
+            entry_idx,
+            side=side,
+            entry=entry_px,
+            ps=ps,
+            tz=tz,
+            flatten_local=flatten_local,
         )
 
         trades.append(

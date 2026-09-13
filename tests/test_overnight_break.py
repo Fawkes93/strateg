@@ -120,12 +120,50 @@ def test_excursion_tracks_opposite_peak():
         ps=0.01,
         tz=tz,
         flatten_local=flatten,
-        max_hold_hours=10.0,
     )
     assert round(fav, 1) == 200.0
     assert round(adv, 1) == 500.0
     assert best == 3302.0
     assert worst == 3295.0
+
+
+def test_trade_max_fav_adv_run_until_flatten_past_sl():
+    """Short hits a tight SL on 07:15, then 09:00 prints a deeper adverse high and a larger fav low."""
+    quiet = (3296.0, 3298.0, 3294.0, 3296.0)
+    ticks = _utc_down_break_ticks(
+        (3301.0, 3302.0, 3300.4, 3301.0),
+        quiet,
+        quiet,
+        quiet,
+        quiet,
+        quiet,
+        quiet,
+        (3296.0, 3315.0, 3280.0, 3290.0),
+    )
+    params = OvernightParams(
+        timezone="UTC",
+        pullback_mode="off",
+        sl_mode="fixed",
+        sl_fixed_pts=50.0,
+        tp_mode="fixed",
+        tp_fixed_pts=100000.0,
+        trail_arm_mode="off",
+        trail_arm_pts=0.0,
+        min_asia_range_pts=300.0,
+        min_break_pts_below=200.0,
+        min_break_pts_above=200.0,
+        flatten_hour=18,
+        max_hold_hours=0.5,
+    )
+    out = run_overnight(ticks, symbol="XAU/USD", params=params)
+    assert out["trades"] == 1
+    row = out["rows"][0]
+    assert row["side"] == "DOWN"
+    assert row["exit_reason"] == "sl"
+    assert abs(row["max_adv_price"] - 3315.0) < 1e-6
+    assert abs(row["max_fav_price"] - 3280.0) < 1e-6
+    assert row["max_adv_pts"] > row["sl_pts"] * 10
+    assert row["max_fav_pts"] > 1500.0
 
 
 def test_run_overnight_records_skip_reason():
@@ -941,6 +979,55 @@ def test_timeout_market_ungated_still_fills():
     assert row["side"] == "DOWN"
     assert row.get("closest_ema_pts") is not None
     assert row["closest_ema_pts"] > 0
+    # Default leftover wait is 7 bars; last default wait close is 3296.
+    assert abs(row["entry"] - 3296.0) < 1e-6
+    assert row["wait_i"] == 7
+    assert "08:59:50" in row["entry_ts"]
+
+
+def test_timeout_market_fills_last_wait_close_not_break():
+    ticks = _utc_down_break_ticks((3302.0, 3304.0, 3301.0, 3304.0))
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_timeout_params(max_wait_candles=1, use_higher_close=False),
+    )
+    assert out["trades"] == 1
+    row = out["rows"][0]
+    assert row["entry_reason"] == "timeout_market"
+    assert abs(row["entry"] - 3304.0) < 1e-6
+    assert abs(row["break_candle_close"] - 3300.0) < 1e-6
+    assert row["wait_i"] == 1
+    assert "07:29:50" in row["entry_ts"]
+
+
+def test_timeout_legacy_worst_is_market_at_last_wait():
+    ticks = _utc_down_break_ticks((3302.0, 3304.0, 3301.0, 3304.0))
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_timeout_params(
+            timeout_action="worst",
+            max_wait_candles=1,
+            use_higher_close=False,
+        ),
+    )
+    assert out["trades"] == 1
+    row = out["rows"][0]
+    assert row["entry_reason"] == "timeout_market"
+    assert abs(row["entry"] - 3304.0) < 1e-6
+
+
+def test_timeout_market_empty_wait_skips():
+    ticks = _utc_down_break_ticks()
+    out = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=_timeout_params(max_break_candles_after=1),
+    )
+    assert out["trades"] == 0
+    skips = [s for s in out["skips"] if s.get("side") == "DOWN"]
+    assert skips and skips[0]["reason"] == "no_pullback_timeout"
 
 
 def test_timeout_far_from_ema_skips():
@@ -1036,6 +1123,7 @@ def test_timeout_min_pullback_fills_when_last_wait_retraces():
     assert row["entry_reason"] == "timeout_market"
     assert row.get("last_wait_pullback_pts") is not None
     assert row["last_wait_pullback_pts"] >= 200.0
+    assert abs(row["entry"] - 3304.0) < 1e-6
 
 
 def test_timeout_min_pullback_does_not_block_ema_touch():

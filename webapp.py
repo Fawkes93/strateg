@@ -486,7 +486,7 @@ class OvernightRunRequest(BaseModel):
     ema_period: int = 21
     max_wait_candles: int = 8
     wait_from_break: bool = False
-    timeout_action: str = "skip"
+    timeout_action: str = "skip"  # skip | market
     timeout_max_ema_dist_pts: float = 0.0
     timeout_min_break_pts: float = 0.0
     timeout_min_pullback_pts: float = 0.0
