@@ -17,7 +17,7 @@ from statistics import median
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from zoneinfo import ZoneInfo
 
-from backtest.candles import Candle, CandleBuilder, to_utc
+from backtest.candles import Candle, CandleBuilder, aggregate_tf, to_utc
 from backtest.config import point_size
 from backtest.dukascopy import Tick, reaktor_symbol
 from backtest.news_calendar import (
@@ -309,43 +309,6 @@ def ema_series(values: Sequence[float], period: int) -> List[Optional[float]]:
     for i in range(period, len(values)):
         e = values[i] * k + e * (1.0 - k)
         out[i] = e
-    return out
-
-
-def aggregate_tf(candles: Sequence[Candle], tf_min: int) -> List[Candle]:
-    """Closed higher-TF bars from 15m (UTC bucket). Oldest → newest."""
-    step = int(tf_min) * 60
-    if step <= 0 or not candles:
-        return []
-    buckets: Dict[int, List[Candle]] = {}
-    order: List[int] = []
-    for c in candles:
-        ts = int(to_utc(c.open_time).timestamp())
-        key = ts - (ts % step)
-        if key not in buckets:
-            buckets[key] = []
-            order.append(key)
-        buckets[key].append(c)
-    out: List[Candle] = []
-    now_limit = to_utc(candles[-1].close_time)
-    for key in order:
-        parts = buckets[key]
-        start = datetime.fromtimestamp(key, tz=timezone.utc)
-        end = start + timedelta(minutes=int(tf_min))
-        if end > now_limit + timedelta(seconds=1):
-            continue
-        out.append(
-            Candle(
-                open_time=start,
-                close_time=end,
-                open=parts[0].open,
-                high=max(p.high for p in parts),
-                low=min(p.low for p in parts),
-                close=parts[-1].close,
-                is_closed=True,
-                tick_count=sum(p.tick_count for p in parts),
-            )
-        )
     return out
 
 

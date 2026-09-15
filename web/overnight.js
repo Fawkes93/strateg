@@ -32,6 +32,7 @@
     "ob-timeout-min-pullback",
     "ob-higher-close",
     "ob-resume-closes",
+    "ob-resume-max-break",
     "ob-late-short-wait",
     "ob-late-short-asia",
     "ob-side",
@@ -46,6 +47,7 @@
     "ob-sl-fixed",
     "ob-sl-range-mult",
     "ob-sl-cap",
+    "ob-sl-m12-frac",
     "ob-tp-mode",
     "ob-tp-fixed",
     "ob-tp-range-mult",
@@ -54,10 +56,12 @@
     "ob-trail-arm",
     "ob-trail-arm-cap",
     "ob-trail",
+    "ob-be-arm",
     "ob-max-hold",
     "ob-flatten",
     "ob-one-per-day",
     "ob-workers",
+    "ob-data",
     "ob-force",
   ];
 
@@ -130,6 +134,7 @@
     const mode = $("ob-pullback-mode") && $("ob-pullback-mode").value;
     const resume = $("ob-higher-close");
     const resumeCloses = $("ob-resume-closes");
+    const resumeMaxBreak = $("ob-resume-max-break");
     const timeout = $("ob-timeout");
     const timeoutEma = $("ob-timeout-ema-dist");
     const timeoutBreak = $("ob-timeout-min-break");
@@ -137,6 +142,9 @@
     if (resume) resume.disabled = mode === "off";
     if (resumeCloses) {
       resumeCloses.disabled = mode === "off" || (resume && !resume.checked);
+    }
+    if (resumeMaxBreak) {
+      resumeMaxBreak.disabled = mode === "off" || (resume && !resume.checked);
     }
     const timeoutOff = mode !== "preferred";
     if (timeout) timeout.disabled = timeoutOff;
@@ -150,6 +158,7 @@
     const fixed = $("ob-sl-fixed");
     const mult = $("ob-sl-range-mult");
     const cap = $("ob-sl-cap");
+    const frac = $("ob-sl-m12-frac");
     if (fixed) {
       fixed.disabled = mode !== "fixed";
       fixed.title =
@@ -164,12 +173,47 @@
           ? "SL distance = Asia width × this. 1 = the range itself."
           : "Used when SL mode is Asia range.";
     }
+    if (frac) {
+      frac.disabled = mode !== "m12_frac";
+      frac.title =
+        mode === "m12_frac"
+          ? "Stop = this fraction of the last-12-month average daily-close range, rounded up to 50 pts."
+          : "Used when SL mode is 12m avg × frac.";
+    }
     if (cap) {
       cap.disabled = mode === "fixed";
       cap.title =
         mode === "fixed"
-          ? "Cap is for asia opposite and Asia range. 0 = off."
-          : "Max SL distance (pts). 0 = off. Pulls a too-wide Asia SL in to this many pts.";
+          ? "Cap is for asia opposite, Asia range, and 12m frac. 0 = off."
+          : "Max SL distance (pts). 0 = off. Pulls a too-wide SL in to this many pts.";
+    }
+  }
+
+  function syncTpControls() {
+    const mode = $("ob-tp-mode") && $("ob-tp-mode").value;
+    const fixed = $("ob-tp-fixed");
+    const rangeMult = $("ob-tp-range-mult");
+    const rMult = $("ob-tp-r-mult");
+    if (fixed) {
+      fixed.disabled = mode !== "fixed";
+      fixed.title =
+        mode === "fixed"
+          ? "Take-profit distance in pts."
+          : "Used when TP mode is fixed pts.";
+    }
+    if (rangeMult) {
+      rangeMult.disabled = mode !== "range_mult";
+      rangeMult.title =
+        mode === "range_mult"
+          ? "TP distance = Asia width × this."
+          : "Used when TP mode is range × mult.";
+    }
+    if (rMult) {
+      rMult.disabled = mode !== "r_mult";
+      rMult.title =
+        mode === "r_mult"
+          ? "TP distance = SL pts × this."
+          : "Used when TP mode is R multiple.";
     }
   }
 
@@ -234,7 +278,7 @@
         <li>Lock the Asia high/low in <strong>Europe/Bucharest</strong> (default 00:00–07:00).</li>
         <li>First completed 15m bar that clears Asia by min break pts = break signal (close only, or wick if the toggle is on).</li>
         <li>Entry = first of: <em>EMA touch</em> or <em>higher/lower close resume</em> during the wait window (resume closes = consecutive directional closes; uncheck resume for EMA-only; break close if pullback = off). Preferred timeout <em>market</em> waits the full window then fills the last wait-bar close. <em>Wait from break</em> counts max wait from the break bar instead of leftover Asia-break bars.</li>
-        <li>No partial TP. Trail arms after a profit threshold (fixed pts, or Asia range with a cap), then trails. Flatten at local hour.</li>
+        <li>No partial TP. Optional BE moves SL to entry after a profit threshold. Trail arms after a profit threshold (fixed pts, or Asia range with a cap), then trails. Flatten at local hour.</li>
       </ol>
       <p class="hint">
         Mid fill. One trade per day by default. Skips days with no valid break / no pullback (required mode).
@@ -320,6 +364,10 @@
         <label>Resume closes
           <input type="number" id="ob-resume-closes" value="1" min="1" max="8" step="1" />
         </label>
+        <label>Resume max from break (pts)
+          <input type="number" id="ob-resume-max-break" value="0" min="0" step="50"
+            title="Higher/lower close resume only: wait-bar close may not extend more than this many pts past the break close (long: above, short: below). 0 = off. Pullback side of the break always allowed. EMA ignores this." />
+        </label>
         <label>Skip late short wait ≥
           <input type="number" id="ob-late-short-wait" value="7" min="0" max="20" step="1"
             title="Skip DOWN entries from this wait bar onward. 0 = off." />
@@ -383,6 +431,7 @@
             <option value="asia_opposite" selected>asia opposite</option>
             <option value="range">Asia range</option>
             <option value="fixed">fixed pts</option>
+            <option value="m12_frac">12m avg × frac</option>
           </select>
         </label>
         <label>SL fixed (pts)
@@ -392,15 +441,24 @@
           <input type="number" id="ob-sl-range-mult" value="1" min="0.1" step="0.1"
             title="Asia range mode: SL distance = Asia width × this. 1 = the range itself." />
         </label>
+        <label>SL 12m frac
+          <select id="ob-sl-m12-frac"
+            title="Stop = this fraction of the last-12-month average daily-close range, rounded up to 50 pts.">
+            <option value="0.25">1/4</option>
+            <option value="0.333333" selected>1/3</option>
+            <option value="0.5">1/2</option>
+          </select>
+        </label>
         <label>SL cap (pts)
           <input type="number" id="ob-sl-cap" value="0" min="0" step="50"
-            title="Max SL distance for asia opposite and Asia range. 0 = off. If the raw SL is farther, it is pulled in to this many pts." />
+            title="Max SL distance for asia opposite, Asia range, and 12m frac. 0 = off. If the raw SL is farther, it is pulled in to this many pts." />
         </label>
         <label>TP mode
           <select id="ob-tp-mode">
             <option value="range_mult" selected>range × mult</option>
             <option value="fixed">fixed pts</option>
             <option value="r_mult">R multiple</option>
+            <option value="m12">12m avg (daily closes)</option>
           </select>
         </label>
         <label>TP fixed (pts)
@@ -431,6 +489,10 @@
           <input type="number" id="ob-trail" value="250" min="0" step="50"
             title="Gap behind the best price once the trail is on. From-fill + 0 = use the initial SL (up 100 pts → remaining risk 1900 if SL was 2000)." />
         </label>
+        <label>BE arm (pts)
+          <input type="number" id="ob-be-arm" value="0" min="0" step="50"
+            title="Move SL to entry once profit reaches this many pts. 0 = off. Trail still tightens independently." />
+        </label>
         <label>Max hold (hours)
           <input type="number" id="ob-max-hold" value="10" min="1" max="24" step="0.5" />
         </label>
@@ -442,7 +504,14 @@
         </label>
         <label>Workers
           <input type="number" id="ob-workers" value="3" min="1" max="6" step="1"
-            title="Parallel months (separate processes). Each worker holds one month of ticks." />
+            title="Parallel months (separate processes). Each worker holds one month of ticks or 5m candles." />
+        </label>
+        <label>Data
+          <select id="ob-data"
+            title="5m candles are built from ticks once and cached in data/candles/5m/. Signals stay 15m. Fills/exits are conservative vs ticks (EMA fill at EMA; same-bar SL beats TP).">
+            <option value="candles_5m" selected>5m candles (cached)</option>
+            <option value="ticks">Tick data (precise)</option>
+          </select>
         </label>
       </div>
       <div class="actions">
@@ -452,8 +521,9 @@
           <input type="checkbox" id="ob-force" /> Force re-download
         </label>
         <p class="table-note">
-          Same dates reuse the tick pack (RAM + disk). Leave force off when you are only
-          changing strategy params.
+          5m candles: first run builds <code>data/candles/5m/</code>; later runs reuse it.
+          Tick data: same dates reuse the tick pack (RAM + disk). Force also rebuilds 5m months
+          from ticks. Leave force off when you are only changing strategy params.
         </p>
       </div>
     </section>
@@ -479,6 +549,24 @@
       <div class="hero-grid" id="ob-hero"></div>
       <div class="ob-params" id="ob-run-params" hidden></div>
       <p class="table-note" id="ob-skip-breakdown"></p>
+      <h3>Streaks</h3>
+      <p class="table-note">
+        Consecutive wins / losses in date order. A scratch (0 pts) breaks the run.
+        Count = how many streaks of that length.
+      </p>
+      <div class="hero-grid" id="ob-streaks-hero"></div>
+      <div class="table-wrap">
+        <table id="ob-streaks">
+          <thead>
+            <tr>
+              <th>Length</th>
+              <th>Win streaks</th>
+              <th>Loss streaks</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
       <h3>By month</h3>
       <p class="table-note">Same stats as the overall run, split by local-date month.</p>
       <div class="table-wrap">
@@ -628,6 +716,7 @@
     past_flatten: "Past flatten hour",
     seasonal_bias: "Season / 2-week bias",
     news_day: "News day",
+    no_m12: "No 12m daily-close range",
   };
 
   const ENTRY_LABELS = {
@@ -658,6 +747,7 @@
     ["timeout_min_pullback_pts", "Timeout min pullback"],
     ["use_higher_close", "Close resume"],
     ["resume_closes", "Resume closes"],
+    ["resume_max_break_pts", "Resume max from break"],
     ["skip_late_short_wait", "Late short wait ≥"],
     ["skip_late_short_asia_pts", "Late short Asia <"],
     ["side_filter", "Side"],
@@ -673,6 +763,7 @@
     ["sl_fixed_pts", "SL fixed"],
     ["sl_range_mult", "SL range ×"],
     ["sl_cap_pts", "SL cap"],
+    ["sl_m12_frac", "SL 12m frac"],
     ["tp_mode", "TP mode"],
     ["tp_fixed_pts", "TP fixed"],
     ["tp_range_mult", "TP range ×"],
@@ -681,6 +772,7 @@
     ["trail_arm_pts", "Trail arm pts"],
     ["trail_arm_cap_pts", "Trail arm cap"],
     ["trail_pts", "Trail pts"],
+    ["be_arm_pts", "BE arm pts"],
     ["max_hold_hours", "Max hold h"],
     ["flatten_hour", "Flatten hour"],
     ["one_trade_per_day", "One per day"],
@@ -704,6 +796,7 @@
     timeout_min_pullback_pts: "ob-timeout-min-pullback",
     use_higher_close: "ob-higher-close",
     resume_closes: "ob-resume-closes",
+    resume_max_break_pts: "ob-resume-max-break",
     skip_late_short_wait: "ob-late-short-wait",
     skip_late_short_asia_pts: "ob-late-short-asia",
     side_filter: "ob-side",
@@ -718,6 +811,7 @@
     sl_fixed_pts: "ob-sl-fixed",
     sl_range_mult: "ob-sl-range-mult",
     sl_cap_pts: "ob-sl-cap",
+    sl_m12_frac: "ob-sl-m12-frac",
     tp_mode: "ob-tp-mode",
     tp_fixed_pts: "ob-tp-fixed",
     tp_range_mult: "ob-tp-range-mult",
@@ -726,6 +820,7 @@
     trail_arm_pts: "ob-trail-arm",
     trail_arm_cap_pts: "ob-trail-arm-cap",
     trail_pts: "ob-trail",
+    be_arm_pts: "ob-be-arm",
     max_hold_hours: "ob-max-hold",
     flatten_hour: "ob-flatten",
     one_trade_per_day: "ob-one-per-day",
@@ -735,6 +830,14 @@
     if (raw == null || raw === "") return "—";
     if (typeof raw === "boolean") return raw ? "yes" : "no";
     if (key === "week2_mode" && (raw === "off" || raw === false)) return "off";
+    if (key === "sl_m12_frac") {
+      const x = Number(raw);
+      if (Math.abs(x - 0.25) < 0.03) return "1/4";
+      if (Math.abs(x - 0.5) < 0.03) return "1/2";
+      return "1/3";
+    }
+    if (key === "tp_mode" && raw === "m12") return "12m avg";
+    if (key === "sl_mode" && raw === "m12_frac") return "12m × frac";
     return String(raw);
   }
 
@@ -831,6 +934,7 @@
     if (result.symbol && $("ob-symbol")) $("ob-symbol").value = "XAUUSD";
     if (result.date_from && $("ob-from")) $("ob-from").value = String(result.date_from).slice(0, 10);
     if (result.date_to && $("ob-to")) $("ob-to").value = String(result.date_to).slice(0, 10);
+    if (result.data_source && $("ob-data")) $("ob-data").value = String(result.data_source);
     Object.keys(PARAM_FORM_IDS).forEach(function (key) {
       if (!Object.prototype.hasOwnProperty.call(p, key)) return;
       const el = $(PARAM_FORM_IDS[key]);
@@ -838,11 +942,17 @@
       const v = p[key];
       if (el.type === "checkbox") el.checked = !!v;
       else if (key === "timeout_action" && v === "worst") el.value = "market";
-      else el.value = v == null ? "" : String(v);
+      else if (key === "sl_m12_frac") {
+        const x = Number(v);
+        if (Math.abs(x - 0.25) < 0.03) el.value = "0.25";
+        else if (Math.abs(x - 0.5) < 0.03) el.value = "0.5";
+        else el.value = "0.333333";
+      } else el.value = v == null ? "" : String(v);
     });
     syncPullbackControls();
     syncTrailArmControls();
     syncSlControls();
+    syncTpControls();
     scheduleSave();
   }
 
@@ -854,6 +964,77 @@
       (value == null ? "—" : value) +
       "</div></div>"
     );
+  }
+
+  function streakLenMap(raw) {
+    const out = {};
+    if (!raw || typeof raw !== "object") return out;
+    Object.keys(raw).forEach(function (k) {
+      const n = Number(k);
+      if (!(n > 0)) return;
+      out[n] = Number(raw[k]) || 0;
+    });
+    return out;
+  }
+
+  function renderStreaks(result, heroEl, tbody) {
+    const s = (result && result.streaks) || {};
+    const cur = s.current;
+    const curLabel = cur && cur.side && cur.len
+      ? cur.len +
+        " " +
+        (cur.side === "win"
+          ? cur.len === 1
+            ? "win"
+            : "wins"
+          : cur.len === 1
+            ? "loss"
+            : "losses")
+      : "—";
+    if (heroEl) {
+      heroEl.innerHTML =
+        heroItem("Max win streak", s.max_win != null ? s.max_win : "—") +
+        heroItem("Max loss streak", s.max_loss != null ? s.max_loss : "—") +
+        heroItem("Win streaks", s.win_streaks != null ? s.win_streaks : "—") +
+        heroItem("Loss streaks", s.loss_streaks != null ? s.loss_streaks : "—") +
+        heroItem("Current", curLabel);
+    }
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    const wins = streakLenMap(s.win_by_len);
+    const losses = streakLenMap(s.loss_by_len);
+    const lens = {};
+    Object.keys(wins).forEach(function (k) {
+      lens[k] = true;
+    });
+    Object.keys(losses).forEach(function (k) {
+      lens[k] = true;
+    });
+    const rows = Object.keys(lens)
+      .map(Number)
+      .filter(function (n) {
+        return n > 0;
+      })
+      .sort(function (a, b) {
+        return a - b;
+      });
+    if (!rows.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="3" class="muted">No win/loss streaks</td></tr>';
+      return;
+    }
+    rows.forEach(function (len) {
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td>" +
+        len +
+        "</td><td>" +
+        (wins[len] || 0) +
+        "</td><td>" +
+        (losses[len] || 0) +
+        "</td>";
+      tbody.appendChild(tr);
+    });
   }
 
   function dash(v) {
@@ -1063,6 +1244,8 @@
     const meta = $("ob-meta");
     const hero = $("ob-hero");
     const breakdown = $("ob-skip-breakdown");
+    const streakHero = $("ob-streaks-hero");
+    const stb = $("ob-streaks") && $("ob-streaks").querySelector("tbody");
     const mb = $("ob-months") && $("ob-months").querySelector("tbody");
     const tb = $("ob-table") && $("ob-table").querySelector("tbody");
     const sb = $("ob-skips") && $("ob-skips").querySelector("tbody");
@@ -1071,6 +1254,8 @@
       if (hero) hero.innerHTML = "";
       renderRunParams(null);
       if (breakdown) breakdown.textContent = "";
+      if (streakHero) streakHero.innerHTML = "";
+      if (stb) stb.innerHTML = "";
       if (mb) mb.innerHTML = "";
       if (tb) tb.innerHTML = "";
       if (sb) sb.innerHTML = "";
@@ -1078,12 +1263,19 @@
     }
     if (meta) {
       const monthErrs = result.month_errors || [];
+      const srcLabel =
+        result.data_source === "candles_5m"
+          ? " · 5m candles"
+          : result.data_source === "ticks"
+            ? " · ticks"
+            : "";
       meta.textContent =
         (result.symbol || "") +
         " · " +
         (result.date_from || "") +
         " → " +
         (result.date_to || "") +
+        srcLabel +
         " · " +
         (result.trades || 0) +
         " trades · " +
@@ -1103,11 +1295,13 @@
         heroItem("PF", result.profit_factor != null ? result.profit_factor : "—") +
         heroItem("Sum pts", result.sum_pts) +
         heroItem("Trail armed %", result.trail_armed_pct != null ? result.trail_armed_pct + "%" : "—") +
+        heroItem("BE armed %", result.be_armed_pct != null ? result.be_armed_pct + "%" : "—") +
         heroItem("Avg win", result.avg_win_pts) +
         heroItem("Avg loss", result.avg_loss_pts) +
         heroItem("Skipped", result.skipped);
     }
     renderRunParams(result);
+    renderStreaks(result, streakHero, stb);
     if (breakdown) {
       const entries = result.entries || {};
       const entryParts = Object.keys(entries)
@@ -1230,6 +1424,7 @@
             "</td><td>" +
             dash(t.trail_arm_used) +
             (t.trail_armed ? " Y" : "") +
+            (t.be_armed ? " BE" : "") +
             '</td><td class="' +
             ptsClass +
             '">' +
@@ -1380,12 +1575,14 @@
         timeout_min_pullback_pts: Number(($("ob-timeout-min-pullback") && $("ob-timeout-min-pullback").value) || 0),
         use_higher_close: $("ob-higher-close") && $("ob-higher-close").checked,
         resume_closes: Math.max(1, Number($("ob-resume-closes") && $("ob-resume-closes").value) || 1),
+        resume_max_break_pts: Number(($("ob-resume-max-break") && $("ob-resume-max-break").value) || 0),
         skip_late_short_wait: Math.max(0, Number($("ob-late-short-wait") && $("ob-late-short-wait").value) || 0),
         skip_late_short_asia_pts: Number(($("ob-late-short-asia") && $("ob-late-short-asia").value) || 0),
         sl_mode: $("ob-sl-mode").value,
         sl_fixed_pts: Number($("ob-sl-fixed").value),
         sl_range_mult: Number($("ob-sl-range-mult").value),
         sl_cap_pts: Number(($("ob-sl-cap") && $("ob-sl-cap").value) || 0),
+        sl_m12_frac: Number(($("ob-sl-m12-frac") && $("ob-sl-m12-frac").value) || 1 / 3),
         tp_mode: $("ob-tp-mode").value,
         tp_fixed_pts: Number($("ob-tp-fixed").value),
         tp_range_mult: Number($("ob-tp-range-mult").value),
@@ -1394,6 +1591,7 @@
         trail_arm_pts: Number($("ob-trail-arm").value),
         trail_arm_cap_pts: Number(($("ob-trail-arm-cap") && $("ob-trail-arm-cap").value) || 0),
         trail_pts: Number($("ob-trail").value),
+        be_arm_pts: Number(($("ob-be-arm") && $("ob-be-arm").value) || 0),
         max_hold_hours: Number($("ob-max-hold").value),
         flatten_hour: Number($("ob-flatten").value),
         one_trade_per_day: $("ob-one-per-day") && $("ob-one-per-day").checked,
@@ -1408,6 +1606,7 @@
         news_set: ($("ob-news-set") && $("ob-news-set").value) || "scheduled",
         workers: Math.max(1, Math.min(6, Number($("ob-workers") && $("ob-workers").value) || 3)),
         force_download: $("ob-force") && $("ob-force").checked,
+        data_source: ($("ob-data") && $("ob-data").value) || "candles_5m",
       };
       saveForm();
       savedPicker.clearViewing();
@@ -1443,6 +1642,7 @@
   syncPullbackControls();
   syncTrailArmControls();
   syncSlControls();
+  syncTpControls();
   const modeEl = $("ob-pullback-mode");
   if (modeEl) modeEl.addEventListener("change", syncPullbackControls);
   const resumeEl = $("ob-higher-close");
@@ -1451,6 +1651,8 @@
   if (trailModeEl) trailModeEl.addEventListener("change", syncTrailArmControls);
   const slModeEl = $("ob-sl-mode");
   if (slModeEl) slModeEl.addEventListener("change", syncSlControls);
+  const tpModeEl = $("ob-tp-mode");
+  if (tpModeEl) tpModeEl.addEventListener("change", syncTpControls);
   wireDecisionTips();
   wireTabs();
   wireRun();

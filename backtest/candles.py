@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone, tzinfo
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Sequence, Union
 from zoneinfo import ZoneInfo
 
 from backtest import config
@@ -251,3 +251,59 @@ class CandleBuilder:
 
     def get_completed_candles(self, count: int = 5) -> List[Candle]:
         return self.completed_candles[-count:]
+
+
+def build_candles(
+    ticks: Sequence,
+    timeframe_minutes: int = 5,
+    skip_ignored: bool = False,
+) -> List[Candle]:
+    """Completed OHLC bars from mids. Drops the in-progress last bar."""
+    builder = CandleBuilder(
+        timeframe_minutes=int(timeframe_minutes),
+        max_completed=10**12,
+        skip_ignored=skip_ignored,
+    )
+    out: List[Candle] = []
+    for t in ticks:
+        closed = builder.add_price(float(t.mid), t.ts)
+        if closed is not None:
+            out.append(closed)
+    return out
+
+
+def aggregate_tf(candles: Sequence[Candle], tf_min: int) -> List[Candle]:
+    """Closed higher-TF bars from a finer UTC bucket. Oldest → newest."""
+    step = int(tf_min) * 60
+    if step <= 0 or not candles:
+        return []
+    buckets: Dict[int, List[Candle]] = {}
+    order: List[int] = []
+    for c in candles:
+        ts = int(to_utc(c.open_time).timestamp())
+        key = ts - (ts % step)
+        if key not in buckets:
+            buckets[key] = []
+            order.append(key)
+        buckets[key].append(c)
+    out: List[Candle] = []
+    now_limit = to_utc(candles[-1].close_time)
+    for key in order:
+        parts = buckets[key]
+        start = datetime.fromtimestamp(key, tz=timezone.utc)
+        end = start + timedelta(minutes=int(tf_min))
+        if end > now_limit + timedelta(seconds=1):
+            continue
+        out.append(
+            Candle(
+                open_time=start,
+                close_time=end,
+                open=parts[0].open,
+                high=max(p.high for p in parts),
+                low=min(p.low for p in parts),
+                close=parts[-1].close,
+                is_closed=True,
+                tick_count=sum(p.tick_count for p in parts),
+            )
+        )
+    return out

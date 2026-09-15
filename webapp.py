@@ -492,12 +492,14 @@ class OvernightRunRequest(BaseModel):
     timeout_min_pullback_pts: float = 0.0
     use_higher_close: bool = True
     resume_closes: int = 1
+    resume_max_break_pts: float = 0.0
     skip_late_short_wait: int = 7
     skip_late_short_asia_pts: float = 3000.0
     sl_mode: str = "asia_opposite"
     sl_fixed_pts: float = 500.0
     sl_range_mult: float = 1.0
     sl_cap_pts: float = 0.0
+    sl_m12_frac: float = 1.0 / 3.0
     tp_mode: str = "range_mult"
     tp_fixed_pts: float = 1000.0
     tp_range_mult: float = 1.5
@@ -506,6 +508,7 @@ class OvernightRunRequest(BaseModel):
     trail_arm_pts: float = 400.0
     trail_arm_cap_pts: float = 2000.0
     trail_pts: float = 250.0
+    be_arm_pts: float = 0.0
     max_hold_hours: float = 10.0
     flatten_hour: int = 18
     one_trade_per_day: bool = True
@@ -521,6 +524,7 @@ class OvernightRunRequest(BaseModel):
     news_set: str = "scheduled"
     workers: int = 3
     force_download: bool = False
+    data_source: str = "candles_5m"
 
 
 @app.get("/api/overnight")
@@ -551,12 +555,16 @@ def overnight_run(body: OvernightRunRequest):
         timeout_min_pullback_pts=float(body.timeout_min_pullback_pts or 0.0),
         use_higher_close=bool(body.use_higher_close),
         resume_closes=max(1, int(body.resume_closes or 1)),
+        resume_max_break_pts=max(0.0, float(body.resume_max_break_pts or 0.0)),
         skip_late_short_wait=max(0, int(body.skip_late_short_wait or 0)),
         skip_late_short_asia_pts=float(body.skip_late_short_asia_pts or 0.0),
         sl_mode=str(body.sl_mode or "asia_opposite"),
         sl_fixed_pts=float(body.sl_fixed_pts),
         sl_range_mult=float(body.sl_range_mult),
         sl_cap_pts=float(body.sl_cap_pts or 0.0),
+        sl_m12_frac=float(
+            body.sl_m12_frac if body.sl_m12_frac is not None else (1.0 / 3.0)
+        ),
         tp_mode=str(body.tp_mode or "range_mult"),
         tp_fixed_pts=float(body.tp_fixed_pts),
         tp_range_mult=float(body.tp_range_mult),
@@ -565,6 +573,7 @@ def overnight_run(body: OvernightRunRequest):
         trail_arm_pts=float(body.trail_arm_pts),
         trail_arm_cap_pts=float(body.trail_arm_cap_pts),
         trail_pts=float(body.trail_pts),
+        be_arm_pts=max(0.0, float(body.be_arm_pts or 0.0)),
         max_hold_hours=float(body.max_hold_hours),
         flatten_hour=int(body.flatten_hour),
         one_trade_per_day=bool(body.one_trade_per_day),
@@ -582,6 +591,11 @@ def overnight_run(body: OvernightRunRequest):
         news_set=str(body.news_set or "scheduled"),
         workers=max(1, min(6, int(body.workers or 1))),
         force_download=bool(body.force_download),
+        data_source=(
+            "ticks"
+            if str(body.data_source or "").strip().lower() == "ticks"
+            else "candles_5m"
+        ),
     )
     out = start_overnight_job(params)
     if not out.get("ok"):

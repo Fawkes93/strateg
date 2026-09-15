@@ -23,6 +23,7 @@ from backtest.dukascopy import (
     parse_ymd,
     reaktor_symbol,
 )
+from backtest.candle_packs import load_candles_range
 from backtest.overnight_break import (
     OvernightParams,
     OvernightSkip,
@@ -30,7 +31,9 @@ from backtest.overnight_break import (
     asia_window_start_utc,
     require_zone,
     run_overnight,
+    run_overnight_on_candles,
     summarize_overnight,
+    uses_m12,
 )
 from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS, _parse_range, load_ticks, unique_result_path
 from backtest.job_memory import release_job_memory, retain_result, slim_state_result_inplace
@@ -80,6 +83,7 @@ class OvernightJobParams:
     timeout_min_pullback_pts: float = 0.0
     use_higher_close: bool = True
     resume_closes: int = 1
+    resume_max_break_pts: float = 0.0
     skip_late_short_wait: int = 7
     skip_late_short_asia_pts: float = 3000.0
     # Risk
@@ -87,6 +91,7 @@ class OvernightJobParams:
     sl_fixed_pts: float = 500.0
     sl_range_mult: float = 1.0
     sl_cap_pts: float = 0.0
+    sl_m12_frac: float = 1.0 / 3.0
     tp_mode: str = "range_mult"
     tp_fixed_pts: float = 1000.0
     tp_range_mult: float = 1.5
@@ -95,6 +100,7 @@ class OvernightJobParams:
     trail_arm_pts: float = 400.0
     trail_arm_cap_pts: float = 2000.0
     trail_pts: float = 250.0
+    be_arm_pts: float = 0.0
     max_hold_hours: float = 10.0
     flatten_hour: int = 18
     one_trade_per_day: bool = True
@@ -110,6 +116,7 @@ class OvernightJobParams:
     news_set: str = "scheduled"  # scheduled | all
     workers: int = 3
     force_download: bool = False
+    data_source: str = "candles_5m"  # candles_5m | ticks
 
 
 @dataclass
@@ -327,6 +334,14 @@ def _chunk_lookback_start(date_from: str, op: OvernightParams) -> datetime:
     ) not in ("", "off")
     if w2:
         ema = min(ema, parse_ymd(date_from) - timedelta(days=TREND_LOOKBACK_DAYS))
+    if uses_m12(op):
+        first = date(day.year, day.month, 1)
+        y, m = first.year - 1, first.month
+        m12_day = date(y, m, 1)
+        m12_asia = asia_window_start_utc(
+            m12_day, op.timezone, op.asia_start_hour, op.asia_end_hour
+        )
+        ema = min(ema, m12_asia)
     return min(asia, ema)
 
 
@@ -527,6 +542,9 @@ def _run_month_job(payload: Dict[str, Any]) -> Dict[str, Any]:
     b = payload["date_to"]
     symbol = payload["symbol"]
     force = bool(payload.get("force_download"))
+    data_source = str(payload.get("data_source") or "candles_5m").strip().lower()
+    if data_source not in ("candles_5m", "ticks"):
+        data_source = "candles_5m"
     op = OvernightParams(**payload["op"])
     q = payload.get("progress_q")
     idx = _job_index(payload, 0)
@@ -573,6 +591,42 @@ def _run_month_job(payload: Dict[str, Any]) -> Dict[str, Any]:
         )
 
     try:
+        if data_source == "candles_5m":
+            emit("load", message="load 5m candles…")
+            lookback = _chunk_lookback_start(a, op)
+            _, end = _parse_range(a, b)
+            candles = load_candles_range(
+                symbol,
+                lookback,
+                end,
+                tf_min=5,
+                force=force,
+                progress=load_prog,
+            )
+            raw = run_overnight_on_candles(
+                candles, symbol=symbol, params=op, progress=walk_prog
+            )
+            n_ticks = len(candles)
+            trade_rows = [
+                r for r in (raw.get("rows") or []) if a <= r["local_date"] < b
+            ]
+            skip_rows = [
+                r for r in (raw.get("skips") or []) if a <= r["local_date"] < b
+            ]
+            del candles
+            del raw
+            gc.collect()
+            return {
+                "ok": True,
+                "index": idx,
+                "date_from": a,
+                "date_to": b,
+                "ticks": n_ticks,
+                "rows": trade_rows,
+                "skips": skip_rows,
+                "error": None,
+            }
+
         emit("load", message="load pack…")
         ticks = load_ticks(
             symbol=symbol,
@@ -662,12 +716,14 @@ def _run(params: OvernightJobParams) -> None:
             timeout_min_pullback_pts=float(params.timeout_min_pullback_pts or 0.0),
             use_higher_close=bool(params.use_higher_close),
             resume_closes=max(1, int(params.resume_closes or 1)),
+            resume_max_break_pts=max(0.0, float(params.resume_max_break_pts or 0.0)),
             skip_late_short_wait=max(0, int(params.skip_late_short_wait or 0)),
             skip_late_short_asia_pts=float(params.skip_late_short_asia_pts or 0.0),
             sl_mode=str(params.sl_mode or "asia_opposite"),
             sl_fixed_pts=float(params.sl_fixed_pts),
             sl_range_mult=float(params.sl_range_mult),
             sl_cap_pts=float(params.sl_cap_pts or 0.0),
+            sl_m12_frac=float(params.sl_m12_frac if params.sl_m12_frac is not None else (1.0 / 3.0)),
             tp_mode=str(params.tp_mode or "range_mult"),
             tp_fixed_pts=float(params.tp_fixed_pts),
             tp_range_mult=float(params.tp_range_mult),
@@ -676,6 +732,7 @@ def _run(params: OvernightJobParams) -> None:
             trail_arm_pts=float(params.trail_arm_pts),
             trail_arm_cap_pts=float(params.trail_arm_cap_pts),
             trail_pts=float(params.trail_pts),
+            be_arm_pts=max(0.0, float(params.be_arm_pts or 0.0)),
             max_hold_hours=float(params.max_hold_hours),
             flatten_hour=int(params.flatten_hour),
             one_trade_per_day=bool(params.one_trade_per_day),
@@ -774,6 +831,7 @@ def _run(params: OvernightJobParams) -> None:
                         "date_to": b,
                         "symbol": params.symbol,
                         "force_download": params.force_download,
+                        "data_source": params.data_source,
                         "op": op_dict,
                         "progress_q": _CallbackQueue(on_put),
                     }
@@ -794,6 +852,7 @@ def _run(params: OvernightJobParams) -> None:
                         "date_to": b,
                         "symbol": params.symbol,
                         "force_download": params.force_download,
+                        "data_source": params.data_source,
                         "op": op_dict,
                         "progress_q": progress_q,
                     }
@@ -938,12 +997,16 @@ def _run(params: OvernightJobParams) -> None:
             raise RuntimeError(
                 _empty_run_error(errors, total_ticks=total_ticks, n_months=n_m)
             )
+        src = str(params.data_source or "candles_5m").strip().lower()
+        if src not in ("candles_5m", "ticks"):
+            src = "candles_5m"
         result = summarize_overnight(
             all_trades,
             all_skips,
             op,
             symbol=reaktor_symbol(params.symbol),
             ticks=total_ticks,
+            data_source=src,
         )
         result["date_from"] = params.date_from
         result["date_to"] = params.date_to

@@ -15,7 +15,7 @@ If both filter and they disagree, tag both and do not skip.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Sequence
 from zoneinfo import ZoneInfo
 
@@ -132,6 +132,35 @@ def build_daily_closes(
     for t in ticks:
         d = t.ts.astimezone(tz).date()
         px = t.mid
+        if cur_day is None:
+            cur_day = d
+            cur_close = px
+            continue
+        if d != cur_day:
+            out.append(DailyClose(local_date=cur_day, close=cur_close))
+            cur_day = d
+        cur_close = px
+    if cur_day is not None:
+        out.append(DailyClose(local_date=cur_day, close=cur_close))
+    return out
+
+
+def build_daily_closes_from_candles(
+    candles: Sequence,
+    tz_name: str = "Europe/Bucharest",
+) -> List[DailyClose]:
+    if not candles:
+        return []
+    tz = ZoneInfo(tz_name)
+    out: List[DailyClose] = []
+    cur_day: Optional[date] = None
+    cur_close = 0.0
+    for c in candles:
+        ts = c.close_time
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        d = ts.astimezone(tz).date()
+        px = float(c.close)
         if cur_day is None:
             cur_day = d
             cur_close = px

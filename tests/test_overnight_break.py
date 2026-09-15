@@ -10,12 +10,18 @@ from backtest.overnight_break import (
     _asia_extensions,
     _compute_sl_tp,
     _decision_line,
+    m12_avg_pts,
+    round_pts_up,
+    _ema_touch_from_candle,
     _excursion_from,
     _mk_skip,
+    _simulate_from_candles,
     asia_window_start_utc,
     entry_label,
     late_short_blocked,
+    resume_too_far_from_break,
     run_overnight,
+    run_overnight_on_candles,
     timeout_quality_blocked,
     summarize_overnight,
     trail_arm_for_range,
@@ -525,6 +531,48 @@ def test_legacy_ema_pullback_mode_aliases_resume_off():
     assert skips and skips[0]["reason"] == "no_pullback"
 
 
+def test_resume_too_far_from_break_helper():
+    params = OvernightParams(resume_max_break_pts=200.0)
+    # DOWN: close 5 pts below break = 500 pts through
+    assert resume_too_far_from_break(params, "DOWN", 3295.0, 3300.0, 0.01) is True
+    assert resume_too_far_from_break(params, "DOWN", 3298.5, 3300.0, 0.01) is False
+    # pullback side of the break always allowed
+    assert resume_too_far_from_break(params, "DOWN", 3301.0, 3300.0, 0.01) is False
+    assert resume_too_far_from_break(params, "UP", 3301.5, 3300.0, 0.01) is False
+    assert resume_too_far_from_break(params, "UP", 3303.0, 3300.0, 0.01) is True
+    off = OvernightParams(resume_max_break_pts=0.0)
+    assert resume_too_far_from_break(off, "DOWN", 3295.0, 3300.0, 0.01) is False
+
+
+def test_resume_max_break_pts_blocks_chase():
+    ticks = _utc_down_break_ticks((3300.0, 3302.0, 3294.0, 3295.0))
+    base = dict(
+        timezone="UTC",
+        pullback_mode="required",
+        use_higher_close=True,
+        ema_period=100,
+        min_asia_range_pts=300.0,
+        min_break_pts_below=200.0,
+        min_break_pts_above=200.0,
+    )
+    blocked = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=OvernightParams(resume_max_break_pts=200.0, **base),
+    )
+    assert blocked["trades"] == 0
+    skips = [s for s in blocked["skips"] if s.get("side") == "DOWN"]
+    assert skips and skips[0]["reason"] == "no_pullback"
+
+    allowed = run_overnight(
+        ticks,
+        symbol="XAU/USD",
+        params=OvernightParams(resume_max_break_pts=600.0, **base),
+    )
+    assert allowed["trades"] == 1
+    assert allowed["rows"][0]["entry_reason"] == "lower_close"
+
+
 def test_wick_break_when_close_is_still_inside():
     """Min-break can use the wick: high/low vs Asia, even if the 15m closes back inside."""
     start = datetime(2026, 3, 31, 21, 0, tzinfo=timezone.utc)
@@ -620,7 +668,7 @@ def test_from_fill_trail_tightens_one_for_one():
         flatten_hour=23,
         max_hold_hours=10.0,
     )
-    reason, _ts, px, pts, armed, _fav, _adv, best, _worst = _simulate_from_entry(
+    reason, _ts, px, pts, armed, _fav, _adv, best, _worst, *_rest = _simulate_from_entry(
         ticks,
         0,
         side="UP",
@@ -753,6 +801,38 @@ def test_summarize_overnight_by_month():
     assert months["2025-07"]["skipped"] == 1
     assert out["trades"] == 3
     assert out["sum_pts"] == 170.0
+
+
+def test_summarize_overnight_streaks():
+    trades = [
+        _summary_trade("2025-05-01", 100.0),
+        _summary_trade("2025-05-02", 80.0),
+        _summary_trade("2025-05-03", -50.0),
+        _summary_trade("2025-05-04", 20.0),
+        _summary_trade("2025-05-05", -10.0),
+        _summary_trade("2025-05-06", -20.0),
+        _summary_trade("2025-05-07", -30.0),
+        _summary_trade("2025-05-08", 0.0),
+        _summary_trade("2025-05-09", 40.0),
+    ]
+    out = summarize_overnight(
+        trades, [], OvernightParams(), symbol="XAU/USD", ticks=9
+    )
+    s = out["streaks"]
+    assert s["max_win"] == 2
+    assert s["max_loss"] == 3
+    assert s["win_streaks"] == 3
+    assert s["loss_streaks"] == 2
+    assert s["win_by_len"] == {1: 2, 2: 1}
+    assert s["loss_by_len"] == {1: 1, 3: 1}
+    assert s["current"] == {"side": "win", "len": 1}
+
+    empty = summarize_overnight(
+        [], [], OvernightParams(), symbol="XAU/USD", ticks=0
+    )
+    assert empty["streaks"]["max_win"] == 0
+    assert empty["streaks"]["win_streaks"] == 0
+    assert empty["streaks"]["current"] is None
 
 
 def test_late_short_blocked_helper():
@@ -1442,6 +1522,82 @@ def test_week2_tag_without_season_still_takes_against_side():
     assert rows[0].get("trend_side") == "DOWN"
 
 
+def test_job_params_default_to_5m_candles():
+    from backtest.overnight_jobs import OvernightJobParams
+
+    assert OvernightJobParams().data_source == "candles_5m"
+
+
+def test_round_pts_up_to_50():
+    assert round_pts_up(0) == 0.0
+    assert round_pts_up(1) == 50.0
+    assert round_pts_up(50) == 50.0
+    assert round_pts_up(50.0) == 50.0
+    assert round_pts_up(51) == 100.0
+    assert round_pts_up(3847.3) == 3850.0
+
+
+def test_m12_avg_is_mean_of_prior_month_daily_close_ranges():
+    from backtest.seasonality import DailyClose
+
+    def days(year, month, closes):
+        return [
+            DailyClose(local_date=date(year, month, i + 1), close=px)
+            for i, px in enumerate(closes)
+        ]
+
+    dailies = (
+        days(2025, 1, [3300.0, 3310.0])  # 10 / 0.01 = 1000 pts
+        + days(2025, 2, [3310.0, 3330.0])  # 2000
+        + days(2025, 3, [3330.0, 3345.0])  # 1500
+        + days(2025, 4, [3400.0, 3500.0])  # must not count for April asof
+    )
+    avg = m12_avg_pts(dailies, date(2025, 4, 10), ps=0.01, n=12)
+    assert avg == (1000.0 + 2000.0 + 1500.0) / 3.0
+
+
+def test_compute_sl_tp_m12_frac_rounds_up_to_50():
+    params = OvernightParams(
+        tp_mode="m12",
+        sl_mode="m12_frac",
+        sl_m12_frac=0.25,
+        sl_cap_pts=0.0,
+    )
+    sl, tp, sl_pts, tp_pts = _compute_sl_tp(
+        "UP", 3300.0, 3310.0, 3290.0, params, 0.01, m12_pts=3847.3
+    )
+    assert tp_pts == 3850.0
+    assert sl_pts == 1000.0
+    assert abs(tp - 3338.5) < 1e-9
+    assert abs(sl - 3290.0) < 1e-9
+
+
+def test_compute_sl_tp_m12_with_fixed_sl():
+    params = OvernightParams(
+        tp_mode="m12",
+        sl_mode="fixed",
+        sl_fixed_pts=500.0,
+    )
+    _sl, _tp, sl_pts, tp_pts = _compute_sl_tp(
+        "DOWN", 3300.0, 3310.0, 3290.0, params, 0.01, m12_pts=1201.0
+    )
+    assert sl_pts == 500.0
+    assert tp_pts == 1250.0
+
+
+def test_chunk_lookback_extends_for_m12():
+    from backtest.overnight_jobs import _chunk_lookback_start
+
+    off = _chunk_lookback_start("2026-04-01", OvernightParams())
+    on = _chunk_lookback_start("2026-04-01", OvernightParams(tp_mode="m12"))
+    sl_on = _chunk_lookback_start(
+        "2026-04-01", OvernightParams(sl_mode="m12_frac")
+    )
+    assert on < off
+    assert on == datetime(2025, 3, 31, 21, 0, tzinfo=timezone.utc)
+    assert sl_on == on
+
+
 def test_week2_lookback_extends_when_enabled():
     from backtest.overnight_jobs import _chunk_lookback_start
 
@@ -1450,3 +1606,360 @@ def test_week2_lookback_extends_when_enabled():
         "2026-04-01", OvernightParams(week2_trend=True)
     )
     assert on < off
+
+
+def _c5(open_time, o, h, l, c):
+    return Candle(
+        open_time=open_time,
+        close_time=open_time + timedelta(minutes=5),
+        open=o,
+        high=h,
+        low=l,
+        close=c,
+        is_closed=True,
+        tick_count=3,
+    )
+
+
+def test_ema_touch_from_candle_pierce_fills_at_ema():
+    t0 = datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc)
+    long_bar = _c5(t0, 3312.0, 3314.0, 3308.0, 3311.0)
+    hit, ts, px, closest = _ema_touch_from_candle(
+        long_bar, side="UP", ema=3310.0, ps=0.01
+    )
+    assert hit is True
+    assert ts == t0
+    assert px == 3310.0
+    assert closest == (3308.0 - 3310.0) / 0.01
+
+    short_bar = _c5(t0, 3308.0, 3312.0, 3306.0, 3309.0)
+    hit, ts, px, closest = _ema_touch_from_candle(
+        short_bar, side="DOWN", ema=3310.0, ps=0.01
+    )
+    assert hit is True
+    assert px == 3310.0
+    assert closest == (3310.0 - 3312.0) / 0.01
+
+
+def test_ema_touch_from_candle_opened_through_fills_at_open():
+    t0 = datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc)
+    long_bar = _c5(t0, 3309.0, 3311.0, 3308.0, 3310.0)
+    hit, ts, px, closest = _ema_touch_from_candle(
+        long_bar, side="UP", ema=3310.0, ps=0.01
+    )
+    assert hit is True
+    assert px == 3309.0
+    assert ts == t0
+
+    miss = _c5(t0, 3312.0, 3315.0, 3311.0, 3313.0)
+    hit, ts, px, closest = _ema_touch_from_candle(
+        miss, side="UP", ema=3310.0, ps=0.01
+    )
+    assert hit is False
+    assert px is None
+    assert closest == (3311.0 - 3310.0) / 0.01
+
+
+def test_simulate_from_candles_sl_beats_tp_same_bar():
+    t0 = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    bars = [
+        _c5(t0, 3300.0, 3315.0, 3285.0, 3310.0),
+        _c5(t0 + timedelta(minutes=5), 3310.0, 3312.0, 3308.0, 3311.0),
+    ]
+    tz = ZoneInfo("UTC")
+    params = OvernightParams(trail_arm_mode="off", max_hold_hours=10.0)
+    reason, ts, px, pts, armed, fav, adv, best, worst, *_rest = _simulate_from_candles(
+        bars,
+        0,
+        side="UP",
+        entry=3300.0,
+        sl=3290.0,
+        tp=3310.0,
+        params=params,
+        ps=0.01,
+        tz=tz,
+        flatten_local=datetime(2025, 5, 6, 18, 0, tzinfo=tz),
+        trail_arm_pts=0.0,
+        trail_dist_pts=0.0,
+        trail_from_fill=False,
+    )
+    assert reason == "sl"
+    assert px == 3290.0
+    assert ts == t0
+
+
+def test_simulate_from_candles_trail_arms_and_stops_same_bar():
+    t0 = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    bars = [_c5(t0, 3300.0, 3310.0, 3296.0, 3302.0)]
+    tz = ZoneInfo("UTC")
+    params = OvernightParams(
+        trail_arm_mode="fixed",
+        trail_arm_pts=800.0,
+        trail_pts=250.0,
+        max_hold_hours=10.0,
+    )
+    reason, ts, px, pts, armed, fav, adv, best, worst, *_rest = _simulate_from_candles(
+        bars,
+        0,
+        side="UP",
+        entry=3300.0,
+        sl=3200.0,
+        tp=3400.0,
+        params=params,
+        ps=0.01,
+        tz=tz,
+        flatten_local=datetime(2025, 5, 6, 18, 0, tzinfo=tz),
+        trail_arm_pts=800.0,
+        trail_dist_pts=250.0,
+        trail_from_fill=False,
+    )
+    assert armed is True
+    assert reason == "trail"
+    assert abs(px - (3310.0 - 2.5)) < 1e-9
+
+
+def test_simulate_from_entry_be_stop_at_entry():
+    tz = ZoneInfo("UTC")
+    start = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    ticks = [
+        _tick(start, 3300.0),
+        _tick(start + timedelta(seconds=1), 3305.0),  # +500 pts
+        _tick(start + timedelta(seconds=2), 3299.0),
+    ]
+    params = OvernightParams(
+        trail_arm_mode="off",
+        be_arm_pts=400.0,
+        flatten_hour=23,
+        max_hold_hours=10.0,
+    )
+    reason, _ts, px, pts, _armed, _fav, _adv, _best, _worst, be_armed = _simulate_from_entry(
+        ticks,
+        0,
+        side="UP",
+        entry=3300.0,
+        sl=3280.0,
+        tp=3400.0,
+        params=params,
+        ps=0.01,
+        tz=tz,
+        flatten_local=datetime(2025, 5, 6, 23, 0, tzinfo=tz),
+        trail_arm_pts=0.0,
+        trail_dist_pts=0.0,
+        trail_from_fill=False,
+    )
+    assert be_armed is True
+    assert reason == "be"
+    assert abs(px - 3300.0) < 1e-9
+    assert abs(pts) < 1e-9
+
+
+def test_simulate_from_candles_be_same_bar_uses_entry_not_original_sl():
+    t0 = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    bars = [_c5(t0, 3300.0, 3305.0, 3285.0, 3290.0)]
+    tz = ZoneInfo("UTC")
+    params = OvernightParams(
+        trail_arm_mode="off",
+        be_arm_pts=400.0,
+        max_hold_hours=10.0,
+    )
+    reason, ts, px, pts, _armed, _fav, _adv, _best, _worst, be_armed = _simulate_from_candles(
+        bars,
+        0,
+        side="UP",
+        entry=3300.0,
+        sl=3280.0,
+        tp=3400.0,
+        params=params,
+        ps=0.01,
+        tz=tz,
+        flatten_local=datetime(2025, 5, 6, 18, 0, tzinfo=tz),
+        trail_arm_pts=0.0,
+        trail_dist_pts=0.0,
+        trail_from_fill=False,
+    )
+    assert be_armed is True
+    assert reason == "be"
+    assert abs(px - 3300.0) < 1e-9
+    assert abs(pts) < 1e-9
+
+
+def test_simulate_from_candles_be_off_still_hits_original_sl():
+    t0 = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    bars = [_c5(t0, 3300.0, 3305.0, 3280.0, 3290.0)]
+    tz = ZoneInfo("UTC")
+    params = OvernightParams(trail_arm_mode="off", be_arm_pts=0.0, max_hold_hours=10.0)
+    reason, _ts, px, _pts, _armed, _fav, _adv, _best, _worst, *_rest = _simulate_from_candles(
+        bars,
+        0,
+        side="UP",
+        entry=3300.0,
+        sl=3280.0,
+        tp=3400.0,
+        params=params,
+        ps=0.01,
+        tz=tz,
+        flatten_local=datetime(2025, 5, 6, 18, 0, tzinfo=tz),
+        trail_arm_pts=0.0,
+        trail_dist_pts=0.0,
+        trail_from_fill=False,
+    )
+    assert reason == "sl"
+    assert abs(px - 3280.0) < 1e-9
+
+
+def test_simulate_from_candles_trail_tighter_than_be():
+    t0 = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    bars = [_c5(t0, 3300.0, 3310.0, 3296.0, 3302.0)]
+    tz = ZoneInfo("UTC")
+    params = OvernightParams(
+        trail_arm_mode="fixed",
+        trail_arm_pts=800.0,
+        trail_pts=250.0,
+        be_arm_pts=400.0,
+        max_hold_hours=10.0,
+    )
+    reason, _ts, px, _pts, armed, _fav, _adv, _best, _worst, be_armed = _simulate_from_candles(
+        bars,
+        0,
+        side="UP",
+        entry=3300.0,
+        sl=3200.0,
+        tp=3400.0,
+        params=params,
+        ps=0.01,
+        tz=tz,
+        flatten_local=datetime(2025, 5, 6, 18, 0, tzinfo=tz),
+        trail_arm_pts=800.0,
+        trail_dist_pts=250.0,
+        trail_from_fill=False,
+    )
+    assert be_armed is True
+    assert armed is True
+    assert reason == "trail"
+    assert abs(px - (3310.0 - 2.5)) < 1e-9
+
+
+def test_run_overnight_on_candles_break_close_matches_signals():
+    """5m feed, 15m signals: Asia break down, enter on break close."""
+    start = datetime(2025, 5, 6, 0, 0, tzinfo=timezone.utc)
+    bars = []
+    px = 3310.0
+    t = start
+    while t < datetime(2025, 5, 6, 12, 0, tzinfo=timezone.utc):
+        o, h, l, c = px, px + 0.05, px - 0.05, px
+        if t == datetime(2025, 5, 6, 4, 0, tzinfo=timezone.utc):
+            o, h, l, c = 3310.0, 3320.0, 3308.0, 3315.0
+            px = c
+        elif t == datetime(2025, 5, 6, 5, 30, tzinfo=timezone.utc):
+            o, h, l, c = 3312.0, 3315.0, 3305.0, 3308.0
+            px = c
+        elif t == datetime(2025, 5, 6, 7, 0, tzinfo=timezone.utc):
+            o, h, l, c = 3310.0, 3311.0, 3310.0, 3310.5
+            px = c
+        elif t == datetime(2025, 5, 6, 7, 5, tzinfo=timezone.utc):
+            o, h, l, c = 3310.5, 3310.8, 3305.0, 3306.0
+            px = c
+        elif t == datetime(2025, 5, 6, 7, 10, tzinfo=timezone.utc):
+            o, h, l, c = 3306.0, 3307.0, 3299.0, 3300.0
+            px = c
+        bars.append(_c5(t, o, h, l, c))
+        t += timedelta(minutes=5)
+    params = OvernightParams(
+        timezone="UTC",
+        pullback_mode="off",
+        min_asia_range_pts=300.0,
+        min_break_pts_below=200.0,
+        min_break_pts_above=200.0,
+        trail_arm_mode="off",
+        sl_mode="fixed",
+        sl_fixed_pts=500.0,
+        tp_mode="fixed",
+        tp_fixed_pts=100000.0,
+    )
+    out = run_overnight_on_candles(bars, symbol="XAU/USD", params=params)
+    assert out["data_source"] == "candles_5m"
+    assert out["trades"] == 1
+    row = out["rows"][0]
+    assert row["side"] == "DOWN"
+    assert row["entry_reason"] == "break_close"
+    assert abs(row["entry"] - 3300.0) < 1e-9
+
+
+def test_run_month_job_uses_5m_candles_without_tick_packs():
+    from dataclasses import asdict
+
+    from backtest import overnight_jobs as jobs
+    from backtest.overnight_jobs import _run_month_job
+
+    start = datetime(2025, 5, 6, 0, 0, tzinfo=timezone.utc)
+    bars = []
+    px = 3310.0
+    t = start
+    while t < datetime(2025, 5, 6, 12, 0, tzinfo=timezone.utc):
+        o, h, l, c = px, px + 0.05, px - 0.05, px
+        if t == datetime(2025, 5, 6, 4, 0, tzinfo=timezone.utc):
+            o, h, l, c = 3310.0, 3320.0, 3308.0, 3315.0
+            px = c
+        elif t == datetime(2025, 5, 6, 5, 30, tzinfo=timezone.utc):
+            o, h, l, c = 3312.0, 3315.0, 3305.0, 3308.0
+            px = c
+        elif t == datetime(2025, 5, 6, 7, 0, tzinfo=timezone.utc):
+            o, h, l, c = 3310.0, 3311.0, 3310.0, 3310.5
+            px = c
+        elif t == datetime(2025, 5, 6, 7, 5, tzinfo=timezone.utc):
+            o, h, l, c = 3310.5, 3310.8, 3305.0, 3306.0
+            px = c
+        elif t == datetime(2025, 5, 6, 7, 10, tzinfo=timezone.utc):
+            o, h, l, c = 3306.0, 3307.0, 3299.0, 3300.0
+            px = c
+        bars.append(_c5(t, o, h, l, c))
+        t += timedelta(minutes=5)
+
+    loaded = {"n": 0}
+
+    def fake_load(*args, **kwargs):
+        loaded["n"] += 1
+        return bars
+
+    orig = jobs.load_candles_range
+    orig_ticks = jobs.load_ticks
+    jobs.load_candles_range = fake_load
+
+    def boom(*args, **kwargs):
+        raise AssertionError("tick packs should not load in 5m mode")
+
+    jobs.load_ticks = boom
+    try:
+        out = _run_month_job(
+            {
+                "index": 0,
+                "date_from": "2025-05-06",
+                "date_to": "2025-05-07",
+                "symbol": "XAUUSD",
+                "force_download": False,
+                "data_source": "candles_5m",
+                "op": asdict(
+                    OvernightParams(
+                        timezone="UTC",
+                        pullback_mode="off",
+                        min_asia_range_pts=300.0,
+                        min_break_pts_below=200.0,
+                        min_break_pts_above=200.0,
+                        trail_arm_mode="off",
+                        sl_mode="fixed",
+                        sl_fixed_pts=500.0,
+                        tp_mode="fixed",
+                        tp_fixed_pts=100000.0,
+                    )
+                ),
+            }
+        )
+    finally:
+        jobs.load_candles_range = orig
+        jobs.load_ticks = orig_ticks
+    assert out["ok"] is True
+    assert loaded["n"] == 1
+    assert out["error"] is None
+    assert len(out["rows"]) == 1
+    assert out["rows"][0]["entry_reason"] == "break_close"
+
