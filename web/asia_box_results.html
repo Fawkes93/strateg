@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Asia box results — Strateg</title>
+  <link rel="stylesheet" href="/static/app.css?v=20260916g" />
+</head>
+<body class="ab-page">
+  <header class="top">
+    <div>
+      <h1>Asia box catalog</h1>
+      <p class="sub">Filter trades across runs. Click a row to open the chart.</p>
+    </div>
+    <a class="ab-back" href="/">← Strateg</a>
+  </header>
+
+  <section class="card">
+    <h2>Filters</h2>
+    <div class="grid ab-filters">
+      <label>Run
+        <select id="ab-run"><option value="">All runs</option></select>
+      </label>
+      <div class="ab-run-actions">
+        <button type="button" class="ab-btn ab-btn-danger" id="ab-delete-run" disabled>Delete run</button>
+      </div>
+      <label>Setup
+        <select id="ab-setup">
+          <option value="">All</option>
+          <option value="continuation">Continuation</option>
+          <option value="reverse_confirm">Reverse Confirm</option>
+          <option value="reverse_ema">Reverse EMA</option>
+          <option value="shallow_ema">Shallow EMA</option>
+          <option value="shallow_confirm">Shallow Confirm</option>
+          <option value="ema_retest">EMA Retest</option>
+        </select>
+      </label>
+      <label>Side
+        <select id="ab-side">
+          <option value="">Both</option>
+          <option value="UP">UP</option>
+          <option value="DOWN">DOWN</option>
+        </select>
+      </label>
+      <label>Box
+        <select id="ab-box">
+          <option value="">Any</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+        </select>
+      </label>
+      <label>Exit
+        <select id="ab-exit">
+          <option value="">Any</option>
+          <option value="tp">tp</option>
+          <option value="sl">sl</option>
+          <option value="flatten">flatten</option>
+          <option value="eod">eod</option>
+        </select>
+      </label>
+      <label>From
+        <input type="date" id="ab-from" />
+      </label>
+      <label>To
+        <input type="date" id="ab-to" />
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Summary</h2>
+    <p id="ab-summary" class="hint">Loading…</p>
+  </section>
+
+  <section class="card">
+    <h2>Trades</h2>
+    <div class="table-wrap">
+      <table class="ab-table" id="ab-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Local</th>
+            <th>Setup</th>
+            <th>Box</th>
+            <th>Side</th>
+            <th>Entry</th>
+            <th>Exit</th>
+            <th>Pts</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+  <script src="/static/asia_box_results.js?v=20260916c"></script>
+</body>
+</html>

@@ -80,9 +80,11 @@ from backtest.fvg_jobs import (
     start_fvg_job,
     stop_fvg,
 )
+from backtest.asia_box_api import router as asia_box_router
 
 WEB_DIR = ROOT / "web"
 app = FastAPI(title="Strateg", version="0.5", docs_url="/docs")
+app.include_router(asia_box_router)
 
 
 class RunRequest(BaseModel):

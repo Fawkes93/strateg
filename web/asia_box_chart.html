@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Asia box chart — Strateg</title>
+  <link rel="stylesheet" href="/static/app.css?v=20260916k" />
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body class="ab-page">
+  <header class="top">
+    <div>
+      <h1 id="ab-title">Asia box trade</h1>
+      <p class="sub" id="ab-sub">Loading…</p>
+    </div>
+    <div class="ab-chart-actions">
+      <label class="ab-btn ab-magnet-toggle">
+        <input type="checkbox" id="ab-measure" checked />
+        Measure
+      </label>
+      <label class="ab-btn ab-magnet-toggle">
+        <input type="checkbox" id="ab-magnet" />
+        Magnet
+      </label>
+      <a id="ab-back" class="ab-back" href="/asia-box/results">← Catalog</a>
+    </div>
+  </header>
+  <section class="card ab-chart-card">
+    <div class="ab-chart-wrap">
+      <div id="ab-chart" class="ab-chart"></div>
+      <div id="ab-fib-labels" class="ab-fib-labels" aria-hidden="true"></div>
+      <svg id="ab-measure-svg" class="ab-measure-svg" aria-hidden="true"></svg>
+      <div id="ab-measure-label" class="ab-measure-label" hidden></div>
+    </div>
+    <ul id="ab-legend" class="ab-legend"></ul>
+  </section>
+  <script src="/static/asia_box_chart.js?v=20260916k"></script>
+</body>
+</html>

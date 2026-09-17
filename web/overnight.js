@@ -595,7 +595,7 @@
         Max fav / max adv = best and worst mid vs fill (break close on skips) until flatten hour, even if the trade already exited.
         Adv/SL = max adv vs SL pts (can exceed 100% when price kept going after the stop).
       </p>
-      <div class="table-wrap">
+      <div class="table-wrap table-sticky">
         <table id="ob-table">
           <thead>
             <tr>

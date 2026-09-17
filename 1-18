@@ -1,0 +1,31 @@
+Reverse owns the fib: close through `.786` kills every with-trend door on that box, including EMA retest. Box 2 is a new fib.
+
+Not many questions left — and we should **not** jump to an implementation plan yet. What’s left is either a default I can write into the spec for you to correct, or the actual product-shape choice.
+
+**I’ll default these unless you object:**
+
+- **Shallow confirm after `.382`:** 5m closes in the box direction, close still between Fib 0 and `.500`.
+- **Tainted continuation:** exactly **one** extra confirm; if that one also wicks `.786`, skip continuation (reverse still only on a close through).
+- **Min range:** configurable, default **3000** pts.
+- **Box 2:** strictly larger than box 1 **and** ≥ min range. High/low = running session extremes since 01:00 (including while trade 1 was open).
+- **Data:** 5m and ticks, same as Overnight; default **5m**.
+- **`.236` bounce:** toggle, default **off**.
+
+None of that changes where the tool lives.
+
+---
+
+**How to build it — three shapes. I recommend 1.**
+
+**1 — New Strateg tab + its own results/chart pages (recommended)**  
+Same app, same ticks/5m/jobs/session clock. New engine module (not a fork of Overnight). Run from a tab; SQLite catalog, filters, and click-into-chart are **separate routes** (`/asia-box/results`, `/asia-box/chart?trade=…`) so we don’t clone `overnight.js`. Schema is Asia-box-specific with a `kind` column. Overnight stays on JSON.
+
+Why: you already have the expensive parts (Dukascopy, candle packs, job runner). A second repo would copy that and drift. Charts + SQLite are a real UI, not another block on the Overnight tab.
+
+**2 — New tab only, Overnight-style**  
+Everything on one tab: params, run, JSON-like table, chart stuffed in. Fastest to look familiar, worst to live in — that JS is already huge, and a filterable catalog + TradingView-style fibs won’t fit.
+
+**3 — Standalone project**  
+Reuse ideas, copy data loaders. Cleanest isolation, and SQLite/charts feel native. Cost: two apps, two tick caches, two job runners, and you’ll want Overnight’s data modes anyway.
+
+I’d do **1**. If that matches, next I’ll walk the design in sections (engine state machine + named setups, SQLite, chart page) and only then write the spec — still no code.
