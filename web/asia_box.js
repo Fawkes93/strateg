@@ -17,7 +17,9 @@
     "ab-from",
     "ab-to",
     "ab-tz",
+    "ab-min-mode",
     "ab-min-range",
+    "ab-min-pct",
     "ab-ema",
     "ab-data",
     "ab-force",
@@ -208,7 +210,9 @@
       data_source: ($("ab-data") && $("ab-data").value) || "candles_5m",
       force_download: chk("ab-force"),
       workers: 1,
+      min_range_mode: ($("ab-min-mode") && $("ab-min-mode").value) || "fixed",
       min_range_pts: num("ab-min-range", 3000),
+      min_range_bps: (num("ab-min-pct", 1.4) || 0) / 100,
       ema_period: intv("ab-ema", 32),
       box_start_hour: intv("ab-box-start", 1),
       box_end_hour: intv("ab-box-end", 6),
@@ -383,9 +387,20 @@
           <input id="ab-tz" value="Europe/Chisinau" />
           <span class="field-help">Every hour on this tab is in this zone. Chisinau matches the live session.</span>
         </label>
+        <label>Min range
+          <select id="ab-min-mode">
+            <option value="fixed" selected>fixed points</option>
+            <option value="pct_price">percent of midpoint</option>
+          </select>
+          <span class="field-help">Fixed points is the same floor every day. Percent of midpoint scales with the price: a dearer market must build a wider box.</span>
+        </label>
         <label>Min range (pts)
           <input type="number" id="ab-min-range" value="3000" step="100" />
-          <span class="field-help">If the Asia high−low is smaller than this, the day is skipped.</span>
+          <span class="field-help">Used when the mode is fixed points. A smaller Asia high−low skips the day. Ignored in percent mode.</span>
+        </label>
+        <label>Min range (%)
+          <input type="number" id="ab-min-pct" value="1.4" min="0" step="0.1" />
+          <span class="field-help">Used when the mode is percent of midpoint. 1.4 means 1.4% of (high + low) / 2. At a $2500 mid that is 3500 points; at $2000 it is 2800. Ignored in fixed mode. Not rescaled for EURUSD or USDJPY.</span>
         </label>
         <label>EMA period (5m)
           <input type="number" id="ab-ema" value="32" min="1" />
@@ -618,6 +633,11 @@
     if (sl) sl.disabled = locked;
     if (tp) tp.disabled = locked;
     if (steps) steps.disabled = !locked;
+    const pctMode = ($("ab-min-mode") && $("ab-min-mode").value) === "pct_price";
+    const minPts = $("ab-min-range");
+    const minPct = $("ab-min-pct");
+    if (minPts) minPts.disabled = pctMode;
+    if (minPct) minPct.disabled = !pctMode;
     function gate(boxId, on) {
       const box = $(boxId);
       if (!box) return;

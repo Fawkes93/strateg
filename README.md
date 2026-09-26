@@ -97,7 +97,9 @@ On the result, `freezes[]` is every skipped signal (`local_date`, `until`, `setu
 PYTHONPATH=. .venv/bin/python -m pytest tests/test_asia_box_rules.py -q
 ```
 
-`tests/test_asia_box.py` turns the three gates off in its helper so the older tests stay about setup geometry. If that file fails to import `min_range_threshold_pts`, that name is a local experiment and is not part of this engine.
+**Min range.** Default is a fixed point floor (`min_range_pts`, 3000). Switch `min_range_mode` to `pct_price` and the floor is `min_range_bps` times the box midpoint. `0.014` means 1.4%: at a $2500 mid that is 3500 points, at a $2000 mid it is 2800. The percent is not scaled when you switch to EURUSD or USDJPY. The fixed point floor is.
+
+`tests/test_asia_box.py` turns the three session gates off in its helper so the older tests stay about setup geometry.
 
 
 ## Asia liquidity tab

@@ -44,7 +44,11 @@ def _sl_step_level(pos: float, steps: int) -> float:
 
 def describe_setups(params: Optional[AsiaBoxParams] = None) -> List[Dict[str, Any]]:
     p = params or AsiaBoxParams()
-    min_r = int(p.min_range_pts) if float(p.min_range_pts).is_integer() else p.min_range_pts
+    if str(p.min_range_mode or "fixed") == "pct_price":
+        range_need = f"{float(p.min_range_bps) * 100:g}% of the box midpoint"
+    else:
+        min_r = int(p.min_range_pts) if float(p.min_range_pts).is_integer() else p.min_range_pts
+        range_need = f"at least {min_r} pts"
     box_open = _hhmm(p.box_start_hour)
     box_close = _hhmm(p.box_end_hour)
     shallow_at = _hhmm(p.shallow_hour, p.shallow_minute)
@@ -84,7 +88,7 @@ def describe_setups(params: Optional[AsiaBoxParams] = None) -> List[Dict[str, An
     bodies = {
         "continuation": (
             f"With the box after a deep retrace. Box builds {box_open}–{box_close} local "
-            f"and needs at least {min_r} pts. Fib 0 is the later extreme, Fib 1 the other. "
+            f"and needs {range_need}. Fib 0 is the later extreme, Fib 1 the other. "
             f"A 5m must close in the box direction with the close still between .500 and .786. "
             f"A wick to .786 taints that candle — one extra clean confirm, or skip. "
             f"A close through .786 kills this door. SL at {lv(p.continuation_sl_fib)}, "

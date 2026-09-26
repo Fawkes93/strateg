@@ -65,6 +65,8 @@ class AsiaBoxRunRequest(BaseModel):
     flatten_hour: int = 13
     flatten_minute: int = 30
     min_range_pts: float = 3000.0
+    min_range_mode: str = "fixed"
+    min_range_bps: float = 0.014
     ema_period: int = 32
     shallow_ema_near_pts: float = 100.0
     continuation_sl_fib: float = 0.786

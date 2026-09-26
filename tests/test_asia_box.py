@@ -7,8 +7,10 @@ from backtest.asia_box import (
     fib_anchors,
     fib_px,
     in_continuation_band,
+    min_range_threshold_pts,
     run_asia_box_on_candles,
     wick_786,
+    _Sess,
 )
 from backtest.asia_box_describe import SETUP_ORDER, describe_setups
 from backtest.candles import Candle
@@ -87,6 +89,42 @@ def test_continuation_band_is_between_500_and_786():
     assert in_continuation_band("UP", p786, fib0, fib1)
     assert not in_continuation_band("UP", p500 + 0.5, fib0, fib1)
     assert not in_continuation_band("UP", p786 - 0.5, fib0, fib1)
+
+
+def test_min_range_threshold_fixed_and_pct_price():
+    sess = _Sess()
+    sess.high = 2517.5
+    sess.low = 2482.5
+    sess.high_ts = sess.low_ts = datetime(2026, 7, 10, 2, 0, tzinfo=TZ)
+    # mid 2500, ps 0.01, 1.4% → 3500 pts
+    pct = AsiaBoxParams(min_range_mode="pct_price", min_range_bps=0.014)
+    assert abs(min_range_threshold_pts(sess, pct, 0.01) - 3500.0) < 1e-6
+    sess.high, sess.low = 2014.0, 1986.0  # mid 2000 → 2800 pts
+    assert abs(min_range_threshold_pts(sess, pct, 0.01) - 2800.0) < 1e-6
+    fixed = AsiaBoxParams(min_range_mode="fixed", min_range_pts=3500.0, min_range_bps=0.9)
+    sess.high, sess.low = 3330.0, 3300.0
+    assert min_range_threshold_pts(sess, fixed, 0.01) == 3500.0
+
+
+def test_pct_price_rejects_box_that_fixed_3000_accepts():
+    p500 = fib_px(3330.0, 3300.0, 0.5)
+    p786 = fib_px(3330.0, 3300.0, 0.786)
+    mid = (p500 + p786) / 2.0
+    candles = _up_box() + [
+        _bar(3, 0, 3320.0, 3322.0, mid, mid),
+        _bar(3, 5, mid, p500 - 0.2, mid - 0.4, p500 - 0.4),
+        _bar(3, 10, p500 - 0.4, 3330.0, p500 - 0.5, 3330.0),
+    ]
+    ok = _run(candles, enable_reverse_confirm=False, min_range_mode="fixed", min_range_pts=3000)
+    assert len(ok["rows"]) == 1
+    tight = _run(
+        candles,
+        enable_reverse_confirm=False,
+        min_range_mode="pct_price",
+        min_range_bps=0.014,
+    )
+    assert tight["rows"] == []
+    assert any(s["reason"] == "range_too_small" for s in tight["skips"])
 
 
 def test_describe_setups_uses_live_params():

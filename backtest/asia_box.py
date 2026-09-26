@@ -51,6 +51,8 @@ class AsiaBoxParams:
     flatten_hour: int = 13
     flatten_minute: int = 30
     min_range_pts: float = 3000.0
+    min_range_mode: str = "fixed"  # fixed | pct_price
+    min_range_bps: float = 0.014  # fraction of the box midpoint; 0.014 = 1.4%
     ema_period: int = 32
     shallow_ema_near_pts: float = 100.0
     continuation_sl_fib: float = 0.786
@@ -291,6 +293,22 @@ class _Sess:
             "box_start_ts": self.start_ts,
             "range_pts": self.range_px() / ps if ps else 0.0,
         }
+
+
+def min_range_threshold_pts(sess: _Sess, params: AsiaBoxParams, ps: float) -> float:
+    """Point floor for the Asia box.
+
+    fixed: min_range_pts, same every day.
+    pct_price: min_range_bps × midpoint / point size. 0.014 at a 2500 mid
+    with a 0.01 point is 3500 points. The floor moves with the price.
+    """
+    mode = str(params.min_range_mode or "fixed").strip().lower()
+    if mode != "pct_price":
+        return float(params.min_range_pts)
+    if sess.high is None or sess.low is None or ps <= 0:
+        return float(params.min_range_pts)
+    mid = (float(sess.high) + float(sess.low)) / 2.0
+    return abs(mid) * float(params.min_range_bps) / ps
 
 
 @dataclass
@@ -630,7 +648,7 @@ def _pick_setup(
         if flags.box1_snap and flags.box1_snap.get("side") and flags.reverse_armed:
             return None
     else:
-        if not sess.ready(ps, params.min_range_pts):
+        if not sess.ready(ps, min_range_threshold_pts(sess, params, ps)):
             return None
         snap = sess.snapshot(ps)
 
@@ -865,7 +883,7 @@ def _run_day(
                 and not flags.box2_active
                 and flags.early_exit
                 and flags.trades_today < 2
-                and sess.ready(ps, params.min_range_pts)
+                and sess.ready(ps, min_range_threshold_pts(sess, params, ps))
                 and sess.range_px() / ps > flags.box1_range + 1e-9
             ):
                 flags.box2_active = True
@@ -932,7 +950,7 @@ def _run_day(
             i += 1
 
     if not trades:
-        if sess.high is None or not sess.ready(ps, params.min_range_pts):
+        if sess.high is None or not sess.ready(ps, min_range_threshold_pts(sess, params, ps)):
             return trades, AsiaBoxSkip(str(d), "range_too_small"), flags.freezes
         return trades, AsiaBoxSkip(str(d), "no_setup"), flags.freezes
     return trades, None, flags.freezes
