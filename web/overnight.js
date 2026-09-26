@@ -30,6 +30,9 @@
     "ob-timeout-ema-dist",
     "ob-timeout-min-break",
     "ob-timeout-min-pullback",
+    "ob-near-bars",
+    "ob-near-pts",
+    "ob-near-trend",
     "ob-higher-close",
     "ob-resume-closes",
     "ob-resume-max-break",
@@ -151,6 +154,11 @@
     if (timeoutEma) timeoutEma.disabled = timeoutOff;
     if (timeoutBreak) timeoutBreak.disabled = timeoutOff;
     if (timeoutPullback) timeoutPullback.disabled = timeoutOff;
+    const nearOff = mode !== "required";
+    ["ob-near-bars", "ob-near-pts", "ob-near-trend"].forEach(function (id) {
+      const el = $(id);
+      if (el) el.disabled = nearOff;
+    });
   }
 
   function syncSlControls() {
@@ -357,6 +365,23 @@
         <label>Timeout min pullback (pts)
           <input type="number" id="ob-timeout-min-pullback" value="0" min="0" step="50"
             title="Preferred timeout only: last wait candle close must be this many pts back from the break close (long: below, short: above). 0 = off. EMA/resume fills ignore this." />
+        </label>
+        <label>Near-box bars
+          <input type="number" id="ob-near-bars" value="0" min="0" max="20" step="1"
+            title="Required pullback only. 0 = off. If the wait ends with no EMA or close-resume, fill when the last N wait closes all sit within Near-box dist of the broken Asia edge." />
+        </label>
+        <label>Near-box dist (pts)
+          <input type="number" id="ob-near-pts" value="500" min="0" step="50"
+            title="Max distance from Asia high (long) or Asia low (short) for each of the last N wait closes." />
+        </label>
+        <label>Near-box trend
+          <select id="ob-near-trend" title="Extra gate after the distance check. Outside = last close still beyond Asia by the min break. Breakout = that, and the last close extended further than the first of the N.">
+            <option value="off" selected>off (distance only)</option>
+            <option value="closes_dir">closes step with the break</option>
+            <option value="net_ext">net extension</option>
+            <option value="outside">still outside</option>
+            <option value="breakout">breakout (extend + outside)</option>
+          </select>
         </label>
         <label class="chk">Higher/lower close resume
           <input type="checkbox" id="ob-higher-close" checked />
@@ -726,6 +751,7 @@
     break_close: "Break close",
     seasonal_join: "Seasonal join (inside box)",
     timeout_market: "Timeout market",
+    near_box_timeout: "Near-box timeout",
   };
 
   const PARAM_FIELDS = [
@@ -745,6 +771,9 @@
     ["timeout_max_ema_dist_pts", "Timeout max EMA dist"],
     ["timeout_min_break_pts", "Timeout min break"],
     ["timeout_min_pullback_pts", "Timeout min pullback"],
+    ["near_box_bars", "Near-box bars"],
+    ["near_box_pts", "Near-box dist"],
+    ["near_box_trend", "Near-box trend"],
     ["use_higher_close", "Close resume"],
     ["resume_closes", "Resume closes"],
     ["resume_max_break_pts", "Resume max from break"],
@@ -794,6 +823,9 @@
     timeout_max_ema_dist_pts: "ob-timeout-ema-dist",
     timeout_min_break_pts: "ob-timeout-min-break",
     timeout_min_pullback_pts: "ob-timeout-min-pullback",
+    near_box_bars: "ob-near-bars",
+    near_box_pts: "ob-near-pts",
+    near_box_trend: "ob-near-trend",
     use_higher_close: "ob-higher-close",
     resume_closes: "ob-resume-closes",
     resume_max_break_pts: "ob-resume-max-break",
@@ -1573,6 +1605,9 @@
         timeout_max_ema_dist_pts: Number(($("ob-timeout-ema-dist") && $("ob-timeout-ema-dist").value) || 0),
         timeout_min_break_pts: Number(($("ob-timeout-min-break") && $("ob-timeout-min-break").value) || 0),
         timeout_min_pullback_pts: Number(($("ob-timeout-min-pullback") && $("ob-timeout-min-pullback").value) || 0),
+        near_box_bars: Math.max(0, Number(($("ob-near-bars") && $("ob-near-bars").value) || 0)),
+        near_box_pts: Number(($("ob-near-pts") && $("ob-near-pts").value) || 0),
+        near_box_trend: ($("ob-near-trend") && $("ob-near-trend").value) || "off",
         use_higher_close: $("ob-higher-close") && $("ob-higher-close").checked,
         resume_closes: Math.max(1, Number($("ob-resume-closes") && $("ob-resume-closes").value) || 1),
         resume_max_break_pts: Number(($("ob-resume-max-break") && $("ob-resume-max-break").value) || 0),

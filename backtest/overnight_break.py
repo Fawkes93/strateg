@@ -88,6 +88,18 @@ class OvernightParams:
     # Preferred timeout: last wait close must be this many pts back from
     # the break close (long: below, short: above). 0 = off.
     timeout_min_pullback_pts: float = 0.0
+    # Required-mode recovery: if wait times out, take timeout fill when the
+    # last N wait candles all stayed within near_box_pts of asia_high (UP)
+    # or asia_low (DOWN). near_box_bars=0 disables (default).
+    near_box_bars: int = 0
+    near_box_pts: float = 500.0
+    # Extra gate on near-box timeout fills (ignored when near_box_bars=0):
+    #   off          = distance-only
+    #   closes_dir   = each of last N closes moves in break direction
+    #   net_ext      = last close farther past Asia edge than first of last N
+    #   outside      = last close still outside box by min_break
+    #   breakout     = net_ext AND outside (steady push + still broken out)
+    near_box_trend: str = "off"
     use_higher_close: bool = True  # higher/lower close resume during wait
     resume_closes: int = 1  # consecutive directional closes required (1 = current)
     # Resume close may not extend more than this many pts past the break close.
@@ -186,6 +198,18 @@ def _normalize_params(params: OvernightParams) -> OvernightParams:
         )
     except (TypeError, ValueError):
         params.timeout_min_pullback_pts = 0.0
+    try:
+        params.near_box_bars = max(0, int(params.near_box_bars or 0))
+    except (TypeError, ValueError):
+        params.near_box_bars = 0
+    try:
+        params.near_box_pts = max(0.0, float(params.near_box_pts or 0.0))
+    except (TypeError, ValueError):
+        params.near_box_pts = 0.0
+    trend = str(getattr(params, "near_box_trend", "off") or "off").strip().lower()
+    if trend not in ("off", "closes_dir", "net_ext", "outside", "breakout"):
+        trend = "off"
+    params.near_box_trend = trend
     try:
         params.resume_max_break_pts = max(
             0.0, float(params.resume_max_break_pts or 0.0)
@@ -295,6 +319,82 @@ def resume_too_far_from_break(
     else:
         ext = (break_close - wait_close) / ps
     return ext > cap + 1e-9
+
+
+
+def near_box_hug(
+    params: OvernightParams,
+    side: str,
+    wait_candles: Sequence,
+    asia_high: float,
+    asia_low: float,
+    ps: float,
+) -> bool:
+    """True when last N wait closes hug the Asia edge and optional trend gate passes.
+
+    Distance: every close of wait_candles[-N:] within near_box_pts of asia_high (UP)
+    or asia_low (DOWN). Bars=0 / pts=0 / too-few candles → False.
+
+    Trend (near_box_trend):
+      off        — distance only
+      closes_dir — each close steps in break direction vs prior close in the tail
+      net_ext    — last close farther past the edge than the first close of the tail
+      outside    — last close still outside the box by min_break
+      breakout   — net_ext AND outside (steady extension that never fully failed)
+    """
+    n = int(getattr(params, "near_box_bars", 0) or 0)
+    d = float(getattr(params, "near_box_pts", 0.0) or 0.0)
+    if n <= 0 or d <= 0.0 or not wait_candles or len(wait_candles) < n:
+        return False
+    if ps <= 0:
+        return False
+    ref = asia_high if side == "UP" else asia_low
+    tail = list(wait_candles[-n:])
+    for c in tail:
+        if abs(float(c.close) - ref) / ps > d + 1e-12:
+            return False
+
+    trend = str(getattr(params, "near_box_trend", "off") or "off").strip().lower()
+    if trend in ("", "off"):
+        return True
+
+    def _ext_pts(px: float) -> float:
+        if side == "UP":
+            return (float(px) - ref) / ps
+        return (ref - float(px)) / ps
+
+    if trend == "closes_dir":
+        for i in range(1, len(tail)):
+            if side == "UP":
+                if float(tail[i].close) + 1e-12 < float(tail[i - 1].close):
+                    return False
+            else:
+                if float(tail[i].close) > float(tail[i - 1].close) + 1e-12:
+                    return False
+        return True
+
+    if trend == "net_ext":
+        return _ext_pts(tail[-1].close) > _ext_pts(tail[0].close) + 1e-12
+
+    min_br = (
+        float(params.min_break_pts_above or 0.0)
+        if side == "UP"
+        else float(params.min_break_pts_below or 0.0)
+    )
+
+    def _outside() -> bool:
+        return _ext_pts(tail[-1].close) + 1e-12 >= min_br
+
+    if trend == "outside":
+        return _outside()
+
+    if trend == "breakout":
+        return (
+            _ext_pts(tail[-1].close) > _ext_pts(tail[0].close) + 1e-12
+            and _outside()
+        )
+
+    return False
 
 
 def late_short_blocked(
@@ -548,6 +648,7 @@ def entry_label(reason: str) -> str:
         "lower_close": "Lower close resume",
         "break_close": "Break close",
         "timeout_market": "Timeout market",
+        "near_box_timeout": "Near-box timeout",
         "seasonal_join": "Seasonal join (inside box)",
     }.get(reason, reason or "—")
 
@@ -555,7 +656,13 @@ def entry_label(reason: str) -> str:
 def _fmt_px(x: Optional[float]) -> str:
     if x is None:
         return "—"
-    return f"{x:.2f}"
+    v = float(x)
+    ax = abs(v)
+    if ax >= 1000:
+        return f"{v:.2f}"
+    if ax >= 10:
+        return f"{v:.3f}"
+    return f"{v:.5f}"
 
 
 def _decision_line(
@@ -616,6 +723,8 @@ def _decision_line(
             parts.append(f"bar close vs prev {close_vs_prev_pts:+.0f} pts")
     elif reason == "break_close":
         parts.append(f"pullback {pullback_mode}")
+    elif reason == "near_box_timeout":
+        parts.append("last wait closes hugged the Asia edge")
     elif reason.startswith("timeout"):
         if closest_ema_pts is None:
             parts.append("EMA not ready")
@@ -2013,12 +2122,40 @@ def _run_overnight_days(
                     skips.append(skip_break("late_short", **skip_diag))
                     continue
                 if params.pullback_mode == "required":
-                    skips.append(skip_break("no_pullback", **skip_diag))
-                    continue
-                if params.timeout_action == "skip":
+                    # elif below: a near-box fill must not fall through into
+                    # preferred timeout skip/market and get discarded or replaced.
+                    if (
+                        near_box_hug(
+                            params,
+                            side,
+                            wait_candles,
+                            asia_high,
+                            asia_low,
+                            ps,
+                        )
+                        and wait_candles
+                    ):
+                        last_wait = wait_candles[-1]
+                        timeout_fill = feed.last_in_bar(
+                            last_wait.open_time, last_wait.close_time
+                        )
+                        if timeout_fill is None:
+                            skips.append(skip_break("no_entry_tick", **skip_diag))
+                            continue
+                        entry_idx = timeout_fill.index
+                        entry_px = last_wait.close
+                        entry_reason = "near_box_timeout"
+                        entry_ts = timeout_fill.ts
+                        wait_i = waited
+                        ema_at = skip_diag["ema"]
+                        sig_close = last_wait.close
+                    else:
+                        skips.append(skip_break("no_pullback", **skip_diag))
+                        continue
+                elif params.timeout_action == "skip":
                     skips.append(skip_break("no_pullback_timeout", **skip_diag))
                     continue
-                if timeout_quality_blocked(
+                elif timeout_quality_blocked(
                     params,
                     closest_ema_pts=closest_ema_pts,
                     break_pts=break_pts,
@@ -2026,23 +2163,24 @@ def _run_overnight_days(
                 ):
                     skips.append(skip_break("no_pullback_timeout", **skip_diag))
                     continue
-                if not wait_candles:
+                elif not wait_candles:
                     skips.append(skip_break("no_pullback_timeout", **skip_diag))
                     continue
-                last_wait = wait_candles[-1]
-                timeout_fill = feed.last_in_bar(
-                    last_wait.open_time, last_wait.close_time
-                )
-                if timeout_fill is None:
-                    skips.append(skip_break("no_entry_tick", **skip_diag))
-                    continue
-                entry_idx = timeout_fill.index
-                entry_px = last_wait.close
-                entry_reason = "timeout_market"
-                entry_ts = timeout_fill.ts
-                wait_i = waited
-                ema_at = skip_diag["ema"]
-                sig_close = last_wait.close
+                else:
+                    last_wait = wait_candles[-1]
+                    timeout_fill = feed.last_in_bar(
+                        last_wait.open_time, last_wait.close_time
+                    )
+                    if timeout_fill is None:
+                        skips.append(skip_break("no_entry_tick", **skip_diag))
+                        continue
+                    entry_idx = timeout_fill.index
+                    entry_px = last_wait.close
+                    entry_reason = "timeout_market"
+                    entry_ts = timeout_fill.ts
+                    wait_i = waited
+                    ema_at = skip_diag["ema"]
+                    sig_close = last_wait.close
 
         if entry_ts is None or entry_px is None:
             skips.append(skip_break("no_entry"))
