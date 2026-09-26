@@ -47,31 +47,121 @@
     "ab-en-retest",
   ];
 
+  const POINT_FIELDS = ["ab-min-range", "ab-shallow-near"];
+  let symbolSwitching = false;
+
+  function formSymbol(symbol) {
+    const s = String(symbol || "")
+      .toUpperCase()
+      .replace(/[^A-Z]/g, "");
+    if (s === "EURUSD") return "EURUSD";
+    if (s === "USDJPY") return "USDJPY";
+    return "XAUUSD";
+  }
+
+  function pointScale(symbol) {
+    const s = formSymbol(symbol);
+    if (s === "EURUSD" || s === "USDJPY") return 0.1;
+    return 1;
+  }
+
+  function readCfg() {
+    const cfg = {};
+    FORM_IDS.forEach(function (id) {
+      const el = $(id);
+      if (!el) return;
+      cfg[id] = el.type === "checkbox" ? !!el.checked : el.value;
+    });
+    return cfg;
+  }
+
+  function loadStore() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.v === 2 && parsed.bySymbol) return parsed;
+    const sym = formSymbol(parsed && parsed["ab-symbol"]);
+    const bySymbol = {};
+    bySymbol[sym] = parsed;
+    return { v: 2, active: sym, bySymbol: bySymbol };
+  }
+
+  function scalePoint(raw, ratio) {
+    const n = parseFloat(raw);
+    if (!Number.isFinite(n) || n === 0) return raw;
+    const scaled = n * ratio;
+    if (Math.abs(scaled) >= 10) return String(Math.round(scaled));
+    return String(Math.round(scaled * 10) / 10);
+  }
+
+  function scaleCfg(cfg, fromSym, toSym) {
+    const next = Object.assign({}, cfg);
+    const ratio = pointScale(toSym) / pointScale(fromSym);
+    next["ab-symbol"] = formSymbol(toSym);
+    if (ratio === 1) return next;
+    POINT_FIELDS.forEach(function (id) {
+      if (next[id] == null || next[id] === "") return;
+      next[id] = scalePoint(next[id], ratio);
+    });
+    return next;
+  }
+
+  function applyCfg(cfg) {
+    if (!cfg) return;
+    FORM_IDS.forEach(function (id) {
+      const el = $(id);
+      if (!el || cfg[id] === undefined) return;
+      if (el.type === "checkbox") el.checked = !!cfg[id];
+      else if (id === "ab-symbol") el.value = formSymbol(cfg[id]);
+      else el.value = cfg[id];
+    });
+  }
+
   function saveForm() {
+    if (symbolSwitching) return;
     try {
-      const cfg = {};
-      FORM_IDS.forEach(function (id) {
-        const el = $(id);
-        if (!el) return;
-        cfg[id] = el.type === "checkbox" ? !!el.checked : el.value;
-      });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+      const store = loadStore() || { v: 2, active: "XAUUSD", bySymbol: {} };
+      const sym = formSymbol($("ab-symbol") && $("ab-symbol").value);
+      store.v = 2;
+      store.active = sym;
+      store.bySymbol[sym] = readCfg();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
     } catch (e) {
       console.warn("asia box save failed", e);
     }
   }
 
+  function onSymbolChange() {
+    const next = formSymbol($("ab-symbol") && $("ab-symbol").value);
+    const store = loadStore() || { v: 2, active: next, bySymbol: {} };
+    const prev = formSymbol(store.active || "XAUUSD");
+    if (prev === next) return;
+    const prevCfg = readCfg();
+    prevCfg["ab-symbol"] = prev;
+    store.bySymbol[prev] = prevCfg;
+    const nextCfg = store.bySymbol[next] || scaleCfg(prevCfg, prev, next);
+    nextCfg["ab-symbol"] = next;
+    symbolSwitching = true;
+    applyCfg(nextCfg);
+    symbolSwitching = false;
+    store.v = 2;
+    store.active = next;
+    store.bySymbol[next] = readCfg();
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    } catch (e) {
+      console.warn("asia box symbol save failed", e);
+    }
+  }
+
   function loadForm() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const cfg = JSON.parse(raw);
-      FORM_IDS.forEach(function (id) {
-        const el = $(id);
-        if (!el || cfg[id] === undefined) return;
-        if (el.type === "checkbox") el.checked = !!cfg[id];
-        else el.value = cfg[id];
-      });
+      const store = loadStore();
+      if (!store) return;
+      const sym = formSymbol(store.active);
+      const cfg =
+        (store.bySymbol && (store.bySymbol[sym] || store.bySymbol.XAUUSD)) || null;
+      applyCfg(cfg);
     } catch (e) {
       console.warn("asia box load failed", e);
     }
@@ -194,13 +284,17 @@
         <li>Named setups (toggles below) hunt retracements until 10:00. One open trade; a fill that dies before 06:00 may unlock a second, larger box.</li>
         <li>Flatten 13:30. Independent of Overnight break — both can trade the same morning.</li>
       </ol>
-      <p class="hint">5m candles by default; ticks only change fill / SL / TP precision. Results live in SQLite — open the catalog to filter by setup and click a trade for the chart.</p>
+      <p class="hint">5m candles by default; ticks only change fill / SL / TP precision. Results live in SQLite — open the catalog to filter by setup and click a trade for the chart. EURUSD and USDJPY: 1 point = 0.1 pip. The first time you pick one, min range and shallow-near scale from the gold values (÷10). Fib levels stay the same.</p>
     </section>
     <section class="card">
       <h2>Parameters</h2>
       <div class="grid">
         <label>Symbol
-          <select id="ab-symbol"><option value="XAUUSD" selected>XAUUSD (gold)</option></select>
+          <select id="ab-symbol" title="EURUSD and USDJPY: 1 point = 0.1 pip. First switch from gold scales min range and shallow-near ÷10.">
+            <option value="XAUUSD" selected>XAUUSD (gold)</option>
+            <option value="EURUSD">EURUSD</option>
+            <option value="USDJPY">USDJPY</option>
+          </select>
         </label>
         <label>From (local date)
           <input type="date" id="ab-from" value="2025-05-01" />
@@ -418,6 +512,7 @@
       const el = $(id);
       if (!el) return;
       el.addEventListener("change", function () {
+        if (id === "ab-symbol") onSymbolChange();
         saveForm();
         syncSetupLevels();
         scheduleDesc();

@@ -16,10 +16,18 @@
     return Number(ts);
   }
 
-  function px2(n) {
-    const x = Number(n);
-    if (!Number.isFinite(x)) return "—";
-    return x.toFixed(2);
+  function priceDigits(symbol) {
+    const s = String(symbol || "").toUpperCase();
+    if (s.indexOf("JPY") >= 0) return 3;
+    if (s.indexOf("XAU") >= 0 || s.indexOf("GOLD") >= 0 || s.indexOf("BTC") >= 0) return 2;
+    return 5;
+  }
+
+  function pointSize(symbol) {
+    const s = String(symbol || "").toUpperCase();
+    if (s.indexOf("JPY") >= 0) return 0.001;
+    if (s.indexOf("XAU") >= 0 || s.indexOf("GOLD") >= 0 || s.indexOf("BTC") >= 0) return 0.01;
+    return 0.00001;
   }
 
   fetch("/api/asia-box/chart-data?trade_id=" + encodeURIComponent(tradeId))
@@ -30,6 +38,18 @@
     .then(function (data) {
       const t = data.trade || {};
       const run = data.run || {};
+      const digits = priceDigits(run.symbol);
+      const ps = pointSize(run.symbol);
+      function px2(n) {
+        const x = Number(n);
+        if (!Number.isFinite(x)) return "—";
+        return x.toFixed(digits);
+      }
+      const priceFormat = {
+        type: "price",
+        precision: digits,
+        minMove: ps,
+      };
       const tz = data.timezone || run.timezone || "UTC";
       const box = data.box || {};
       const boxH = box.start_hour != null ? box.start_hour : 1;
@@ -160,6 +180,7 @@
         borderVisible: false,
         wickUpColor: "#3ecf8e",
         wickDownColor: "#f07178",
+        priceFormat: priceFormat,
       });
       const candles = (data.candles || []).map(function (c) {
         return {
@@ -187,6 +208,7 @@
             lineWidth: 2,
             priceLineVisible: false,
             lastValueVisible: false,
+            priceFormat: priceFormat,
           };
           chart.addLineSeries(Object.assign({ title: "Box H" }, boxStyle)).setData([
             { time: t0, value: box.high },
@@ -205,9 +227,9 @@
             ":00 " +
             tz +
             " · " +
-            Number(box.high).toFixed(2) +
+            px2(box.high) +
             " / " +
-            Number(box.low).toFixed(2);
+            px2(box.low);
           legend.appendChild(li);
         }
       }
@@ -218,6 +240,7 @@
         title: "EMA",
         lastValueVisible: false,
         priceLineVisible: false,
+        priceFormat: priceFormat,
       });
       emaSeries.setData(
         (data.ema || []).map(function (p) {
@@ -252,6 +275,7 @@
             priceLineVisible: false,
             crosshairMarkerVisible: false,
             title: String(lv.level),
+            priceFormat: priceFormat,
           });
           s.setData([
             { time: fibT0, value: lv.price },
@@ -266,7 +290,7 @@
           '"></span>' +
           lv.level +
           " · " +
-          Number(lv.price).toFixed(2);
+          px2(lv.price);
         legend.appendChild(li);
       });
 
@@ -435,7 +459,7 @@
           stroke +
           '" stroke-width="1.5" />';
         const dPrice = b.price - a.price;
-        const dPts = Math.round(dPrice / 0.01);
+        const dPts = Math.round(dPrice / ps);
         let bars = 0;
         if (a.time != null && b.time != null) {
           bars = Math.round(Math.abs(b.time - a.time) / 300);

@@ -68,17 +68,119 @@
     "ob-force",
   ];
 
+  // Absolute point inputs. EURUSD and USDJPY are 0.1 pip per point, so the
+  // first switch off gold scales these by 10. Multipliers and hour fields stay.
+  const POINT_FIELDS = [
+    "ob-min-asia",
+    "ob-break-up",
+    "ob-break-dn",
+    "ob-timeout-ema-dist",
+    "ob-timeout-min-break",
+    "ob-timeout-min-pullback",
+    "ob-near-pts",
+    "ob-resume-max-break",
+    "ob-late-short-asia",
+    "ob-trend-flat",
+    "ob-sl-fixed",
+    "ob-sl-cap",
+    "ob-tp-fixed",
+    "ob-trail-arm",
+    "ob-trail-arm-cap",
+    "ob-trail",
+    "ob-be-arm",
+  ];
+  let symbolSwitching = false;
+
+  function formSymbol(symbol) {
+    const s = String(symbol || "")
+      .toUpperCase()
+      .replace(/[^A-Z]/g, "");
+    if (s === "EURUSD") return "EURUSD";
+    if (s === "USDJPY") return "USDJPY";
+    return "XAUUSD";
+  }
+
+  function pointScale(symbol) {
+    const s = formSymbol(symbol);
+    if (s === "EURUSD" || s === "USDJPY") return 0.1;
+    return 1;
+  }
+
+  function readCfg() {
+    const cfg = {};
+    FORM_IDS.forEach(function (id) {
+      const el = $(id);
+      if (!el) return;
+      cfg[id] = el.type === "checkbox" ? !!el.checked : el.value;
+    });
+    return cfg;
+  }
+
+  function loadStore() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.v === 2 && parsed.bySymbol) return parsed;
+    const sym = formSymbol(parsed && parsed["ob-symbol"]);
+    const bySymbol = {};
+    bySymbol[sym] = parsed;
+    return { v: 2, active: sym, bySymbol: bySymbol };
+  }
+
+  function scalePoint(raw, ratio) {
+    const n = parseFloat(raw);
+    if (!Number.isFinite(n) || n === 0) return raw;
+    const scaled = n * ratio;
+    if (Math.abs(scaled) >= 10) return String(Math.round(scaled));
+    return String(Math.round(scaled * 10) / 10);
+  }
+
+  function scaleCfg(cfg, fromSym, toSym) {
+    const next = Object.assign({}, cfg);
+    const ratio = pointScale(toSym) / pointScale(fromSym);
+    next["ob-symbol"] = formSymbol(toSym);
+    if (ratio === 1) return next;
+    POINT_FIELDS.forEach(function (id) {
+      if (next[id] == null || next[id] === "") return;
+      next[id] = scalePoint(next[id], ratio);
+    });
+    return next;
+  }
+
   function saveForm() {
+    if (symbolSwitching) return;
     try {
-      const cfg = {};
-      FORM_IDS.forEach(function (id) {
-        const el = $(id);
-        if (!el) return;
-        cfg[id] = el.type === "checkbox" ? !!el.checked : el.value;
-      });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+      const store = loadStore() || { v: 2, active: "XAUUSD", bySymbol: {} };
+      const sym = formSymbol($("ob-symbol") && $("ob-symbol").value);
+      store.v = 2;
+      store.active = sym;
+      store.bySymbol[sym] = readCfg();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
     } catch (e) {
       console.warn("overnight save failed", e);
+    }
+  }
+
+  function onSymbolChange() {
+    const next = formSymbol($("ob-symbol") && $("ob-symbol").value);
+    const store = loadStore() || { v: 2, active: next, bySymbol: {} };
+    const prev = formSymbol(store.active || "XAUUSD");
+    if (prev === next) return;
+    const prevCfg = readCfg();
+    prevCfg["ob-symbol"] = prev;
+    store.bySymbol[prev] = prevCfg;
+    const nextCfg = store.bySymbol[next] || scaleCfg(prevCfg, prev, next);
+    nextCfg["ob-symbol"] = next;
+    symbolSwitching = true;
+    applyCfg(nextCfg);
+    symbolSwitching = false;
+    store.v = 2;
+    store.active = next;
+    store.bySymbol[next] = readCfg();
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    } catch (e) {
+      console.warn("overnight symbol save failed", e);
     }
   }
 
@@ -87,38 +189,46 @@
     saveTimer = setTimeout(saveForm, 200);
   }
 
+  function applyCfg(cfg) {
+    if (!cfg) return;
+    FORM_IDS.forEach(function (id) {
+      const el = $(id);
+      if (!el || cfg[id] == null) return;
+      if (el.type === "checkbox") el.checked = !!cfg[id];
+      else if (id === "ob-symbol") el.value = formSymbol(cfg[id]);
+      else el.value = cfg[id];
+    });
+    // Removed pullback mode "ema" (= required + resume off).
+    if (cfg["ob-pullback-mode"] === "ema") {
+      if ($("ob-pullback-mode")) $("ob-pullback-mode").value = "required";
+      if ($("ob-higher-close")) $("ob-higher-close").checked = false;
+    }
+    // Removed timeout "worst" (hindsight fill). Live chase = market at last wait close.
+    if ($("ob-timeout") && $("ob-timeout").value === "worst") {
+      $("ob-timeout").value = "market";
+    }
+    // Legacy 2-week checkbox → off/tag/filter select.
+    if ($("ob-sl-mode") && $("ob-sl-mode").value === "range_width") {
+      $("ob-sl-mode").value = "range";
+    }
+    if ($("ob-week2-mode") && cfg["ob-week2-mode"] == null && cfg["ob-week2"] != null) {
+      const on = !!cfg["ob-week2"];
+      $("ob-week2-mode").value = on
+        ? cfg["ob-seasonal-mode"] === "filter"
+          ? "filter"
+          : "tag"
+        : "off";
+    }
+  }
+
   function loadForm() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const cfg = JSON.parse(raw);
-      FORM_IDS.forEach(function (id) {
-        const el = $(id);
-        if (!el || cfg[id] == null) return;
-        if (el.type === "checkbox") el.checked = !!cfg[id];
-        else el.value = cfg[id];
-      });
-      // Removed pullback mode "ema" (= required + resume off).
-      if (cfg["ob-pullback-mode"] === "ema") {
-        if ($("ob-pullback-mode")) $("ob-pullback-mode").value = "required";
-        if ($("ob-higher-close")) $("ob-higher-close").checked = false;
-      }
-      // Removed timeout "worst" (hindsight fill). Live chase = market at last wait close.
-      if ($("ob-timeout") && $("ob-timeout").value === "worst") {
-        $("ob-timeout").value = "market";
-      }
-      // Legacy 2-week checkbox → off/tag/filter select.
-      if ($("ob-sl-mode") && $("ob-sl-mode").value === "range_width") {
-        $("ob-sl-mode").value = "range";
-      }
-      if ($("ob-week2-mode") && cfg["ob-week2-mode"] == null && cfg["ob-week2"] != null) {
-        const on = !!cfg["ob-week2"];
-        $("ob-week2-mode").value = on
-          ? cfg["ob-seasonal-mode"] === "filter"
-            ? "filter"
-            : "tag"
-          : "off";
-      }
+      const store = loadStore();
+      if (!store) return;
+      const sym = formSymbol(store.active);
+      const cfg =
+        (store.bySymbol && (store.bySymbol[sym] || store.bySymbol.XAUUSD)) || null;
+      applyCfg(cfg);
     } catch (e) {
       console.warn("overnight load failed", e);
     }
@@ -128,7 +238,10 @@
     FORM_IDS.forEach(function (id) {
       const el = $(id);
       if (!el) return;
-      el.addEventListener("change", scheduleSave);
+      el.addEventListener("change", function () {
+        if (id === "ob-symbol") onSymbolChange();
+        scheduleSave();
+      });
       el.addEventListener("input", scheduleSave);
     });
   }
@@ -291,6 +404,7 @@
       <p class="hint">
         Mid fill. One trade per day by default. Skips days with no valid break / no pullback (required mode).
         Seasonal month (optional): Jan/Aug long, May/Jun short. Filter skips the against-side break.
+        EURUSD and USDJPY: 1 point = 0.1 pip. The first time you pick one, point fields scale from the gold values (÷10). News days are the gold calendar.
         Join inside box takes the combined bias side when price never left the Asia range.
         2-week trend (optional, works without the month table): last close vs daily EMA, skip two-way paths (low efficiency). Filter skips the against-side. If month and 2-week both filter and disagree, neither side is skipped.
       </p>
@@ -300,7 +414,11 @@
       <h2>Parameters</h2>
       <div class="grid">
         <label>Symbol
-          <select id="ob-symbol"><option value="XAUUSD" selected>XAUUSD (gold)</option></select>
+          <select id="ob-symbol" title="EURUSD and USDJPY: 1 point = 0.1 pip. First switch from gold scales point fields ÷10.">
+            <option value="XAUUSD" selected>XAUUSD (gold)</option>
+            <option value="EURUSD">EURUSD</option>
+            <option value="USDJPY">USDJPY</option>
+          </select>
         </label>
         <label>From (local date)
           <input type="date" id="ob-from" value="2025-05-01" />
@@ -366,23 +484,28 @@
           <input type="number" id="ob-timeout-min-pullback" value="0" min="0" step="50"
             title="Preferred timeout only: last wait candle close must be this many pts back from the break close (long: below, short: above). 0 = off. EMA/resume fills ignore this." />
         </label>
-        <label>Near-box bars
-          <input type="number" id="ob-near-bars" value="0" min="0" max="20" step="1"
-            title="Required pullback only. 0 = off. If the wait ends with no EMA or close-resume, fill when the last N wait closes all sit within Near-box dist of the broken Asia edge." />
-        </label>
-        <label>Near-box dist (pts)
-          <input type="number" id="ob-near-pts" value="500" min="0" step="50"
-            title="Max distance from Asia high (long) or Asia low (short) for each of the last N wait closes." />
-        </label>
-        <label>Near-box trend
-          <select id="ob-near-trend" title="Extra gate after the distance check. Outside = last close still beyond Asia by the min break. Breakout = that, and the last close extended further than the first of the N.">
-            <option value="off" selected>off (distance only)</option>
-            <option value="closes_dir">closes step with the break</option>
-            <option value="net_ext">net extension</option>
-            <option value="outside">still outside</option>
-            <option value="breakout">breakout (extend + outside)</option>
-          </select>
-        </label>
+        <div class="ob-near-box">
+          <div class="ob-near-box-title">Near box</div>
+          <div class="ob-near-box-fields">
+            <label>Bars
+              <input type="number" id="ob-near-bars" value="0" min="0" max="20" step="1"
+                title="Required pullback only. 0 = off. If the wait ends with no EMA or close-resume, fill when the last N wait closes all sit within Near-box dist of the broken Asia edge." />
+            </label>
+            <label>Distance (pts)
+              <input type="number" id="ob-near-pts" value="500" min="0" step="50"
+                title="Max distance from Asia high (long) or Asia low (short) for each of the last N wait closes. 1 pt = 0.1 pip on EURUSD and USDJPY." />
+            </label>
+            <label>Trend
+              <select id="ob-near-trend" title="Extra gate after the distance check. Outside = last close still beyond Asia by the min break. Breakout = that, and the last close extended further than the first of the N.">
+                <option value="off" selected>off (distance only)</option>
+                <option value="closes_dir">closes step with the break</option>
+                <option value="net_ext">net extension</option>
+                <option value="outside">still outside</option>
+                <option value="breakout">breakout (extend + outside)</option>
+              </select>
+            </label>
+          </div>
+        </div>
         <label class="chk">Higher/lower close resume
           <input type="checkbox" id="ob-higher-close" checked />
         </label>
@@ -963,7 +1086,7 @@
   function applyFormFromResult(result) {
     if (!result) return;
     const p = runParams(result);
-    if (result.symbol && $("ob-symbol")) $("ob-symbol").value = "XAUUSD";
+    if (result.symbol && $("ob-symbol")) $("ob-symbol").value = formSymbol(result.symbol);
     if (result.date_from && $("ob-from")) $("ob-from").value = String(result.date_from).slice(0, 10);
     if (result.date_to && $("ob-to")) $("ob-to").value = String(result.date_to).slice(0, 10);
     if (result.data_source && $("ob-data")) $("ob-data").value = String(result.data_source);
@@ -1075,6 +1198,7 @@
 
   function pointSize(symbol) {
     const s = String(symbol || "").toUpperCase();
+    if (s.indexOf("JPY") >= 0) return 0.001;
     if (s.indexOf("XAU") >= 0 || s.indexOf("GOLD") >= 0 || s.indexOf("BTC") >= 0) {
       return 0.01;
     }

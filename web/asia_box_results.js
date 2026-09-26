@@ -2,6 +2,7 @@
   const $ = (id) => document.getElementById(id);
   const params = new URLSearchParams(location.search);
   let tzByRun = {};
+  let symbolByRun = {};
 
   function localClock(iso, tz) {
     if (!iso) return "—";
@@ -22,6 +23,13 @@
     return x.toFixed(d == null ? 1 : d);
   }
 
+  function priceDigits(symbol) {
+    const s = String(symbol || "").toUpperCase();
+    if (s.indexOf("JPY") >= 0) return 3;
+    if (s.indexOf("XAU") >= 0 || s.indexOf("GOLD") >= 0 || s.indexOf("BTC") >= 0) return 2;
+    return 5;
+  }
+
   function syncDeleteBtn() {
     const btn = $("ab-delete-run");
     if (!btn) return;
@@ -35,14 +43,18 @@
     const current = prefer != null ? String(prefer) : sel.value || params.get("run") || "";
     sel.innerHTML = '<option value="">All runs</option>';
     tzByRun = {};
+    symbolByRun = {};
     (data.runs || []).forEach(function (run) {
       tzByRun[String(run.id)] = run.timezone || (run.params && run.params.timezone) || "UTC";
+      symbolByRun[String(run.id)] = run.symbol || "";
       const opt = document.createElement("option");
       opt.value = String(run.id);
       const sum = run.summary || {};
       opt.textContent =
         "#" +
         run.id +
+        " " +
+        (run.symbol || "") +
         " " +
         run.date_from +
         "→" +
@@ -89,6 +101,7 @@
       if ((t.pts || 0) > 0) wins += 1;
       by[t.setup] = (by[t.setup] || 0) + 1;
       const tz = tzByRun[String(t.run_id)] || "UTC";
+      const pxDigits = priceDigits(symbolByRun[String(t.run_id)]);
       const tr = document.createElement("tr");
       tr.tabIndex = 0;
       tr.innerHTML =
@@ -103,9 +116,9 @@
         "</td><td>" +
         t.side +
         "</td><td>" +
-        fmt(t.entry, 2) +
+        fmt(t.entry, pxDigits) +
         "</td><td>" +
-        fmt(t.exit, 2) +
+        fmt(t.exit, pxDigits) +
         "</td><td class='" +
         ((t.pts || 0) >= 0 ? "ab-win" : "ab-loss") +
         "'>" +

@@ -32,9 +32,11 @@ except ImportError:  # pragma: no cover
 DEFAULT_DOWNLOAD_WORKERS = 16
 
 # Dukascopy symbol → (reaktor-style symbol, price_scale)
+# price_scale is the integer divisor in the .bi5 feed (USDJPY is 3 digits).
 INSTRUMENTS: Dict[str, Tuple[str, float]] = {
     "XAUUSD": ("XAU/USD", 1000.0),
     "EURUSD": ("EUR/USD", 100000.0),
+    "USDJPY": ("USD/JPY", 1000.0),
     "BTCUSD": ("BTC/USD", 10.0),
 }
 
@@ -76,8 +78,10 @@ def reaktor_symbol(duka_symbol: str) -> str:
         return INSTRUMENTS[key][0]
     if key.startswith("XAU"):
         return "XAU/USD"
-    if key.startswith("EUR"):
+    if key.startswith("EUR") and key.endswith("USD"):
         return "EUR/USD"
+    if key.endswith("JPY") and len(key) == 6:
+        return f"{key[:3]}/{key[3:]}"
     if key.startswith("BTC"):
         return "BTC/USD"
     return duka_symbol
@@ -87,6 +91,9 @@ def price_scale(duka_symbol: str) -> float:
     key = normalize_duka_symbol(duka_symbol)
     if key in INSTRUMENTS:
         return INSTRUMENTS[key][1]
+    # 3-digit quotes (USDJPY and metals). 5-digit FX is listed in INSTRUMENTS.
+    if "JPY" in key:
+        return 1000.0
     return 1000.0
 
 

@@ -224,6 +224,9 @@ def point_size(symbol: str) -> float:
     if "BTC" in symbol:
         # Same as XAU: 1 pt = $0.01. A $100 BTC rip = 10_000 pts.
         return 0.01
+    if "JPY" in symbol:
+        # 3-digit quote. 1 pt = 0.001 = 0.1 pip, same pip-point as EURUSD.
+        return 0.001
     return 0.00001
 
 
