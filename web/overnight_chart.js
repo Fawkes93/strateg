@@ -201,6 +201,157 @@
         candleSeries.setMarkers(data.markers);
       }
       chart.timeScale().fitContent();
+
+      const wrap = el.parentElement;
+      const measureSvg = document.getElementById("ob-measure-svg");
+      const measureLabel = document.getElementById("ob-measure-label");
+      const measureEl = document.getElementById("ob-measure");
+      const barSec = (data.tf_min || 15) * 60;
+      const MEASURE_KEY = "strateg_overnight_measure";
+      let measureOn = true;
+      try {
+        if (localStorage.getItem(MEASURE_KEY) === "0") measureOn = false;
+      } catch (e) {}
+      if (measureEl) measureEl.checked = measureOn;
+
+      function clearMeasure() {
+        if (measureSvg) measureSvg.innerHTML = "";
+        if (measureLabel) {
+          measureLabel.hidden = true;
+          measureLabel.textContent = "";
+        }
+      }
+
+      function setMeasureMode(on) {
+        measureOn = !!on;
+        if (wrap) wrap.classList.toggle("is-measuring", measureOn);
+        chart.applyOptions({ handleScroll: { pressedMouseMove: !measureOn } });
+        if (!measureOn) clearMeasure();
+      }
+
+      function localXY(ev) {
+        const r = el.getBoundingClientRect();
+        return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+      }
+
+      function snapPrice(time, price) {
+        if (!magnetEl || !magnetEl.checked || time == null || price == null) return price;
+        const candles = data.candles || [];
+        let bar = null;
+        for (let i = 0; i < candles.length; i++) {
+          if (candles[i].time === time) {
+            bar = candles[i];
+            break;
+          }
+        }
+        if (!bar) return price;
+        const opts = [bar.open, bar.high, bar.low, bar.close];
+        let best = opts[0];
+        let bestD = Math.abs(price - opts[0]);
+        for (let i = 1; i < opts.length; i++) {
+          const d = Math.abs(price - opts[i]);
+          if (d < bestD) {
+            best = opts[i];
+            bestD = d;
+          }
+        }
+        return best;
+      }
+
+      function drawMeasure(a, b) {
+        if (!measureSvg || !measureLabel || !a || !b) return;
+        const x0 = a.x;
+        const y0 = a.y;
+        const x1 = b.x;
+        const y1 = b.y;
+        const up = b.price > a.price;
+        const stroke = up ? "#3ecf8e" : "#f07178";
+        const w = Math.abs(x1 - x0);
+        const h = Math.abs(y1 - y0);
+        const rx = Math.min(x0, x1);
+        const ry = Math.min(y0, y1);
+        measureSvg.setAttribute("viewBox", "0 0 " + el.clientWidth + " " + el.clientHeight);
+        measureSvg.setAttribute("width", String(el.clientWidth));
+        measureSvg.setAttribute("height", String(el.clientHeight));
+        measureSvg.innerHTML =
+          '<rect x="' + rx + '" y="' + ry + '" width="' + w + '" height="' + h +
+          '" fill="' + stroke + '" fill-opacity="0.08" stroke="' + stroke + '" stroke-opacity="0.55" />' +
+          '<line x1="' + x0 + '" y1="' + y0 + '" x2="' + x1 + '" y2="' + y1 +
+          '" stroke="' + stroke + '" stroke-width="1.5" />';
+        const dPrice = b.price - a.price;
+        const dPts = Math.round(dPrice / ps);
+        let bars = 0;
+        if (a.time != null && b.time != null) {
+          bars = Math.round(Math.abs(b.time - a.time) / barSec);
+        }
+        const pct = a.price ? (dPrice / a.price) * 100 : 0;
+        const sign = dPts > 0 ? "+" : "";
+        measureLabel.hidden = false;
+        measureLabel.classList.toggle("is-up", up);
+        measureLabel.classList.toggle("is-down", !up);
+        measureLabel.innerHTML =
+          sign + dPts + " pts · " +
+          (dPrice >= 0 ? "+" : "") + px2(dPrice) + " · " +
+          (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%<br>" +
+          bars + " bars · " + bars * (data.tf_min || 15) + "m";
+        measureLabel.style.left = Math.round((x0 + x1) / 2) + "px";
+        measureLabel.style.top = Math.round(Math.max(y0, y1)) + "px";
+      }
+
+      let drag = null;
+      if (measureSvg) {
+        measureSvg.addEventListener("pointerdown", function (ev) {
+          if (!measureOn || ev.button !== 0) return;
+          const p = localXY(ev);
+          const time = chart.timeScale().coordinateToTime(p.x);
+          let price = candleSeries.coordinateToPrice(p.y);
+          price = snapPrice(time, price);
+          const y = candleSeries.priceToCoordinate(price);
+          const x = time != null ? chart.timeScale().timeToCoordinate(time) : p.x;
+          drag = {
+            time: time,
+            price: price,
+            x: x == null ? p.x : x,
+            y: y == null ? p.y : y,
+          };
+          measureSvg.setPointerCapture(ev.pointerId);
+          ev.preventDefault();
+        });
+        measureSvg.addEventListener("pointermove", function (ev) {
+          if (!drag) return;
+          const p = localXY(ev);
+          const time = chart.timeScale().coordinateToTime(p.x);
+          let price = candleSeries.coordinateToPrice(p.y);
+          price = snapPrice(time, price);
+          const y = candleSeries.priceToCoordinate(price);
+          const x = time != null ? chart.timeScale().timeToCoordinate(time) : p.x;
+          drawMeasure(drag, {
+            time: time,
+            price: price,
+            x: x == null ? p.x : x,
+            y: y == null ? p.y : y,
+          });
+        });
+        measureSvg.addEventListener("pointerup", function () {
+          drag = null;
+        });
+        measureSvg.addEventListener("pointercancel", function () {
+          drag = null;
+        });
+      }
+      window.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape") clearMeasure();
+      });
+      if (measureEl) {
+        measureEl.addEventListener("change", function () {
+          const on = !!measureEl.checked;
+          try {
+            localStorage.setItem(MEASURE_KEY, on ? "1" : "0");
+          } catch (e) {}
+          setMeasureMode(on);
+        });
+      }
+      setMeasureMode(measureOn);
       legend.innerHTML = "";
       [
         ["#e6b450", "Asia high"],

@@ -14,6 +14,10 @@
       <p class="sub" id="ob-sub">Loading…</p>
     </div>
     <div class="ab-chart-actions">
+      <label class="ab-btn ab-magnet-toggle" title="Drag across the chart to read the point distance, price change, and how many 15-minute bars. Esc clears the box. On by default.">
+        <input type="checkbox" id="ob-measure" checked />
+        Measure
+      </label>
       <label class="ab-btn ab-magnet-toggle" title="Snap the crosshair to the candle open, high, low, or close. Off leaves it free on the price scale.">
         <input type="checkbox" id="ob-magnet" />
         Magnet
@@ -24,10 +28,12 @@
   <section class="card ab-chart-card">
     <div class="ab-chart-wrap">
       <div id="ob-chart" class="ab-chart"></div>
+      <svg id="ob-measure-svg" class="ab-measure-svg" aria-hidden="true"></svg>
+      <div id="ob-measure-label" class="ab-measure-label" hidden></div>
     </div>
     <p class="hint" id="ob-decision"></p>
     <ul id="ob-legend" class="ab-legend"></ul>
   </section>
-  <script src="/static/overnight_chart.js?v=20260926g"></script>
+  <script src="/static/overnight_chart.js?v=20260926h"></script>
 </body>
 </html>
