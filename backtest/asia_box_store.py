@@ -122,6 +122,7 @@ def insert_run(
         "win_rate": result.get("win_rate") or 0.0,
         "by_setup": result.get("by_setup") or {},
         "skip_counts": result.get("skip_counts") or {},
+        "freezes": result.get("freezes") or [],
     }
     finished = _now()
     created = created_at or finished

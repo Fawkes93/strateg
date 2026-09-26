@@ -96,6 +96,12 @@
         );
       }
       bits.push("entry " + px2(t.entry) + " → " + px2(t.exit));
+      const sl0 = t.extras && t.extras.sl_initial;
+      const trailed =
+        sl0 != null &&
+        t.sl != null &&
+        Math.abs(Number(sl0) - Number(t.sl)) > 1e-8;
+      if (trailed) bits.push("SL " + px2(sl0) + " → " + px2(t.sl) + " trailed");
       if (boxBit) bits.push(boxBit);
       sub.innerHTML = bits.join(" · ");
       const back = document.getElementById("ab-back");
@@ -314,12 +320,15 @@
       }
 
       if (t.sl != null) {
+        const sl0 = t.extras && t.extras.sl_initial;
+        const trailed =
+          sl0 != null && Math.abs(Number(sl0) - Number(t.sl)) > 1e-8;
         candleSeries.createPriceLine({
           price: t.sl,
           color: "#f07178",
           lineWidth: 1,
           lineStyle: LightweightCharts.LineStyle.Dashed,
-          title: "SL",
+          title: trailed ? "SL trailed" : "SL",
         });
       }
       if (t.tp != null) {

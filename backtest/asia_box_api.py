@@ -18,7 +18,7 @@ from backtest.asia_box import (
     fib_px,
     session_window_utc,
 )
-from backtest.asia_box_describe import describe_setups
+from backtest.asia_box_describe import describe_rules, describe_setups
 from backtest.asia_box_jobs import (
     AsiaBoxJobParams,
     engine_params,
@@ -83,6 +83,15 @@ class AsiaBoxRunRequest(BaseModel):
     ema_retest_sl_fib: float = 0.382
     ema_retest_tp_fib: float = 0.0
     ema_retest_auto_levels: bool = True
+    ema_retest_sl_steps: int = 2
+    trade_start_enabled: bool = True
+    trade_start_hour: int = 3
+    trade_start_minute: int = 30
+    continuation_trail: bool = True
+    continuation_trail_steps: int = 2
+    impulse_freeze: bool = True
+    impulse_freeze_frac: float = 0.40
+    impulse_freeze_minutes: int = 90
     tp_double_fib0: bool = False
     bounce_236: bool = False
     bounce_236_count: int = 2
@@ -125,14 +134,18 @@ def asia_box_stop():
     return out
 
 
+def _setup_payload(params: AsiaBoxParams) -> Dict[str, Any]:
+    return {"setups": describe_setups(params), "rules": describe_rules(params)}
+
+
 @router.get("/api/asia-box/setups")
 def asia_box_setups_default():
-    return {"setups": describe_setups(AsiaBoxParams())}
+    return _setup_payload(AsiaBoxParams())
 
 
 @router.post("/api/asia-box/setups")
 def asia_box_setups(body: AsiaBoxRunRequest):
-    return {"setups": describe_setups(_engine_from_req(body))}
+    return _setup_payload(_engine_from_req(body))
 
 
 @router.get("/api/asia-box/runs")

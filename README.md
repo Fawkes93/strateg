@@ -43,9 +43,66 @@ Optional param **`entry_weekdays`** (list of ints `0=Mon..6=Sun`, or empty/omit 
 Research example (not hardcoded): Monday + hours UTC 7–12 → clean ~67.6% (2025 May–Sep n=37) / ~63.6% (2026 Jun–Sep n=22) at T=100; Monday-only ~62% / ~59%. Re-check on **2025 and 2026** XAUUSD windows before treating any set as a default.  
 Older hour-only note: May–Sep 2025 (589 trades, T=100) suggested `{4,15,17,19,22}` → 66% clean n=100, or expanded `{4,5,8,15,17,22}` → 62% n=148 — **example suggestions only**.
 
+## Asia box tab
+
+5-minute Fibonacci backtest. **Not** the Asia liquidity tab, and **not** Overnight break. Those are other strategies.
+
+Engine `backtest/asia_box.py`. Form `web/asia_box.js` (injected tab). Saved runs `results/asia_box.sqlite`. Catalog http://127.0.0.1:8765/asia-box/results — click a trade for the chart.
+
+Every hour below is **Europe/Chisinau**. Gold: 1 point = $0.01, so a 3000-point minimum box is $30. EURUSD and USDJPY use 0.1 pip per point; the form divides min range and shallow-near by 10 the first time you switch off gold.
+
+**Day**
+
+1. **01:00–06:00** the box high and low keep updating. Fib 0 is the extreme that printed later. Fib 1 is the other side.
+2. **Before 03:30, watch only.** No setup may fill. The fib and the arm flags still update, so a reverse can arm at 02:00 and confirm on the first valid close at or after 03:30.
+3. Shallow setups wait until **05:30**. EMA retest waits until **07:00**. No new entry at or after **10:00**. Open trades flatten at **13:30**.
+4. One open trade. If it exits before 06:00 and the box has grown, a second box may trade.
+
+**Three gates, on by default.** The Session rules card on the tab repeats them, and `GET /api/asia-box/setups` returns the same sentences in `rules[].body`. If a number changes, that sentence is the behavior of the next run. Read it instead of guessing.
+
+| Gate | Default | What it does |
+| --- | --- | --- |
+| `trade_start_enabled` | 03:30 | No fill before this clock. The box still builds. |
+| `continuation_trail` | 2 fib steps | Continuation starts at Fib .786. A new high (long) or new low (short) moves the stop that many steps toward Fib 1, and only tighter. The open trade keeps the fib from the fill. |
+| `impulse_freeze` | 40% and 90 min | If the 5m that would fill has a high−low wider than 40% of the box, skip it and block every setup until 90 minutes after that candle **closes**. The box keeps extending during the wait. |
+
+Fib steps walk this ladder toward the stop: `0, .236, .382, .5, .618, .786, 1, 1.618`. "2 steps behind" means the second level strictly past the price. **Fib 0 counts as a step.** A price through Fib 0 stops at **.236**. A price between Fib 0 and .236 stops at **.382**. That .236 stop looks like one step back inside the box. It is still 2.
+
+EMA retest auto-stop uses the same count (`ema_retest_sl_steps`, default 2). The SL field showing 0.382 is used only when Auto is off. Set steps to 3 to put a through-Fib-0 stop at .382. Target stays Fib 0, or the second extension past 0 (−.382) when the fill is already through Fib 0.
+
+**Six setups.** Continuation and the two shallows trade with the box. Reverse Confirm and Reverse EMA trade against it after a 5m **closes** through .786 (a wick does not count). EMA retest follows the 06:00 close versus the box midpoint, not the later-extreme label. Full text is `setups[]` on `/api/asia-box/setups`.
+
+**Check these two mornings.** They are why the freeze exists. Both were catalog Run #14, `reverse_confirm` UP, and both stopped. The signal candle was the entry candle.
+
+| Local morning | Signal candle (local) | Entry timestamp (UTC) | What happened | Box |
+| --- | --- | --- | --- | --- |
+| 2026-03-16 | 02:00–02:05 | `2026-03-16T00:05:00Z` | −2528 at the stop | 2678 pts, 46% of a 5847-pt box |
+| 2026-04-06 | 05:15–05:20 | `2026-04-06T02:20:00Z` | −2998 at the stop | 2893 pts, 45% of a 6493-pt box |
+
+March is also before 03:30, so the watch-only clock blocks it even without the freeze. April is after 03:30, so only the freeze blocks it. A later trade that same local date is allowed. Those two entry timestamps should be absent.
+
+Restart `python webapp.py` if something is already listening on 8765. An old process does not have these rules. `GET /api/asia-box/setups` must contain `"id": "impulse_freeze"` before you trust a run.
+
+```bash
+# date_to is exclusive. This window includes both mornings.
+curl -s -X POST http://127.0.0.1:8765/api/asia-box/run \
+  -H 'content-type: application/json' \
+  -d '{"symbol":"XAUUSD","date_from":"2026-03-01","date_to":"2026-04-08","timezone":"Europe/Chisinau"}'
+# poll GET /api/asia-box until running is false
+```
+
+On the result, `freezes[]` is every skipped signal (`local_date`, `until`, `setup`, `candle_pts`, `box_pts`). A continuation row stores the starting stop in `extras.sl_initial` and the stop at exit in `sl`. They differ when the trail moved. The chart titles that line "SL trailed".
+
+```bash
+PYTHONPATH=. .venv/bin/python -m pytest tests/test_asia_box_rules.py -q
+```
+
+`tests/test_asia_box.py` turns the three gates off in its helper so the older tests stay about setup geometry. If that file fails to import `min_range_threshold_pts`, that name is a local experiment and is not part of this engine.
+
+
 ## Asia liquidity tab
 
-Injected tab (`web/asia_liquidity.js`) for the **Dual-Mode Asia Liquidity Engine** — not the same bot as Overnight break.
+Injected tab (`web/asia_liquidity.js`) for the **Dual-Mode Asia Liquidity Engine** — not the Asia box fib tab above, and not Overnight break.
 
 Overnight break is Bucharest-local Asia + EMA/higher-close pullback, pts, no partials.  
 This tab locks a session box and then takes **one** of two plays:

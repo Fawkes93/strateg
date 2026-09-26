@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from backtest.asia_box import AsiaBoxParams
+from backtest.asia_box import AsiaBoxParams, _FIB_SL_STEPS, _nth_step
 
 SETUP_ORDER = (
     "continuation",
@@ -29,6 +29,19 @@ def _hhmm(hour: int, minute: int = 0) -> str:
     return f"{int(hour):02d}:{int(minute):02d}"
 
 
+def _fib_name(level: float) -> str:
+    if abs(level) < 1e-9:
+        return "Fib 0"
+    text = f"{level:.3f}".rstrip("0").rstrip(".")
+    if text.startswith("0."):
+        return text[1:]
+    return text
+
+
+def _sl_step_level(pos: float, steps: int) -> float:
+    return _nth_step(pos, _FIB_SL_STEPS, max(1, int(steps)), toward_higher=True)
+
+
 def describe_setups(params: Optional[AsiaBoxParams] = None) -> List[Dict[str, Any]]:
     p = params or AsiaBoxParams()
     min_r = int(p.min_range_pts) if float(p.min_range_pts).is_integer() else p.min_range_pts
@@ -44,13 +57,29 @@ def describe_setups(params: Optional[AsiaBoxParams] = None) -> List[Dict[str, An
     def lv(n: float) -> str:
         return f"Fib {n:g}"
 
+    retest_steps = max(1, int(p.ema_retest_sl_steps or 1))
+    through_lv = _fib_name(_sl_step_level(-0.01, retest_steps))
+    inside_lv = _fib_name(_sl_step_level(0.10, retest_steps))
+    second_fib = " This is the second fib behind the fill." if retest_steps == 2 else ""
     ema_levels = (
-        "SL is the second fib behind entry toward the other extreme "
-        "(through Fib 0 → .236; between 0 and .236 → .382; and so on). "
-        "TP is Fib 0 when that is still in front of entry; if entry is already "
-        "through Fib 0, TP is the second extension beyond 0 (−.382)."
+        f"Stop is {retest_steps} fib steps behind the fill, toward the other extreme. "
+        f"Fib 0 counts as a step, so a fill through Fib 0 stops at {through_lv}. "
+        f"A fill between Fib 0 and .236 stops at {inside_lv}.{second_fib} "
+        f"Target is Fib 0 when that is still in front of the fill; if the fill is already "
+        f"through Fib 0, target is the second extension beyond 0 (−.382)."
         if p.ema_retest_auto_levels
-        else f"SL at {lv(p.ema_retest_sl_fib)}, TP at {lv(p.ema_retest_tp_fib)}."
+        else f"SL at {lv(p.ema_retest_sl_fib)}, TP at {lv(p.ema_retest_tp_fib)}. Auto steps are off."
+    )
+    trail_steps = max(1, int(p.continuation_trail_steps or 1))
+    trail_through = _fib_name(_sl_step_level(-0.01, trail_steps))
+    trail_inside = _fib_name(_sl_step_level(0.10, trail_steps))
+    trail = (
+        f" Once open, a new high (long) or new low (short) moves the stop "
+        f"{trail_steps} fib steps behind that extreme, and only tightens "
+        f"(through Fib 0 → {trail_through}; between Fib 0 and .236 → {trail_inside}). "
+        f"The open trade keeps the fib from the fill."
+        if p.continuation_trail
+        else " The stop stays at that fib for the whole trade."
     )
     bodies = {
         "continuation": (
@@ -59,7 +88,7 @@ def describe_setups(params: Optional[AsiaBoxParams] = None) -> List[Dict[str, An
             f"A 5m must close in the box direction with the close still between .500 and .786. "
             f"A wick to .786 taints that candle — one extra clean confirm, or skip. "
             f"A close through .786 kills this door. SL at {lv(p.continuation_sl_fib)}, "
-            f"TP at {lv(p.continuation_tp_fib)}. "
+            f"TP at {lv(p.continuation_tp_fib)}.{trail} "
             f"Entries until {cutoff}; flatten {flatten}."
         ),
         "reverse_confirm": (
@@ -93,6 +122,77 @@ def describe_setups(params: Optional[AsiaBoxParams] = None) -> List[Dict[str, An
     return [
         {"id": sid, "title": _TITLES[sid], "body": bodies[sid], "enabled": _enabled(p, sid)}
         for sid in SETUP_ORDER
+    ]
+
+
+def describe_rules(params: Optional[AsiaBoxParams] = None) -> List[Dict[str, Any]]:
+    """Plain-language session gates. The Asia box tab prints these next to the inputs."""
+    p = params or AsiaBoxParams()
+    start = _hhmm(p.trade_start_hour, p.trade_start_minute)
+    box_open = _hhmm(p.box_start_hour)
+    shallow_at = _hhmm(p.shallow_hour, p.shallow_minute)
+    ema_at = _hhmm(p.ema_retest_hour)
+    steps = max(1, int(p.continuation_trail_steps or 1))
+    through_lv = _fib_name(_sl_step_level(-0.01, steps))
+    inside_lv = _fib_name(_sl_step_level(0.10, steps))
+    pct = f"{p.impulse_freeze_frac * 100:g}"
+    mins = int(p.impulse_freeze_minutes)
+    if p.trade_start_enabled:
+        trade_body = (
+            f"No new entry before {start} local. From {box_open} the box high and low, "
+            f"the fibs, and the arm flags still update — a reverse can arm early and "
+            f"confirm on the first valid close at or after {start}. Shallow still waits "
+            f"until {shallow_at}, EMA retest until {ema_at}."
+        )
+    else:
+        trade_body = (
+            f"Earliest-entry clock is off. Continuation and reverse can fill as soon as "
+            f"the box is wide enough, from {box_open}."
+        )
+    if p.continuation_trail:
+        trail_body = (
+            f"Continuation starts at Fib {p.continuation_sl_fib:g}. After a new high (long) "
+            f"or new low (short), the stop moves to {steps} fib steps behind that extreme — "
+            f"only tighter, never wider. Through Fib 0 that is {through_lv}; between Fib 0 "
+            f"and .236 that is {inside_lv}. This trade keeps the fib from the fill. A later "
+            f"box high does not move its target."
+        )
+    else:
+        trail_body = (
+            f"Continuation trail is off. The stop stays at Fib {p.continuation_sl_fib:g} "
+            f"for the whole trade."
+        )
+    if p.impulse_freeze:
+        freeze_body = (
+            f"If the 5m that would fill is wider than {pct}% of the Asia box, skip it and "
+            f"block every setup for {mins} minutes after that candle closes. The box keeps "
+            f"extending during the wait, and a new high or low still redraws the fib. "
+            f"This is the Run #14 reverse longs: 2026-03-16 02:00 (2678 pts, 46% of the box, "
+            f"stopped −2528) and 2026-04-06 05:15 (2893 pts, 45%, stopped −2998)."
+        )
+    else:
+        freeze_body = (
+            "Huge-candle freeze is off. A single 5m can be most of the box and still fill."
+        )
+    return [
+        {
+            "id": "trade_start",
+            "title": "Watch first",
+            "body": trade_body,
+            "enabled": bool(p.trade_start_enabled),
+        },
+        {
+            "id": "continuation_trail",
+            "title": "Continuation stop",
+            "body": trail_body,
+            "enabled": bool(p.continuation_trail),
+        },
+        {
+            "id": "impulse_freeze",
+            "title": "Huge candle",
+            "body": freeze_body,
+            "enabled": bool(p.impulse_freeze),
+        },
     ]
 
 

@@ -1,3 +1,9 @@
+/* Asia box tab — not Asia liquidity, not Overnight break.
+   Defaults: no entry before 03:30 local, continuation stop trails 2 fib steps,
+   a signal candle wider than 40% of the box freezes every setup for 90 minutes.
+   The Session rules paragraphs are fetched from /api/asia-box/setups and are
+   the behavior of the next run. README section "Asia box tab" is the runbook.
+*/
 (function () {
   const $ = (id) => document.getElementById(id);
   const STORAGE_KEY = "strateg_asia_box_v1";
@@ -37,6 +43,15 @@
     "ab-retest-sl",
     "ab-retest-tp",
     "ab-retest-auto",
+    "ab-retest-steps",
+    "ab-trade-start-on",
+    "ab-trade-start-h",
+    "ab-trade-start-m",
+    "ab-trail-on",
+    "ab-trail-steps",
+    "ab-freeze-on",
+    "ab-freeze-pct",
+    "ab-freeze-min",
     "ab-double-tp",
     "ab-bounce",
     "ab-en-cont",
@@ -217,6 +232,15 @@
       ema_retest_sl_fib: num("ab-retest-sl", 0.382),
       ema_retest_tp_fib: num("ab-retest-tp", 0),
       ema_retest_auto_levels: chk("ab-retest-auto"),
+      ema_retest_sl_steps: intv("ab-retest-steps", 2),
+      trade_start_enabled: chk("ab-trade-start-on"),
+      trade_start_hour: intv("ab-trade-start-h", 3),
+      trade_start_minute: intv("ab-trade-start-m", 30),
+      continuation_trail: chk("ab-trail-on"),
+      continuation_trail_steps: intv("ab-trail-steps", 2),
+      impulse_freeze: chk("ab-freeze-on"),
+      impulse_freeze_frac: (num("ab-freeze-pct", 40) || 0) / 100,
+      impulse_freeze_minutes: intv("ab-freeze-min", 90),
       tp_double_fib0: chk("ab-double-tp"),
       bounce_236: chk("ab-bounce"),
       enable_continuation: chk("ab-en-cont"),
@@ -251,6 +275,10 @@
           "</p>";
         host.appendChild(art);
       });
+      (data.rules || []).forEach(function (rule) {
+        const el = $("ab-rule-" + rule.id);
+        if (el) el.textContent = rule.body || "";
+      });
     } catch (e) {
       console.warn("asia box describe failed", e);
     }
@@ -279,12 +307,58 @@
     panel.innerHTML = `
     <section class="card pipeline">
       <h2>Asia box Fibonacci</h2>
+      <p class="hint">This is the 5-minute fib backtest. It is not the Asia liquidity tab and not Overnight break. Hours are Europe/Chisinau.</p>
       <ol>
-        <li>Build the Asia box from <strong>01:00–06:00</strong> local. Fib 0 is the later extreme, Fib 1 the other side.</li>
-        <li>Named setups (toggles below) hunt retracements until 10:00. One open trade; a fill that dies before 06:00 may unlock a second, larger box.</li>
-        <li>Flatten 13:30. Independent of Overnight break — both can trade the same morning.</li>
+        <li>The box is <strong>01:00–06:00</strong>. Fib 0 is the extreme that printed later. Fib 1 is the other side. Gold: 1 point = $0.01.</li>
+        <li><strong>No entry before 03:30.</strong> The box and the arm flags still update, so a reverse can arm early and confirm at 03:30. Shallow waits until 05:30. EMA retest waits until 07:00. No new entry from 10:00. Flatten 13:30.</li>
+        <li><strong>Continuation stop trails.</strong> It starts at .786. A new high (long) or new low (short) moves it 2 fib steps toward Fib 1, and only tighter. Fib 0 counts as a step, so a high through Fib 0 pulls the stop to .236.</li>
+        <li><strong>A huge candle waits 90 minutes.</strong> If the 5m that would fill is wider than 40% of the box, skip it and block every setup for 90 minutes after that close. The box keeps updating. The two candles this is for: 2026-03-16 02:00 reverse long (−2528) and 2026-04-06 05:15 reverse long (−2998).</li>
+        <li>EMA retest auto-stop is already those same 2 steps. The SL box showing 0.382 is used only when Auto is off. Steps = 3 puts a through-Fib-0 stop at .382.</li>
+        <li>One open trade. A fill that exits before 06:00 can open a second, larger box. The sentences on the Session rules card are the exact rules of the next run.</li>
       </ol>
       <p class="hint">5m candles by default; ticks only change fill / SL / TP precision. Results live in SQLite — open the catalog to filter by setup and click a trade for the chart. EURUSD and USDJPY: 1 point = 0.1 pip. The first time you pick one, min range and shallow-near scale from the gold values (÷10). Fib levels stay the same.</p>
+    </section>
+    <section class="card ab-rules">
+      <h2>Session rules</h2>
+      <p class="hint">On by default. The paragraph under each rule is the exact behavior the next run will use.</p>
+      <div class="ab-rule" id="ab-rule-trade-start">
+        <label class="chk"><input type="checkbox" id="ab-trade-start-on" checked /> No trade until</label>
+        <div class="ab-rule-fields">
+          <label>Hour
+            <input type="number" id="ab-trade-start-h" value="3" min="0" max="23" />
+            <span class="field-help">Local hour. 3 with minute 30 is 03:30.</span>
+          </label>
+          <label>Minute
+            <input type="number" id="ab-trade-start-m" value="30" min="0" max="59" />
+            <span class="field-help">Before this clock the box is only watched.</span>
+          </label>
+        </div>
+        <p class="ab-rule-body" id="ab-rule-trade_start">No new entry before 03:30. The box still builds.</p>
+      </div>
+      <div class="ab-rule" id="ab-rule-trail">
+        <label class="chk"><input type="checkbox" id="ab-trail-on" checked /> Continuation stop trails</label>
+        <div class="ab-rule-fields">
+          <label>Fib steps behind
+            <input type="number" id="ab-trail-steps" value="2" min="1" max="8" />
+            <span class="field-help">2 behind a new high through Fib 0 lands on .236.</span>
+          </label>
+        </div>
+        <p class="ab-rule-body" id="ab-rule-continuation_trail">New highs and lows pull the continuation stop closer.</p>
+      </div>
+      <div class="ab-rule" id="ab-rule-freeze">
+        <label class="chk"><input type="checkbox" id="ab-freeze-on" checked /> Huge-candle freeze</label>
+        <div class="ab-rule-fields">
+          <label>Wider than (%)
+            <input type="number" id="ab-freeze-pct" value="40" min="1" max="100" step="1" />
+            <span class="field-help">Signal candle high−low divided by the box high−low.</span>
+          </label>
+          <label>Wait (minutes)
+            <input type="number" id="ab-freeze-min" value="90" min="0" step="5" />
+            <span class="field-help">90 minutes is an hour and a half after that candle closes.</span>
+          </label>
+        </div>
+        <p class="ab-rule-body" id="ab-rule-impulse_freeze">A candle bigger than 40% of the box pauses entries for 90 minutes.</p>
+      </div>
     </section>
     <section class="card">
       <h2>Parameters</h2>
@@ -295,54 +369,70 @@
             <option value="EURUSD">EURUSD</option>
             <option value="USDJPY">USDJPY</option>
           </select>
+          <span class="field-help">Gold uses $0.01 per point. The first switch to EURUSD or USDJPY divides min range and shallow-near by 10.</span>
         </label>
         <label>From (local date)
           <input type="date" id="ab-from" value="2025-05-01" />
+          <span class="field-help">First local morning included in the run.</span>
         </label>
         <label>To (exclusive)
           <input type="date" id="ab-to" value="2025-08-01" />
+          <span class="field-help">Stops before this date. 1 Aug means 31 Jul is the last day.</span>
         </label>
         <label>Timezone
           <input id="ab-tz" value="Europe/Chisinau" />
+          <span class="field-help">Every hour on this tab is in this zone. Chisinau matches the live session.</span>
         </label>
         <label>Min range (pts)
           <input type="number" id="ab-min-range" value="3000" step="100" />
+          <span class="field-help">If the Asia high−low is smaller than this, the day is skipped.</span>
         </label>
         <label>EMA period (5m)
           <input type="number" id="ab-ema" value="32" min="1" />
+          <span class="field-help">Length of the 5-minute EMA used by Reverse EMA, Shallow EMA, and EMA Retest.</span>
         </label>
         <label>Data
           <select id="ab-data">
             <option value="candles_5m" selected>5m candles</option>
             <option value="ticks">Ticks</option>
           </select>
+          <span class="field-help">5m candles decide the signal. Ticks only change how precisely the stop and target fill.</span>
         </label>
         <label>Box start hour
           <input type="number" id="ab-box-start" value="1" min="0" max="23" />
+          <span class="field-help">Highs and lows before this hour are not part of the Asia box.</span>
         </label>
         <label>Box end hour
           <input type="number" id="ab-box-end" value="6" min="0" max="23" />
+          <span class="field-help">The box stops extending here. A fill that exits before then can open a second, larger box.</span>
         </label>
         <label>Shallow hour
           <input type="number" id="ab-shallow-h" value="5" min="0" max="23" />
+          <span class="field-help">Shallow EMA and Shallow Confirm cannot fire before this time.</span>
         </label>
         <label>Shallow minute
           <input type="number" id="ab-shallow-m" value="30" min="0" max="59" />
+          <span class="field-help">Together with the hour. 5 and 30 means 05:30.</span>
         </label>
         <label>EMA retest hour
           <input type="number" id="ab-ema-retest-h" value="7" min="0" max="23" />
+          <span class="field-help">EMA Retest cannot fire before this hour, even if the 03:30 clock has passed.</span>
         </label>
         <label>Entry cutoff hour
           <input type="number" id="ab-cutoff" value="10" min="0" max="23" />
+          <span class="field-help">No new entry at or after this hour. Open trades stay open until flatten.</span>
         </label>
         <label>Flatten hour
           <input type="number" id="ab-flatten-h" value="13" min="0" max="23" />
+          <span class="field-help">Open trades close at this time, at the bar's open.</span>
         </label>
         <label>Flatten minute
           <input type="number" id="ab-flatten-m" value="30" min="0" max="59" />
+          <span class="field-help">Together with the hour. 13 and 30 means 13:30.</span>
         </label>
         <label>Shallow EMA near (pts)
           <input type="number" id="ab-shallow-near" value="100" step="10" />
+          <span class="field-help">Shallow EMA fires only when the EMA is within this many points of Fib .382.</span>
         </label>
       </div>
       <div class="ab-setup-list">
@@ -350,52 +440,70 @@
         <div class="ab-setup-item">
           <label class="chk"><input type="checkbox" id="ab-en-cont" checked /> Continuation</label>
           <div class="ab-setup-levels" data-for="ab-en-cont">
-            <label>SL <input type="number" id="ab-cont-sl" value="0.786" step="0.001" /></label>
-            <label>TP <input type="number" id="ab-cont-tp" value="0" step="0.001" /></label>
+            <label>SL <input type="number" id="ab-cont-sl" value="0.786" step="0.001" />
+              <span class="field-help">Starting stop. The trail rule can move it closer.</span></label>
+            <label>TP <input type="number" id="ab-cont-tp" value="0" step="0.001" />
+              <span class="field-help">0 is Fib 0, the later extreme of the box.</span></label>
           </div>
         </div>
         <div class="ab-setup-item">
           <label class="chk"><input type="checkbox" id="ab-en-rev-c" checked /> Reverse Confirm</label>
           <div class="ab-setup-levels" data-for="ab-en-rev-c">
-            <label>SL <input type="number" id="ab-rev-c-sl" value="0.5" step="0.001" /></label>
-            <label>TP <input type="number" id="ab-rev-c-tp" value="1.5" step="0.001" /></label>
+            <label>SL <input type="number" id="ab-rev-c-sl" value="0.5" step="0.001" />
+              <span class="field-help">Fib level of the stop. .5 is the middle of the box.</span></label>
+            <label>TP <input type="number" id="ab-rev-c-tp" value="1.5" step="0.001" />
+              <span class="field-help">1.5 is half a box beyond Fib 1.</span></label>
           </div>
         </div>
         <div class="ab-setup-item">
           <label class="chk"><input type="checkbox" id="ab-en-rev-e" checked /> Reverse EMA</label>
           <div class="ab-setup-levels" data-for="ab-en-rev-e">
-            <label>SL <input type="number" id="ab-rev-e-sl" value="0.5" step="0.001" /></label>
-            <label>TP <input type="number" id="ab-rev-e-tp" value="1" step="0.001" /></label>
+            <label>SL <input type="number" id="ab-rev-e-sl" value="0.5" step="0.001" />
+              <span class="field-help">Fib level of the stop after the EMA tag.</span></label>
+            <label>TP <input type="number" id="ab-rev-e-tp" value="1" step="0.001" />
+              <span class="field-help">1 is Fib 1, the far side of the box.</span></label>
           </div>
         </div>
         <div class="ab-setup-item">
           <label class="chk"><input type="checkbox" id="ab-en-sh-e" checked /> Shallow EMA</label>
           <div class="ab-setup-levels" data-for="ab-en-sh-e">
-            <label>SL <input type="number" id="ab-sh-e-sl" value="0.5" step="0.001" /></label>
-            <label>TP <input type="number" id="ab-sh-e-tp" value="0" step="0.001" /></label>
+            <label>SL <input type="number" id="ab-sh-e-sl" value="0.5" step="0.001" />
+              <span class="field-help">Fib level of the stop. With the box, so .5 is behind a .382 tag.</span></label>
+            <label>TP <input type="number" id="ab-sh-e-tp" value="0" step="0.001" />
+              <span class="field-help">0 aims back at the later extreme.</span></label>
           </div>
         </div>
         <div class="ab-setup-item">
           <label class="chk"><input type="checkbox" id="ab-en-sh-c" checked /> Shallow Confirm</label>
           <div class="ab-setup-levels" data-for="ab-en-sh-c">
-            <label>SL <input type="number" id="ab-sh-c-sl" value="0.5" step="0.001" /></label>
-            <label>TP <input type="number" id="ab-sh-c-tp" value="0" step="0.001" /></label>
+            <label>SL <input type="number" id="ab-sh-c-sl" value="0.5" step="0.001" />
+              <span class="field-help">Fib level of the stop after the confirming close.</span></label>
+            <label>TP <input type="number" id="ab-sh-c-tp" value="0" step="0.001" />
+              <span class="field-help">0 aims back at the later extreme.</span></label>
           </div>
         </div>
         <div class="ab-setup-item">
           <label class="chk"><input type="checkbox" id="ab-en-retest" checked /> EMA Retest</label>
           <div class="ab-setup-levels" data-for="ab-en-retest">
-            <label class="chk"><input type="checkbox" id="ab-retest-auto" checked /> Auto SL/TP</label>
-            <label>SL <input type="number" id="ab-retest-sl" value="0.382" step="0.001" /></label>
-            <label>TP <input type="number" id="ab-retest-tp" value="0" step="0.001" /></label>
+            <label class="chk"><input type="checkbox" id="ab-retest-auto" checked /> Auto SL/TP
+              <span class="field-help">On: stop is the steps field below, target is Fib 0 or an extension. The SL and TP numbers are used only when this is off. Two steps through Fib 0 is .236, which looks like one step inside the box because Fib 0 itself counts.</span></label>
+            <label>Steps <input type="number" id="ab-retest-steps" value="2" min="1" max="8" />
+              <span class="field-help">2 through Fib 0 → .236. 3 through Fib 0 → .382. Between 0 and .236, 2 steps → .382.</span></label>
+            <label>SL <input type="number" id="ab-retest-sl" value="0.382" step="0.001" />
+              <span class="field-help">Used only when Auto is off. 0.382 is not the live auto stop.</span></label>
+            <label>TP <input type="number" id="ab-retest-tp" value="0" step="0.001" />
+              <span class="field-help">Used only when Auto is off.</span></label>
           </div>
         </div>
       </div>
       <div class="engines">
         <span class="label">Reserved</span>
-        <label class="chk ab-tip" title="With-trend only (Continuation, Shallow, EMA Retest). Replaces the Fib 0 target with twice the distance from entry to Fib 0. Reverse trades are unchanged." data-tip="With-trend only (Continuation, Shallow, EMA Retest). Replaces the Fib 0 target with twice the distance from entry to Fib 0. Reverse trades are unchanged."><input type="checkbox" id="ab-double-tp" /> 2× Fib 0 profit TP</label>
-        <label class="chk ab-tip" title="After Fib .236 is tagged twice (separate touches), the open trade’s stop is pulled to Fib .618." data-tip="After Fib .236 is tagged twice (separate touches), the open trade’s stop is pulled to Fib .618."><input type="checkbox" id="ab-bounce" /> .236 bounce SL</label>
-        <label class="chk"><input type="checkbox" id="ab-force" /> Force download</label>
+        <label class="chk ab-tip" title="With-trend only (Continuation, Shallow, EMA Retest). Replaces the Fib 0 target with twice the distance from entry to Fib 0. Reverse trades are unchanged." data-tip="With-trend only (Continuation, Shallow, EMA Retest). Replaces the Fib 0 target with twice the distance from entry to Fib 0. Reverse trades are unchanged."><input type="checkbox" id="ab-double-tp" /> 2× Fib 0 profit TP
+          <span class="field-help">With-trend only. Replaces the Fib 0 target with twice the distance from entry to Fib 0. Reverse trades stay on their fib target.</span></label>
+        <label class="chk ab-tip" title="After Fib .236 is tagged twice (separate touches), the open trade’s stop is pulled to Fib .618." data-tip="After Fib .236 is tagged twice (separate touches), the open trade’s stop is pulled to Fib .618."><input type="checkbox" id="ab-bounce" /> .236 bounce SL
+          <span class="field-help">After Fib .236 is tagged twice, on separate touches, the open stop jumps to Fib .618.</span></label>
+        <label class="chk"><input type="checkbox" id="ab-force" /> Force download
+          <span class="field-help">Rebuild the month packs even when they are already on disk.</span></label>
       </div>
       <div class="row-actions" style="margin-top:1rem;display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center">
         <button type="button" class="primary" id="ab-run">Run</button>
@@ -478,19 +586,22 @@
     const sid = result.sqlite_id;
     const href = sid ? "/asia-box/results?run=" + sid : "/asia-box/results";
     if ($("ab-results-link")) $("ab-results-link").href = href;
-    if (!sid && n === 0) {
-      el.textContent = "0 trades · not saved to the catalog.";
-      return;
-    }
     const parts = Object.keys(result.by_setup || {})
       .map((k) => k + " " + (result.by_setup[k].n || 0))
       .join(" · ");
+    const fz = (result.freezes || []).length;
+    const freezeBit = fz ? " · " + fz + " huge-candle freeze" + (fz === 1 ? "" : "s") : "";
+    if (!sid && n === 0) {
+      el.textContent = "0 trades · not saved to the catalog." + freezeBit;
+      return;
+    }
     el.innerHTML =
       n +
       " trades · " +
       pts +
       " pts" +
       (parts ? " · " + parts : "") +
+      freezeBit +
       (sid ? ' · <a href="' + href + '" target="_blank" rel="noopener">View in catalog</a>' : "");
   }
 
@@ -502,9 +613,21 @@
     const auto = $("ab-retest-auto");
     const sl = $("ab-retest-sl");
     const tp = $("ab-retest-tp");
+    const steps = $("ab-retest-steps");
     const locked = !!(auto && auto.checked);
     if (sl) sl.disabled = locked;
     if (tp) tp.disabled = locked;
+    if (steps) steps.disabled = !locked;
+    function gate(boxId, on) {
+      const box = $(boxId);
+      if (!box) return;
+      box.querySelectorAll("input[type='number']").forEach(function (el) {
+        el.disabled = !on;
+      });
+    }
+    gate("ab-rule-trade-start", chk("ab-trade-start-on"));
+    gate("ab-rule-trail", chk("ab-trail-on"));
+    gate("ab-rule-freeze", chk("ab-freeze-on"));
   }
 
   function wire() {

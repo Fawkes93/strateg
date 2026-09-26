@@ -3,6 +3,7 @@
   const params = new URLSearchParams(location.search);
   let tzByRun = {};
   let symbolByRun = {};
+  let freezesByRun = {};
 
   function localClock(iso, tz) {
     if (!iso) return "—";
@@ -44,9 +45,12 @@
     sel.innerHTML = '<option value="">All runs</option>';
     tzByRun = {};
     symbolByRun = {};
+    freezesByRun = {};
     (data.runs || []).forEach(function (run) {
       tzByRun[String(run.id)] = run.timezone || (run.params && run.params.timezone) || "UTC";
       symbolByRun[String(run.id)] = run.symbol || "";
+      const fz = run.summary && run.summary.freezes;
+      freezesByRun[String(run.id)] = Array.isArray(fz) ? fz.length : 0;
       const opt = document.createElement("option");
       opt.value = String(run.id);
       const sum = run.summary || {};
@@ -138,6 +142,8 @@
     const parts = Object.keys(by)
       .map((k) => k + " " + by[k])
       .join(" · ");
+    const runId = $("ab-run").value;
+    const fz = runId ? freezesByRun[runId] || 0 : 0;
     $("ab-summary").textContent =
       rows.length +
       " trades · " +
@@ -145,7 +151,8 @@
       "% wins · " +
       Math.round(sum) +
       " pts" +
-      (parts ? " · " + parts : "");
+      (parts ? " · " + parts : "") +
+      (fz ? " · " + fz + " huge-candle freeze" + (fz === 1 ? "" : "s") : "");
   }
 
   ["ab-run", "ab-setup", "ab-side", "ab-box", "ab-exit", "ab-from", "ab-to"].forEach(

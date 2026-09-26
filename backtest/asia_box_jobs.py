@@ -168,6 +168,7 @@ def _run(params: AsiaBoxJobParams) -> None:
     n_m = max(1, len(chunks))
     all_trades: List[AsiaBoxTrade] = []
     all_skips: List[AsiaBoxSkip] = []
+    all_freezes: List[Dict[str, Any]] = []
     total_bars = 0
     try:
         for i, (a, b) in enumerate(chunks):
@@ -207,6 +208,9 @@ def _run(params: AsiaBoxJobParams) -> None:
             rows = [r for r in (raw.get("rows") or []) if a <= r["local_date"] < b]
             skips = [s for s in (raw.get("skips") or []) if a <= s.get("local_date", "") < b]
             all_trades.extend(_rows_to_trades(rows))
+            for f in raw.get("freezes") or []:
+                if a <= str(f.get("local_date") or "") < b:
+                    all_freezes.append(f)
             for s in skips:
                 try:
                     all_skips.append(AsiaBoxSkip(**{k: s[k] for k in ("local_date", "reason") if k in s}))
@@ -221,6 +225,7 @@ def _run(params: AsiaBoxJobParams) -> None:
             symbol=reaktor_symbol(params.symbol),
             data_source=src,
             n_bars=total_bars,
+            freezes=all_freezes,
         )
         result["date_from"] = params.date_from
         result["date_to"] = params.date_to

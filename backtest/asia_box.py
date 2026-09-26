@@ -1,9 +1,30 @@
-"""Asia box Fibonacci retracement engine (pure — no web, no jobs)."""
+"""Asia box Fibonacci retracement engine (pure — no web, no jobs).
+
+Not Asia liquidity and not Overnight break. Operator notes are the README
+section "Asia box tab". Hours are Europe/Chisinau.
+
+01:00–06:00 builds the box. Fib 0 is the later extreme. Nothing fills before
+03:30, but the box and the arm flags still update. Shallow waits until 05:30,
+EMA retest until 07:00, entries stop at 10:00, flatten is 13:30.
+
+Continuation stop starts at Fib .786 and trails `continuation_trail_steps`
+(default 2) behind a new high or low, only tighter. The ladder toward the
+stop is 0, .236, .382, .5, .618, .786, 1, 1.618. Fib 0 counts as a step, so
+a print through Fib 0 pulls the stop to .236.
+
+If the signal 5m is wider than `impulse_freeze_frac` of the box (default 40%),
+that entry is skipped and every setup waits `impulse_freeze_minutes` (default
+90) after the candle close. The box keeps extending. This is the 2026-03-16
+02:00 and 2026-04-06 05:15 reverse longs.
+
+EMA retest auto-stop uses the same step count (`ema_retest_sl_steps`, default
+2). The fixed 0.382 SL applies only when auto levels are off.
+"""
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from zoneinfo import ZoneInfo
 
@@ -48,6 +69,15 @@ class AsiaBoxParams:
     ema_retest_sl_fib: float = 0.382
     ema_retest_tp_fib: float = 0.0
     ema_retest_auto_levels: bool = True
+    ema_retest_sl_steps: int = 2
+    trade_start_enabled: bool = True
+    trade_start_hour: int = 3
+    trade_start_minute: int = 30
+    continuation_trail: bool = True
+    continuation_trail_steps: int = 2
+    impulse_freeze: bool = True
+    impulse_freeze_frac: float = 0.40
+    impulse_freeze_minutes: int = 90
     tp_double_fib0: bool = False
     bounce_236: bool = False
     bounce_236_count: int = 2
@@ -278,6 +308,8 @@ class _Flags:
     early_exit: bool = False
     trades_today: int = 0
     asia_close: Optional[float] = None
+    freeze_until: Optional[datetime] = None
+    freezes: List[Dict[str, Any]] = field(default_factory=list)
 
     def reset_depth(self) -> None:
         self.tagged_500 = False
@@ -301,22 +333,33 @@ def _fib_pos(entry: float, fib0: float, fib1: float) -> float:
     return (entry - fib0) / span
 
 
-def _second_step(pos: float, levels: Sequence[float], *, toward_higher: bool) -> float:
+def _nth_step(pos: float, levels: Sequence[float], n: int, *, toward_higher: bool) -> float:
+    """Nth fib strictly past pos. n=1 is the next level, n=2 is the one after that."""
+    steps = max(1, int(n))
     if toward_higher:
         found = [lv for lv in levels if lv > pos + 1e-12]
     else:
         found = [lv for lv in levels if lv < pos - 1e-12]
-    if len(found) >= 2:
-        return found[1]
+    if len(found) >= steps:
+        return found[steps - 1]
     if found:
-        return found[0]
+        return found[-1]
     return levels[-1]
 
 
-def ema_retest_sl_tp(entry: float, fib0: float, fib1: float) -> Tuple[float, float]:
-    """SL = 2nd fib toward Fib 1. TP = Fib 0 if in front, else 2nd extension through 0."""
+def _second_step(pos: float, levels: Sequence[float], *, toward_higher: bool) -> float:
+    return _nth_step(pos, levels, 2, toward_higher=toward_higher)
+
+
+def ema_retest_sl_tp(
+    entry: float,
+    fib0: float,
+    fib1: float,
+    sl_steps: int = 2,
+) -> Tuple[float, float]:
+    """SL = Nth fib toward Fib 1. TP = Fib 0 if in front, else 2nd extension through 0."""
     pos = _fib_pos(entry, fib0, fib1)
-    sl_lv = _second_step(pos, _FIB_SL_STEPS, toward_higher=True)
+    sl_lv = _nth_step(pos, _FIB_SL_STEPS, sl_steps, toward_higher=True)
     sl = fib_px(fib0, fib1, sl_lv)
     if pos > 1e-12:
         tp = fib0
@@ -337,7 +380,7 @@ def _sl_tp(
     with_trend = setup in WITH_TREND
     trade_side = box_side if with_trend else opposite(box_side)
     if setup == "ema_retest" and params.ema_retest_auto_levels:
-        sl, tp = ema_retest_sl_tp(entry, fib0, fib1)
+        sl, tp = ema_retest_sl_tp(entry, fib0, fib1, params.ema_retest_sl_steps)
     else:
         sl_lv, tp_lv = {
             "continuation": (params.continuation_sl_fib, params.continuation_tp_fib),
@@ -423,8 +466,13 @@ def _simulate_from_candles(
     params: AsiaBoxParams,
     fib0: float,
     fib1: float,
-) -> Tuple[str, datetime, float]:
-    """Walk 5m bars from start_index inclusive. Same-bar SL beats TP."""
+    trail_steps: int = 0,
+) -> Tuple[str, datetime, float, float]:
+    """Walk 5m bars from start_index inclusive. Same-bar SL beats TP.
+
+    Returns reason, exit time, exit price, and the stop in force at the exit.
+    A continuation trail tightens from this bar's extreme before the stop test.
+    """
     last_ts = candles[start_index - 1].close_time if start_index > 0 else candles[0].open_time
     last_px = entry
     bounce_hits = 0
@@ -432,15 +480,17 @@ def _simulate_from_candles(
     p236 = fib_px(fib0, fib1, 0.236)
     p618 = fib_px(fib0, fib1, 0.618)
     sl_now = sl
+    best = entry
+    steps = max(0, int(trail_steps or 0))
 
     if start_index >= len(candles):
-        return "eod", last_ts, entry
+        return "eod", last_ts, entry, sl_now
 
     for i in range(start_index, len(candles)):
         c = candles[i]
         loc = _local(c.open_time, tz)
         if loc >= flatten:
-            return "flatten", c.open_time, c.open
+            return "flatten", c.open_time, c.open, sl_now
 
         if params.bounce_236:
             tagged = tagged_level(side, c, p236)
@@ -449,6 +499,22 @@ def _simulate_from_candles(
             last_was_236 = tagged
             if bounce_hits >= int(params.bounce_236_count or 2):
                 sl_now = p618
+
+        if steps > 0:
+            if side == "UP":
+                if c.high > best + 1e-12:
+                    best = c.high
+            elif c.low < best - 1e-12:
+                best = c.low
+            trail_lv = _nth_step(
+                _fib_pos(best, fib0, fib1), _FIB_SL_STEPS, steps, toward_higher=True
+            )
+            trail_px = fib_px(fib0, fib1, trail_lv)
+            if side == "UP":
+                if trail_px > sl_now + 1e-12:
+                    sl_now = trail_px
+            elif trail_px < sl_now - 1e-12:
+                sl_now = trail_px
 
         hit_sl = (
             (c.low <= sl_now + 1e-12) if side == "UP" else (c.high >= sl_now - 1e-12)
@@ -459,13 +525,13 @@ def _simulate_from_candles(
         last_ts = c.close_time
         last_px = c.close
         if hit_sl and hit_tp:
-            return "sl", c.open_time, sl_now
+            return "sl", c.open_time, sl_now, sl_now
         if hit_sl:
-            return "sl", c.open_time, sl_now
+            return "sl", c.open_time, sl_now, sl_now
         if hit_tp:
-            return "tp", c.open_time, tp
+            return "tp", c.open_time, tp, sl_now
 
-    return "eod", last_ts, last_px
+    return "eod", last_ts, last_px, sl_now
 
 
 def _retest_snap(sess: _Sess, asia_close: Optional[float], ps: float) -> Optional[Dict[str, Any]]:
@@ -495,6 +561,40 @@ def _hunt_snap(sess: _Sess, flags: _Flags, ps: float) -> Optional[Dict[str, Any]
     return flags.box1_snap
 
 
+def _candle_too_wide(c: Candle, snap: Dict[str, Any], params: AsiaBoxParams) -> bool:
+    if not params.impulse_freeze:
+        return False
+    box = float(snap["box_high"]) - float(snap["box_low"])
+    if box <= 1e-12:
+        return False
+    return (c.high - c.low) > box * float(params.impulse_freeze_frac) + 1e-12
+
+
+def _arm_freeze(
+    flags: _Flags,
+    c: Candle,
+    *,
+    tz: ZoneInfo,
+    params: AsiaBoxParams,
+    ps: float,
+    setup: str,
+    snap: Dict[str, Any],
+) -> None:
+    close_loc = _local(c.close_time, tz)
+    until = close_loc + timedelta(minutes=max(0, int(params.impulse_freeze_minutes)))
+    flags.freeze_until = until
+    box_px = float(snap["box_high"]) - float(snap["box_low"])
+    flags.freezes.append(
+        {
+            "local_date": close_loc.date().isoformat(),
+            "until": until.isoformat(),
+            "setup": setup,
+            "candle_pts": (c.high - c.low) / ps if ps else 0.0,
+            "box_pts": box_px / ps if ps else 0.0,
+        }
+    )
+
+
 def _pick_setup(
     c: Candle,
     *,
@@ -503,10 +603,12 @@ def _pick_setup(
     params: AsiaBoxParams,
     ps: float,
     loc: datetime,
+    tz: ZoneInfo,
     ema: Optional[float],
     box_end: datetime,
     shallow_at: datetime,
     ema_at: datetime,
+    trade_at: datetime,
     cutoff: datetime,
 ) -> Optional[Dict[str, Any]]:
     if loc >= cutoff:
@@ -549,20 +651,41 @@ def _pick_setup(
         if flags.reverse_armed and not _beyond_500(box_side, c.close, fib0, fib1):
             flags.reverse_ema_dead = True
 
-    def emit(setup: str, entry: float, extras: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
-        trade_side, sl, tp = _sl_tp(setup, box_side, fib0, fib1, entry, params)
+    def consider(
+        setup: str,
+        entry: float,
+        use_snap: Dict[str, Any],
+        use_side: str,
+        extras: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        trade_side, sl, tp = _sl_tp(
+            setup, use_side, use_snap["fib0"], use_snap["fib1"], entry, params
+        )
         if not target_in_front(trade_side, entry, tp):
+            return None
+        frozen = flags.freeze_until is not None and loc < flags.freeze_until
+        if not frozen and _candle_too_wide(c, use_snap, params):
+            _arm_freeze(
+                flags, c, tz=tz, params=params, ps=ps, setup=setup, snap=use_snap
+            )
+            return None
+        if params.trade_start_enabled and loc < trade_at:
+            return None
+        if flags.freeze_until is not None and loc < flags.freeze_until:
             return None
         return {
             "setup": setup,
-            "box_side": box_side,
+            "box_side": use_side,
             "trade_side": trade_side,
             "entry": entry,
             "sl": sl,
             "tp": tp,
-            "snap": snap,
+            "snap": use_snap,
             "extras": extras or {},
         }
+
+    def emit(setup: str, entry: float, extras: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+        return consider(setup, entry, snap, box_side, extras)
 
     def try_retest() -> Optional[Dict[str, Any]]:
         if ema is None or not _enabled(params, "ema_retest"):
@@ -573,26 +696,12 @@ def _pick_setup(
         hit, fill = _opposing_ema_touch(c, trade_side=rsnap["side"], ema=ema)
         if not hit:
             return None
-        trade_side, sl, tp = _sl_tp(
-            "ema_retest", rsnap["side"], rsnap["fib0"], rsnap["fib1"], fill, params
-        )
-        if not target_in_front(trade_side, fill, tp):
-            return None
         extra = {
             "ema": ema,
             "asia_close": flags.asia_close,
             "retest_side": rsnap["side"],
         }
-        return {
-            "setup": "ema_retest",
-            "box_side": rsnap["side"],
-            "trade_side": trade_side,
-            "entry": fill,
-            "sl": sl,
-            "tp": tp,
-            "snap": rsnap,
-            "extras": extra,
-        }
+        return consider("ema_retest", fill, rsnap, rsnap["side"], extra)
 
     # --- reverse owns the fib ---
     if flags.reverse_armed and not only_retest:
@@ -659,7 +768,10 @@ def _trade_from_signal(
 ) -> Tuple[AsiaBoxTrade, int]:
     snap = sig["snap"]
     start = idx + 1 if close_fill else idx
-    reason, exit_ts, exit_px = _simulate_from_candles(
+    trail_steps = 0
+    if sig["setup"] == "continuation" and params.continuation_trail:
+        trail_steps = max(1, int(params.continuation_trail_steps or 2))
+    reason, exit_ts, exit_px, sl_final = _simulate_from_candles(
         candles,
         start,
         side=sig["trade_side"],
@@ -672,8 +784,12 @@ def _trade_from_signal(
         params=params,
         fib0=snap["fib0"],
         fib1=snap["fib1"],
+        trail_steps=trail_steps,
     )
     entry_ts = c.close_time if close_fill else c.open_time
+    extras = dict(sig.get("extras") or {})
+    if trail_steps:
+        extras["sl_initial"] = float(sig["sl"])
     trade = AsiaBoxTrade(
         local_date=str(local_date),
         setup=sig["setup"],
@@ -681,7 +797,7 @@ def _trade_from_signal(
         side=sig["trade_side"],
         entry_ts=_iso(entry_ts) or "",
         entry=float(sig["entry"]),
-        sl=float(sig["sl"]),
+        sl=float(sl_final),
         tp=float(sig["tp"]),
         fib0=float(snap["fib0"]),
         fib1=float(snap["fib1"]),
@@ -695,7 +811,7 @@ def _trade_from_signal(
         exit=float(exit_px),
         pts=_pts(sig["trade_side"], sig["entry"], exit_px, ps),
         exit_reason=reason,
-        extras=dict(sig.get("extras") or {}),
+        extras=extras,
     )
     # skip to first bar at/after exit
     next_i = idx + 1
@@ -717,11 +833,12 @@ def _run_day(
     params: AsiaBoxParams,
     tz: ZoneInfo,
     ps: float,
-) -> Tuple[List[AsiaBoxTrade], Optional[AsiaBoxSkip]]:
+) -> Tuple[List[AsiaBoxTrade], Optional[AsiaBoxSkip], List[Dict[str, Any]]]:
     box_start = _at(d, params.box_start_hour, 0, tz)
     box_end = _at(d, params.box_end_hour, 0, tz)
     shallow_at = _at(d, params.shallow_hour, params.shallow_minute, tz)
     ema_at = _at(d, params.ema_retest_hour, 0, tz)
+    trade_at = _at(d, params.trade_start_hour, params.trade_start_minute, tz)
     cutoff = _at(d, params.entry_cutoff_hour, 0, tz)
     flatten = _at(d, params.flatten_hour, params.flatten_minute, tz)
 
@@ -763,10 +880,12 @@ def _run_day(
             params=params,
             ps=ps,
             loc=loc,
+            tz=tz,
             ema=ema,
             box_end=box_end,
             shallow_at=shallow_at,
             ema_at=ema_at,
+            trade_at=trade_at,
             cutoff=cutoff,
         )
         if sig is None:
@@ -814,9 +933,9 @@ def _run_day(
 
     if not trades:
         if sess.high is None or not sess.ready(ps, params.min_range_pts):
-            return trades, AsiaBoxSkip(str(d), "range_too_small")
-        return trades, AsiaBoxSkip(str(d), "no_setup")
-    return trades, None
+            return trades, AsiaBoxSkip(str(d), "range_too_small"), flags.freezes
+        return trades, AsiaBoxSkip(str(d), "no_setup"), flags.freezes
+    return trades, None, flags.freezes
 
 
 def summarize_asia_box(
@@ -827,6 +946,7 @@ def summarize_asia_box(
     symbol: str,
     data_source: str,
     n_bars: int,
+    freezes: Optional[Sequence[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     rows = [asdict(t) for t in trades]
     by_setup: Dict[str, Dict[str, Any]] = {}
@@ -858,6 +978,7 @@ def summarize_asia_box(
         "win_rate": (wins / n) if n else 0.0,
         "by_setup": by_setup,
         "skip_counts": skip_counts,
+        "freezes": [dict(f) for f in (freezes or [])],
         "bars": n_bars,
     }
 
@@ -884,11 +1005,12 @@ def run_asia_box_on_candles(
 
     trades: List[AsiaBoxTrade] = []
     skips: List[AsiaBoxSkip] = []
+    freezes: List[Dict[str, Any]] = []
     days = sorted(by_day)
     for di, d in enumerate(days):
         if progress:
             progress(phase="scan", days_done=di, days_total=len(days), trades=len(trades))
-        day_trades, skip = _run_day(
+        day_trades, skip, day_freezes = _run_day(
             d,
             by_day[d],
             candles,
@@ -898,12 +1020,19 @@ def run_asia_box_on_candles(
             ps=ps,
         )
         trades.extend(day_trades)
+        freezes.extend(day_freezes)
         if skip is not None:
             skips.append(skip)
     if progress:
         progress(phase="scan", days_done=len(days), days_total=len(days), trades=len(trades))
     return summarize_asia_box(
-        trades, skips, params=params, symbol=sym, data_source="candles_5m", n_bars=len(candles)
+        trades,
+        skips,
+        params=params,
+        symbol=sym,
+        data_source="candles_5m",
+        n_bars=len(candles),
+        freezes=freezes,
     )
 
 

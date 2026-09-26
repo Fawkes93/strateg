@@ -123,6 +123,9 @@ def _params(**kw):
         enable_shallow_ema=False,
         enable_shallow_confirm=False,
         enable_ema_retest=False,
+        trade_start_enabled=False,
+        continuation_trail=False,
+        impulse_freeze=False,
     )
     base.update(kw)
     return AsiaBoxParams(**base)
