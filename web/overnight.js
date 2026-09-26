@@ -739,6 +739,7 @@
       <h3>Trades</h3>
       <p class="table-note">
         Entry = EMA touch, higher/lower close resume, or break close.
+        Click a row to open the 15m chart in a new tab once the run is in the catalog.
         Hover <strong>Decision</strong> for the full wait / EMA / close-vs-prev line.
         Max fav / max adv = best and worst mid vs fill (break close on skips) until flatten hour, even if the trade already exited.
         Adv/SL = max adv vs SL pts (can exceed 100% when price kept going after the stop).
@@ -1443,6 +1444,15 @@
         (monthErrs.length
           ? " · " + monthErrs.length + " month error(s): " + monthErrs.join("; ").slice(0, 240)
           : "");
+      if (result.sqlite_id) {
+        meta.appendChild(document.createTextNode(" · "));
+        const a = document.createElement("a");
+        a.href = "/overnight/results?run=" + encodeURIComponent(result.sqlite_id);
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.textContent = "Open catalog #" + result.sqlite_id;
+        meta.appendChild(a);
+      }
     }
     if (hero) {
       hero.innerHTML =
@@ -1534,6 +1544,18 @@
               : t.entry_reason === "higher_close" || t.entry_reason === "lower_close"
                 ? "ob-warn"
                 : "";
+          if (t.id) {
+            tr.className = "ob-trade-link";
+            tr.tabIndex = 0;
+            tr.title = "Open the 15m chart";
+            function openChart() {
+              window.open("/overnight/chart?trade=" + t.id, "_blank");
+            }
+            tr.addEventListener("click", openChart);
+            tr.addEventListener("keydown", function (ev) {
+              if (ev.key === "Enter") openChart();
+            });
+          }
           tr.innerHTML =
             "<td>" +
             t.local_date +

@@ -106,7 +106,7 @@ PYTHONPATH=. .venv/bin/python -m pytest tests/test_asia_box_rules.py -q
 
 Injected tab (`web/asia_liquidity.js`) for the **Dual-Mode Asia Liquidity Engine** — not the Asia box fib tab above, and not Overnight break.
 
-Overnight break is Bucharest-local Asia + EMA/higher-close pullback, pts, no partials.  
+Overnight break is Bucharest-local Asia + EMA/higher-close pullback, pts, no partials. Finished runs with at least one trade are saved in `results/overnight.sqlite`. Open http://127.0.0.1:8765/overnight/results and click a trade: the new tab is the 15m chart of that morning (Asia high and low, stop, target, break, entry, exit). The JSON file under `results/` is still written too.  
 This tab locks a session box and then takes **one** of two plays:
 
 - **Mode A** — continuation: 15m close through the box with body/range quality and 4H EMA50.

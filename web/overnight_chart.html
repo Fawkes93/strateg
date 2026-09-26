@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Overnight chart — Strateg</title>
+  <link rel="stylesheet" href="/static/app.css?v=20260926e" />
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body class="ab-page">
+  <header class="top">
+    <div>
+      <h1 id="ob-title">Overnight trade</h1>
+      <p class="sub" id="ob-sub">Loading…</p>
+    </div>
+    <div class="ab-chart-actions">
+      <label class="ab-btn ab-magnet-toggle" title="Snap the crosshair to the candle open, high, low, or close. Off leaves it free on the price scale.">
+        <input type="checkbox" id="ob-magnet" />
+        Magnet
+      </label>
+      <a id="ob-back" class="ab-back" href="/overnight/results">← Catalog</a>
+    </div>
+  </header>
+  <section class="card ab-chart-card">
+    <div class="ab-chart-wrap">
+      <div id="ob-chart" class="ab-chart"></div>
+    </div>
+    <p class="hint" id="ob-decision"></p>
+    <ul id="ob-legend" class="ab-legend"></ul>
+  </section>
+  <script src="/static/overnight_chart.js?v=20260926g"></script>
+</body>
+</html>

@@ -831,6 +831,8 @@ td.ob-decision[data-full] { color: var(--text); }
 }
 .ob-flytip div + div { margin-top: 0.2rem; }
 .ob-flytip .k { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; }
+#ob-table tbody tr.ob-trade-link { cursor: pointer; }
+#ob-table tbody tr.ob-trade-link:hover td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 #ob-skips tr.ob-skip td { color: var(--muted); }
 #ob-skips tr.ob-skip td.ob-warn { color: var(--warn); }
 #ob-skips tr.ob-skip td.ob-adv { color: var(--bad); }

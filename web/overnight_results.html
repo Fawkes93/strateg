@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Overnight results — Strateg</title>
+  <link rel="stylesheet" href="/static/app.css?v=20260926e" />
+</head>
+<body class="ab-page">
+  <header class="top">
+    <div>
+      <h1>Overnight catalog</h1>
+      <p class="sub">Asia range breakout runs saved in SQLite. Click a trade to open its 15m chart.</p>
+    </div>
+    <a class="ab-back" href="/">← Strateg</a>
+  </header>
+
+  <section class="card">
+    <h2>Filters</h2>
+    <div class="grid ab-filters">
+      <label>Run
+        <select id="ob-run"><option value="">All runs</option></select>
+        <span class="field-help">Each finished Overnight break with at least one trade.</span>
+      </label>
+      <div class="ab-run-actions">
+        <button type="button" class="ab-btn ab-btn-danger" id="ob-delete-run" disabled>Delete run</button>
+      </div>
+      <label>Side
+        <select id="ob-side">
+          <option value="">Both</option>
+          <option value="UP">UP</option>
+          <option value="DOWN">DOWN</option>
+        </select>
+        <span class="field-help">UP broke the Asia high. DOWN broke the Asia low.</span>
+      </label>
+      <label>Entry
+        <select id="ob-entry">
+          <option value="">Any</option>
+          <option value="ema_touch">EMA touch</option>
+          <option value="higher_close">Higher close</option>
+          <option value="lower_close">Lower close</option>
+          <option value="break_close">Break close</option>
+          <option value="timeout_market">Timeout market</option>
+          <option value="near_box_timeout">Near-box timeout</option>
+          <option value="seasonal_join">Seasonal join</option>
+        </select>
+        <span class="field-help">How the fill was chosen after the Asia break.</span>
+      </label>
+      <label>Exit
+        <select id="ob-exit">
+          <option value="">Any</option>
+          <option value="tp">tp</option>
+          <option value="sl">sl</option>
+          <option value="trail">trail</option>
+          <option value="flatten">flatten</option>
+          <option value="timeout">timeout</option>
+        </select>
+        <span class="field-help">Why the trade closed.</span>
+      </label>
+      <label>From
+        <input type="date" id="ob-from" />
+        <span class="field-help">First local date included.</span>
+      </label>
+      <label>To
+        <input type="date" id="ob-to" />
+        <span class="field-help">Stops before this local date.</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Summary</h2>
+    <p id="ob-summary" class="hint">Loading…</p>
+  </section>
+
+  <section class="card">
+    <h2>Trades</h2>
+    <p class="table-note">Click a row. The chart opens in a new tab with the Asia high and low, the stop, the target, and the break, entry, and exit.</p>
+    <div class="table-wrap">
+      <table class="ab-table" id="ob-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Local</th>
+            <th>Side</th>
+            <th>Entry</th>
+            <th>Fill</th>
+            <th>Exit</th>
+            <th>Pts</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+  <script src="/static/overnight_results.js?v=20260926e"></script>
+</body>
+</html>

@@ -35,6 +35,7 @@ from backtest.overnight_break import (
     summarize_overnight,
     uses_m12,
 )
+from backtest.overnight_store import insert_run as insert_overnight_run
 from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS, _parse_range, load_ticks, unique_result_path
 from backtest.job_memory import release_job_memory, retain_result, slim_state_result_inplace
 from backtest.seasonality import TREND_LOOKBACK_DAYS
@@ -1028,6 +1029,14 @@ def _run(params: OvernightJobParams) -> None:
         result["run_id"] = run_id
         path.write_text(json.dumps(result, indent=2, default=str))
         result["saved_to"] = str(path)
+        sqlite_id = insert_overnight_run(
+            None,
+            date_from=params.date_from,
+            date_to=params.date_to,
+            result=result,
+            status="cancelled" if cancelled else "complete",
+        )
+        result["sqlite_id"] = sqlite_id
 
         with _lock:
             _state.result = retain_result(result)
@@ -1037,6 +1046,7 @@ def _run(params: OvernightJobParams) -> None:
                 message=(
                     f"Stopped · {result.get('trades') or 0} trades · "
                     f"{result.get('skipped') or 0} skipped"
+                    + (f" · catalog #{sqlite_id}" if sqlite_id else "")
                 ),
                 ticks=total_ticks,
                 trades=result.get("trades") or 0,
@@ -1047,6 +1057,7 @@ def _run(params: OvernightJobParams) -> None:
             done_msg = (
                 f"Done · {n_m} months · {result.get('trades')} trades · "
                 f"{result.get('skipped')} skipped"
+                + (f" · catalog #{sqlite_id}" if sqlite_id else "")
             )
             if errors:
                 done_msg += " · " + str(len(errors)) + " month error(s): " + "; ".join(errors)[:180]
