@@ -220,6 +220,10 @@ def start_overnight_job(params: OvernightJobParams) -> Dict[str, Any]:
 
         if is_fork_running():
             return {"ok": False, "error": "Impulse fork is running"}
+        from backtest.dawn_cross_jobs import is_dawn_running
+
+        if is_dawn_running():
+            return {"ok": False, "error": "Dawn Cross is running"}
         _cancel.clear()
         _state.params = params
         _state.result = None

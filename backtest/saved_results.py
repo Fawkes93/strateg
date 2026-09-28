@@ -23,6 +23,7 @@ KNOWN_KINDS = frozenset(
         "impulse_fork",
         "cooloff",
         "fvg",
+        "dawn_cross",
     }
 )
 
@@ -54,6 +55,8 @@ def classify_filename(name: str) -> Optional[str]:
         return "cooloff"
     if n.startswith("ifvg_"):
         return "fvg"
+    if n.startswith("dawncross_"):
+        return "dawn_cross"
     if n.startswith("micro_"):
         return "micro"
     return None
@@ -202,6 +205,10 @@ def load_into_job(kind: str, name: str) -> Dict[str, Any]:
         out = load_saved(data, name=name)
     elif kind == "fvg":
         from backtest.fvg_jobs import load_saved
+
+        out = load_saved(data, name=name)
+    elif kind == "dawn_cross":
+        from backtest.dawn_cross_jobs import load_saved
 
         out = load_saved(data, name=name)
     else:

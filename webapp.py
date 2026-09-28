@@ -80,6 +80,12 @@ from backtest.fvg_jobs import (
     start_fvg_job,
     stop_fvg,
 )
+from backtest.dawn_cross_jobs import (
+    DawnCrossJobParams,
+    get_dawn_state,
+    start_dawn_job,
+    stop_dawn,
+)
 from backtest.asia_box_api import router as asia_box_router
 from backtest.overnight_api import router as overnight_router
 
@@ -883,6 +889,87 @@ def cooloff_run(body: CoolOffRunRequest):
 @app.post("/api/cooloff/stop")
 def cooloff_stop():
     out = stop_cooloff()
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "not running")
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Dawn Cross — 02:00–06:00 Moldova, 5m EMA cross, pullback fill
+# ---------------------------------------------------------------------------
+
+class DawnCrossRunRequest(BaseModel):
+    symbol: str = "XAUUSD"
+    date_from: str = "2025-05-01"
+    date_to: str = "2025-08-01"
+    timezone: str = "Europe/Chisinau"
+    window_start_hour: int = 2
+    window_start_minute: int = 0
+    window_end_hour: int = 6
+    window_end_minute: int = 0
+    fast_ema: int = 9
+    slow_ema: int = 20
+    pullback_ema: int = 9
+    sl_pts: float = 400.0
+    tp_pts: float = 800.0
+    flatten_hour: int = 12
+    one_trade_per_day: bool = True
+    force_download: bool = False
+
+
+@app.get("/api/dawn-cross")
+def dawn_status(rows: int = Query(0), limit: int = Query(400)):
+    return get_dawn_state(include_rows=bool(rows), row_limit=int(limit))
+
+
+@app.post("/api/dawn-cross/run")
+def dawn_run(body: DawnCrossRunRequest):
+    fast = max(1, int(body.fast_ema))
+    slow = max(1, int(body.slow_ema))
+    if fast == slow:
+        raise HTTPException(status_code=422, detail="Fast and slow EMA periods must differ")
+    start_h = int(body.window_start_hour)
+    start_m = int(body.window_start_minute)
+    end_h = int(body.window_end_hour)
+    end_m = int(body.window_end_minute)
+    if not (0 <= start_h <= 23 and 0 <= start_m <= 59):
+        raise HTTPException(status_code=422, detail="Window start must be an hour 0–23 and a minute 0–59")
+    end_ok = (0 <= end_h <= 23 and 0 <= end_m <= 59) or (end_h == 24 and end_m == 0)
+    if not end_ok:
+        raise HTTPException(status_code=422, detail="Window end must be an hour 0–23 and a minute 0–59")
+    if start_h * 60 + start_m == end_h * 60 + end_m:
+        raise HTTPException(status_code=422, detail="Window start and end must differ")
+    sl = float(body.sl_pts)
+    tp = float(body.tp_pts)
+    if sl <= 0 or tp <= 0:
+        raise HTTPException(status_code=422, detail="SL and TP must be greater than 0")
+    params = DawnCrossJobParams(
+        symbol=body.symbol,
+        date_from=body.date_from,
+        date_to=body.date_to,
+        timezone=body.timezone or "Europe/Chisinau",
+        window_start_hour=start_h,
+        window_start_minute=start_m,
+        window_end_hour=end_h,
+        window_end_minute=end_m,
+        fast_ema=fast,
+        slow_ema=slow,
+        pullback_ema=max(1, int(body.pullback_ema)),
+        sl_pts=sl,
+        tp_pts=tp,
+        flatten_hour=max(0, min(23, int(body.flatten_hour))),
+        one_trade_per_day=bool(body.one_trade_per_day),
+        force_download=bool(body.force_download),
+    )
+    out = start_dawn_job(params)
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "busy")
+    return out
+
+
+@app.post("/api/dawn-cross/stop")
+def dawn_stop():
+    out = stop_dawn()
     if not out.get("ok"):
         raise HTTPException(status_code=409, detail=out.get("error") or "not running")
     return out

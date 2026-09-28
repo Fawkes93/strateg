@@ -195,6 +195,10 @@ def _busy_others() -> Optional[str]:
 
     if is_fork_running():
         return "Impulse fork is running"
+    from backtest.dawn_cross_jobs import is_dawn_running
+
+    if is_dawn_running():
+        return "Dawn Cross is running"
     return None
 
 

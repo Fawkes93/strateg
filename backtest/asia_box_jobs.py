@@ -131,6 +131,10 @@ def _rows_to_trades(rows: List[Dict[str, Any]]) -> List[AsiaBoxTrade]:
 def start_asia_box_job(params: AsiaBoxJobParams) -> Dict[str, Any]:
     if is_batch_running():
         return {"ok": False, "error": "A batch sweep is running"}
+    from backtest.dawn_cross_jobs import is_dawn_running
+
+    if is_dawn_running():
+        return {"ok": False, "error": "Dawn Cross is running"}
     with _lock:
         if _state.running:
             return {"ok": False, "error": "Asia box is already running"}

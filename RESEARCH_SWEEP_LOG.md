@@ -9,6 +9,17 @@ Add a new `### YYYY-MM-DD — <engine> <short label>` block under ## Runs (newes
 
 ## EURUSD Asia overnight
 
+### 2026-09-26 ~15:35 Europe/Bucharest EURUSD 5m SHORT_DENSIFY (36 cells) - REJECT/PARK (short PF clean but pts-thin; no tick)
+
+- Grid: results/overnight_5m_grid_EURUSD_20260926T123454Z.json (+ .csv) | tag EURUSD_ASIA_SHORT_DENSIFY | helper results/_asia_stage/eurusd_asia_short_densify_5m_grid.py | local ProcessPool workers=2 | candles_5m | window 2025-01->2026-09.
+- Fixed seed: SL80/TP120 | min Asia/break 40/40 | asia0-6 | ema30 | resume_closes=8 | rcap120 | flat21 | trail off | timeout market | wait_from_break | pullback required | near_box outside N6 D100. Axes: side_short x wait {8,10,12,13,15} x TP {100,120,140,160,200,240,280}; one BOTH seed comparison.
+- Top by pts: BOTH seed wait10/TP120 +2240.0 PF1.8 n77 (reference only); best short-only short_w10_tp280 +1760.0 PF2.1 n32; short_w13_tp120 +1600.0 PF2.538 n35; short_w15_tp160 +1600.0 PF2.25 n34; short_w12_tp280 +1600.0 PF1.909 n34.
+- Top by PF: short_w13_tp100 PF2.727 / +1520 n35; short_w15_tp100 PF2.614 / +1420 n34; short_w13_tp120 PF2.538 / +1600 n35; short_w15_tp120 PF2.423 / +1480 n34; short_w10_tp100 PF2.386 / +1220 n32.
+- Notes: Short-only PF>=2 cells exist, including prior hints (w13xTP120, TP280), but all remain below the soft pts bar. 0 cells clear PF>=2.0 and pts>=1920 (prefer >=2240); best short pts +1760.
+- Tick-worthy? NO. No tick-confirm and no promotion. New champ: none; both-side seed remains +2240/PF1.8/n77 reference.
+- Conclusion: PARK/REJECT SHORT_DENSIFY. No blockers after rerun; API was idle and untouched, XAU jobs were not touched, no reaktor edit, no git push. Next short thesis would need a pts lift, not another PF-only thin cell.
+
+
 ### 2026-09-25 ~19:39 Europe/Bucharest EURUSD 5m SIDE_STRUCT (32 cells) — **REJECT/PARK** (short PF>=2 pts-thin; entry-path dead; no tick)
 
 - **Grid:** results/overnight_5m_grid_EURUSD_20260925T161018Z.json (+ .csv) · tag EURUSD_ASIA_SIDE_STRUCT · helper results/_asia_stage/eurusd_asia_side_struct_5m_grid.py · seed NEARBOX **rc8** champ wait10 · SL80/TP120 · ma40/mb40 · asia0-6 · ema30 · wait10 · resume_closes=8 · rcap120 · flat21 · trail off · timeout market · wfb · pb required · nb outside N6 D100 · side both · candles_5m · workers=2 · window 2025-01→2026-09 · trail off throughout.
@@ -3280,4 +3291,795 @@ b_outside).
 - **vs 5m screen** tr160 PF2.687/+213406.3 n230: 5m edge (~+1919.8) did not hold on ticks (tick Δpts -919.8).
 - **Conclusion:** KEEP unchanged = N6 D1000 · near_box_trend=off · **mb275** · **TP4800** · **flat23** · SL1000 · **sls3/2100** · wick_on · trail **arm4000/tr190** · **pullback preferred** · **ema32** · **max_break=15** · **max_hold16** · **rc3** · **cap1000** · **wait14** · ticks PF2.55/+195668.8 n230. Tighter trail160 loses ~920 pts vs tr190 on ticks.
 - **Next:** overnight **tick-confirm** `AJ_runner tr180_mb260` (trail_pts=180.0, min_break_pts_above/below=260.0, else KEEP tr190/sls2100) workers=2. Optional runners tr170 / hold18_mb260 if this rejects. Still seek more pts while holding PF>=~2.5. No reaktor / no push.
+
+
+
+### 2026-09-26 ~14:43 Europe/Bucharest Asia TICK misfire check run 20260926T113626Z_34302fb6 (intended AJ_runner tr180_mb260) -- **NO-OP / MISFIRE**
+- **What landed:** overnight finished with trail_pts=190.0 mb=275.0/275.0 near_box=0/0.0 (NOT tr180/mb260). Metrics identical to KEEP: n230 · win43.5% · **+195668.8** · **PF 2.55**. started see API finished 2026-09-26T11:36:26.298666+00:00. saved `results/overnight_XAUUSD_2025-01-01_2026-09-01_20260926T113626Z_34302fb6.json`.
+- **vs KEEP** tr190/sls2100 near_box N6 D1000 ticks PF2.55/+195668.8 n230 (run 20260926T100731Z_5b3b46d4): ΔPF **+0.00** · Δpts **+0.0** · Δn **+0** -- KEEP clone (near_box off inert); **not a valid AJ_runner result**.
+- **Cause:** prior kick at ~14:15 claimed tr180_mb260 started 2026-09-26T11:18:28Z, but this job started ~11:22Z with KEEP trail/mb. Treat as misfire.
+- **Conclusion:** KEEP unchanged = N6 D1000 · near_box_trend=off · **mb275** · **TP4800** · **flat23** · SL1000 · **sls3/2100** · wick_on · trail **arm4000/tr190** · **pullback preferred** · **ema32** · **max_break=15** · **max_hold16** · **rc3** · **cap1000** · **wait14** · ticks PF2.55/+195668.8 n230.
+- **Next:** re-kick overnight **tick-confirm** `AJ_runner tr180_mb260` from KEEP seed (trail_pts=180.0, min_break_pts_above/below=260.0, keep near_box N6 D1000) workers=2; verify echo params after POST. Optional runners tr170 / hold18_mb260 if this rejects. Still seek more pts while holding PF>=~2.5. No reaktor / no push.
+
+
+
+### 2026-09-26 ~15:14 Europe/Bucharest Asia TICK CONFIRM AJ_runner tr180_mb260 on KEEP tr190/sls2100 (run 20260926T120016Z_c8002a0d) -- **REJECT**
+- **Setup (ticks, 2025-01 to 2026-09):** asia **0-6**, **ema32**, **wait14**, **rc3**, **cap1000**, **flat23**, **mb260**, **SL1000/TP4800**, **sls3/2100**, **near_box N=6 D=1000**, **near_box_trend=off**, **break_on_wick=true**, **max_break=15**, **trail arm4000 / trail180**, timeout market, wait_from_break, **pullback preferred**, side both, **max_hold16**. workers=2. data_source=ticks. started 2026-09-26T11:46:21Z finished 2026-09-26T12:00:16.601149+00:00.
+- **Result:** n230 · win43.5% · **+195229.7** · **PF 2.55** (avg 848.8 / win 3210.4 / loss -967.8). exits {'flatten': 42, 'sl': 124, 'trail': 62, 'tp': 2}. trail_armed 64 (27.8). entries {'higher_close': 56, 'ema_touch': 95, 'timeout_market': 56, 'lower_close': 23}. skipped 199 ({'no_break': 169, 'late_short': 30}). saved `results/overnight_XAUUSD_2025-01-01_2026-09-01_20260926T120016Z_c8002a0d.json`.
+- **vs KEEP** tr190/sls2100 mb275 ticks PF2.55/+195668.8 n230 (run 20260926T100731Z_5b3b46d4): ΔPF **+0.00** · Δpts **-439.1** · Δn **+0** -- pts down, PF flat; **REJECT**.
+- **vs 5m screen** tr180_mb260 PF2.692/+212840.9 n230: 5m edge (~+1354) did not hold on ticks (tick Δpts -439.1).
+- **Conclusion:** KEEP unchanged = N6 D1000 · near_box_trend=off · **mb275** · **TP4800** · **flat23** · SL1000 · **sls3/2100** · wick_on · trail **arm4000/tr190** · **pullback preferred** · **ema32** · **max_break=15** · **max_hold16** · **rc3** · **cap1000** · **wait14** · ticks PF2.55/+195668.8 n230. AJ trail/mb pocket thin on ticks (tr160 and tr180_mb260 both lose pts).
+- **Next:** overnight **tick-confirm** `AJ_runner tr170` (trail_pts=170.0, else KEEP tr190/sls2100 mb275) workers=2. Optional runner hold18_mb260 if this rejects; then Batch AK hold/flatten + mild volume if AJ runners stall. Still seek more pts while holding PF>=~2.5. No reaktor / no push.
+
+
+
+
+### 2026-09-26 ~16:13 Europe/Bucharest Asia overnight idle check — FOREIGN finished (not AJ_runner tr170) -- **IGNORE**
+- **What landed:** overnight idle with run 20260926T125827Z_7fe8e2d1 finished 2026-09-26T12:58:27Z. Params are **foreign old lineage**: asia **1-6**, ema30, wait13, mb250, SL1000/TP2200, trail_arm_mode=**off**, near_box_bars=**0**, pullback **required**, max_hold14, workers=3, date_to=2026-10-01. Result n145 · win54.5% · **+89775.1** · **PF 2.38**. saved 
+esults/overnight_XAUUSD_2025-01-01_2026-10-01_20260926T125827Z_7fe8e2d1.json.
+- **vs KEEP** tr190/sls2100 mb275 near_box N6 D1000 ticks PF2.55/+195668.8 n230 (run 20260926T100731Z_5b3b46d4): wrong seed (not AJ_runner tr170). Prior AJ_runner tr170 kick (started ~12:17Z) was **superseded** by this foreign job (also asia-box finished ~12:59Z on candles_5m — separate UI). **Do not score as AJ candidate**.
+- **Conclusion:** KEEP unchanged = N6 D1000 · near_box_trend=off · **mb275** · **TP4800** · **flat23** · SL1000 · **sls3/2100** · wick_on · trail **arm4000/tr190** · **pullback preferred** · **ema32** · **max_break=15** · **max_hold16** · **rc3** · **cap1000** · **wait14** · ticks PF2.55/+195668.8 n230.
+- **Next:** re-kick overnight **tick-confirm** AJ_runner tr170 from KEEP seed (trail_pts=170.0, else KEEP) workers=2; verify PARAM_ECHO after POST. If reject → hold18_mb260; if AJ runners stall → Batch AK. Still seek more pts while holding PF>=~2.5. No reaktor / no push.
+
+
+
+### 2026-09-26 ~16:45 Europe/Bucharest Asia TICK CONFIRM AJ_runner tr170 on KEEP tr190/sls2100 (run 20260926T133530Z_bb980382) -- **REJECT**
+- **Setup (ticks, 2025-01 to 2026-09):** asia **0-6**, **ema32**, **wait14**, **rc3**, **cap1000**, **flat23**, **mb275**, **SL1000/TP4800**, **sls3/2100**, **near_box N=6 D=1000**, **near_box_trend=off**, **break_on_wick=true**, **max_break=15**, **trail arm4000 / trail170**, timeout market, wait_from_break, **pullback preferred**, side both, **max_hold16**. workers=2. data_source=ticks. started 2026-09-26T13:15:51.484443+00:00 finished 2026-09-26T13:35:30.153179+00:00.
+- **Result:** n230 · win43.5% · **+194267.5** · **PF 2.54** (avg 844.6 / win 3207.9 / loss -973.3). exits {'flatten': 41, 'sl': 125, 'trail': 62, 'tp': 2}. trail_armed 64 (27.8). entries {'higher_close': 58, 'ema_touch': 95, 'timeout_market': 53, 'lower_close': 24}. skipped 199 ({'no_break': 169, 'late_short': 30}). streaks max_loss=8. saved `results/overnight_XAUUSD_2025-01-01_2026-09-01_20260926T133530Z_bb980382.json`.
+- **vs KEEP** tr190/sls2100 mb275 ticks PF2.55/+195668.8 n230 (run 20260926T100731Z_5b3b46d4): ΔPF **-0.01** · Δpts **-1401.3** · Δn **+0** -- pts down, PF flat/slightly down; **REJECT**.
+- **vs 5m screen** tr170 PF2.682/+212766.6 n230: 5m edge (~+1280) did not hold on ticks (tick Δpts -1401.3).
+- **Conclusion:** KEEP unchanged = N6 D1000 · near_box_trend=off · **mb275** · **TP4800** · **flat23** · SL1000 · **sls3/2100** · wick_on · trail **arm4000/tr190** · **pullback preferred** · **ema32** · **max_break=15** · **max_hold16** · **rc3** · **cap1000** · **wait14** · ticks PF2.55/+195668.8 n230. AJ trail pocket thin on ticks (tr160/tr180_mb260/tr170 all lose pts vs KEEP).
+- **Next:** overnight **tick-confirm** `AJ_runner hold18_mb260` (max_hold_hours=18.0, min_break_pts_above/below=260.0, else KEEP tr190/sls2100 trail190) workers=2. If reject → Batch AK hold/flatten + mild volume (AJ runners stalled). Still seek more pts while holding PF>=~2.5. No reaktor / no push.
+
+
+
+### 2026-09-26 ~17:13 Europe/Bucharest Asia TICK CONFIRM AJ_runner hold18_mb260 on KEEP tr190/sls2100 (run 20260926T140011Z_43b9670b) -- **REJECT**
+- **Setup (ticks, 2025-01 to 2026-09):** asia **0-6**, **ema32**, **wait14**, **rc3**, **cap1000**, **flat23**, **mb260**, **SL1000/TP4800**, **sls3/2100**, **near_box N=6 D=1000**, **near_box_trend=off**, **break_on_wick=true**, **max_break=15**, **trail arm4000 / trail190**, timeout market, wait_from_break, **pullback preferred**, side both, **max_hold18**. workers=2. data_source=ticks. started 2026-09-26T13:45:57.085954+00:00 finished 2026-09-26T14:00:11.936103+00:00.
+- **Result:** n230 · win43.5% · **+196380.3** · **PF 2.56** (avg 853.8 / win 3221.9 / loss -967.8). exits {'flatten': 42, 'sl': 124, 'trail': 61, 'tp': 3}. trail_armed 64 (27.8). entries {'higher_close': 56, 'ema_touch': 95, 'timeout_market': 56, 'lower_close': 23}. skipped 199 ({'no_break': 169, 'late_short': 30}). streaks max_loss=8. saved `results/overnight_XAUUSD_2025-01-01_2026-09-01_20260926T140011Z_43b9670b.json`.
+- **vs KEEP** tr190/sls2100 mb275 ticks PF2.55/+195668.8 n230 (run 20260926T100731Z_5b3b46d4): ΔPF **+0.01** · Δpts **+711.5** · Δn **+0** -- thin pts lift (~+711), max_loss=8 at hard-ish edge; **REJECT** (not meaningful promote).
+- **vs 5m screen** hold18_mb260 PF2.692/+212840.9-ish lineage: 5m runner edge did not become a clear tick promote (tick Δpts +711.5).
+- **Conclusion:** KEEP unchanged = N6 D1000 · near_box_trend=off · **mb275** · **TP4800** · **flat23** · SL1000 · **sls3/2100** · wick_on · trail **arm4000/tr190** · **pullback preferred** · **ema32** · **max_break=15** · **max_hold16** · **rc3** · **cap1000** · **wait14** · ticks PF2.55/+195668.8 n230. AJ runners stalled (tr160/tr180_mb260/tr170/hold18_mb260).
+- **Next:** Batch AK `HOLD_VOL_AK_KEEP_TR190_SLS2100` 5m (hold/flatten expand + mild volume; skip AJ-failed trail pocket). Tick-confirm soft>=2.5 pts champs (or clear pts lift at PF>=~2.0 holding >=~157k). Prefer max_loss streak <=7-8. No reaktor / no push.
+
+
+
+### 2026-09-26 ~17:45 Europe/Bucharest Asia Batch AK HOLD_VOL_AK_KEEP_TR190_SLS2100 5m (51 cells) — soft≥2.0 pts champ for tick
+- **Grid:** `results/overnight_5m_grid_20260926T141720Z.json` · tag `HOLD_VOL_AK_KEEP_TR190_SLS2100` · seed KEEP ticks `20260926T100731Z_5b3b46d4` (asia0-6 ema32 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap1000 wait14 hold16 PF2.55/+195668.8 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: hold/flatten expand · mild volume · mild trail/sls/cap · ema31/33 · soft PF pocket. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_tr190_sls2100_baseline`): n230 · PF **2.671** · **+211486.5**.
+- **Soft ≥2.0 pts lifts:** `ema31` PF **2.755** / **+218578.6** n229 — ΔPF **+0.084** · Δpts **+7092.1**; `ema33` PF **2.700** / **+213430.9** n229 — ΔPF **+0.029** · Δpts **+1944.4**; `hold17_mb260` PF **2.687** / **+212201.1** n230 — ΔPF **+0.016** · Δpts **+714.6**; `hold20_mb260` PF **2.687** / **+212201.1** n230 — ΔPF **+0.016** · Δpts **+714.6**; `tr185` PF **2.674** / **+211806.3** n230 — ΔPF **+0.003** · Δpts **+319.8**.
+- **PF ≥~2.5 with pts lift:** `ema31` PF 2.755/+218578.6 n229; `ema33` PF 2.700/+213430.9 n229; `hold17_mb260` PF 2.687/+212201.1 n230; `hold20_mb260` PF 2.687/+212201.1 n230; `tr185` PF 2.674/+211806.3 n230.
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert=`hold17`, `hold22`, `hold19`, `hold24`, `hold18_flat23`, `mb265`, `mb270`, `asia_range280`, `asia_range320`, `hold18_mb265`, `sls2150`, `cap950`, `tminb_120`; dilute=`tema_200` PF2.390/+149011.6 dpts-62474.9; `pullback_required` PF2.520/+156775.8 dpts-54710.7; `w11` PF2.297/+173202.4 dpts-38284.1; `w16` PF2.441/+189276.5 dpts-22210.0; `w16_hold18` PF2.441/+189276.5 dpts-22210.0; `mb240` PF2.521/+200191.7 dpts-11294.8; `mb290` PF2.583/+200353.1 dpts-11133.4; `flat18` PF2.666/+202861.6 dpts-8624.9; `maxbreak18` PF2.386/+203029.2 dpts-8457.3; `flat19` PF2.669/+206780.1 dpts-4706.4; `flat19_hold16` PF2.669/+206780.1 dpts-4706.4; `flat19_hold18` PF2.669/+206780.1 dpts-4706.4; `sls2250` PF2.634/+206788.7 dpts-4697.8; `flat20` PF2.668/+207624.4 dpts-3862.1; `flat20_hold16` PF2.668/+207624.4 dpts-3862.1; `flat20_hold18` PF2.668/+207624.4 dpts-3862.1; `maxbreak16` PF2.549/+208446.1 dpts-3040.4; `maxbreak16_hold18` PF2.549/+208446.1 dpts-3040.4.
+- **Conclusion:** `ema31` is the cleanest soft≥2.0 pts refine on KEEP tr190/sls2100 (Δpts **+7092.1** · ΔPF **+0.084** on 5m; PF stays ≥2.5). Runners: `ema33`, `hold17_mb260`, `hold20_mb260`. Soft-PF pocket (tema_200) and pullback_required / w11/w16 cut pts — reject. Hold/flatten solo mostly inert; hold*_mb260 thin (~+715) — deprioritize vs ema after AJ hold18_mb260 thin tick reject. Do **not** promote on 5m alone. KEEP unchanged (ticks tr190/sls2100 PF2.55/+195668.8 n230).
+- **Next:** overnight **tick-confirm** `AK_tick ema31` (ema_period=31, else KEEP tr190/sls2100) workers=2. Optional runners ema33 / hold17_mb260 / hold20_mb260 if champ rejects. Prefer max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+
+
+### 2026-09-26 ~18:21 Europe/Bucharest Asia TICK CONFIRM AK_tick ema31 on KEEP tr190/sls2100 (run 20260926T150205Z_cf1619ba) -- **NEW KEEP**
+- **Setup (ticks, 2025-01 to 2026-09):** asia **0-6**, **ema31**, **wait14**, **rc3**, **cap1000**, **flat23**, **mb275**, **SL1000/TP4800**, **sls3/2100**, **near_box N=6 D=1000**, **near_box_trend=off**, **break_on_wick=true**, **max_break=15**, **trail arm4000 / trail190**, timeout market, wait_from_break, **pullback preferred**, side both, **max_hold16**. workers=2. data_source=ticks. started 2026-09-26T14:48:00.755260+00:00 finished 2026-09-26T15:02:05.574386+00:00.
+- **Result:** n230 · win43.9% · **+199872.5** · **PF 2.59** (avg 869.0 / win 3221.7 / loss -973.1). exits {'flatten': 41, 'sl': 124, 'trail': 63, 'tp': 2}. trail_armed 65 (28.3). entries {'higher_close': 58, 'ema_touch': 97, 'timeout_market': 51, 'lower_close': 24}. skipped 199 ({'no_break': 169, 'late_short': 30}). streaks max_win=6 max_loss=8. saved `results/overnight_XAUUSD_2025-01-01_2026-09-01_20260926T150205Z_cf1619ba.json`.
+- **vs KEEP** tr190/sls2100 ema32 ticks PF2.55/+195668.8 n230 (run 20260926T100731Z_5b3b46d4): ΔPF **+0.04** · Δpts **+4203.7** · Δn **+0** -- meaningful pts lift (~+4204) at PF≥2.5; max_loss=8 within ≤7–8 hard-ish filter; **NEW KEEP**.
+- **vs 5m screen** ema31 PF2.755/+218578.6 n229: 5m edge (~+7092) partially held on ticks (tick Δpts +4203.7; PF 2.59 vs 5m 2.755).
+- **Conclusion:** NEW KEEP = N6 D1000 · near_box_trend=off · **mb275** · **TP4800** · **flat23** · SL1000 · **sls3/2100** · wick_on · trail **arm4000/tr190** · **pullback preferred** · **ema31** · **max_break=15** · **max_hold16** · **rc3** · **cap1000** · **wait14** · ticks PF2.59/+199872.5 n230.
+- **Next:** Batch AL `HOLD_VOL_AL_KEEP_EMA31` 5m (denser ema×trail/hold crosses under NEW KEEP ema31; skip AJ-failed deep trail cuts). Tick-confirm soft≥2.5 pts champs (or clear pts lift at PF≥~2.0 holding ≥~157k). Prefer max_loss streak ≤7–8. No reaktor / no push.
+
+
+
+### 2026-09-26 ~18:23 Europe/Bucharest Asia Batch AL HOLD_VOL_AL_KEEP_EMA31 5m (49 cells) — thin edges; no strong tick champ
+- **Grid:** `results/overnight_5m_grid_20260926T152223Z.json` · tag `HOLD_VOL_AL_KEEP_EMA31` · seed KEEP ticks `20260926T150205Z_cf1619ba` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap1000 wait14 hold16 PF2.59/+199872.5 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: denser ema×trail/hold · mild mb/wait · soft PF pocket. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_ema31_baseline`): n229 · PF **2.755** · **+218578.6**.
+- **Soft ≥2.0 pts lifts:** `ema31_mb260` PF **2.771** / **+219293.2** n229 — ΔPF **+0.016** · Δpts **+714.6**; `ema31_hold17_mb260` PF **2.771** / **+219293.2** n229 — ΔPF **+0.016** · Δpts **+714.6**; `ema31_tr185` PF **2.758** / **+218903.4** n229 — ΔPF **+0.003** · Δpts **+324.8**; `ema31_hold17_tr185` PF **2.758** / **+218903.4** n229 — ΔPF **+0.003** · Δpts **+324.8**.
+- **PF ≥~2.5 with pts lift:** `ema31_mb260` PF 2.771/+219293.2 n229; `ema31_hold17_mb260` PF 2.771/+219293.2 n229; `ema31_tr185` PF 2.758/+218903.4 n229; `ema31_hold17_tr185` PF 2.758/+218903.4 n229.
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert=`ema31_hold17`, `ema31_hold18`, `ema31_hold20`, `ema31_mb265`, `ema31_sls2150`, `tminb_100`; dilute=`tema_220` PF2.461/+155103.7 dpts-63474.9; `tema_180` PF2.484/+156103.7 dpts-62474.9; `pullback_required` PF2.594/+162867.9 dpts-55710.7; `ema31_w15` PF2.507/+192102.3 dpts-26476.3; `ema34` PF2.518/+195090.3 dpts-23488.3; `ema30_tr195` PF2.528/+196381.7 dpts-22196.9; `ema30` PF2.530/+196686.6 dpts-21892.0; `ema30_tr190` PF2.530/+196686.6 dpts-21892.0; `ema30_hold16` PF2.530/+196686.6 dpts-21892.0; `ema30_hold18` PF2.530/+196686.6 dpts-21892.0; `ema30_hold17_tr190` PF2.530/+196686.6 dpts-21892.0; `ema30_tr185` PF2.533/+196991.4 dpts-21587.2; `ema30_mb260` PF2.544/+197401.2 dpts-21177.4; `ema29_tr195` PF2.551/+199356.7 dpts-19221.9; `ema29` PF2.553/+199666.6 dpts-18912.0; `ema29_tr190` PF2.553/+199666.6 dpts-18912.0; `ema31_arm4100` PF2.619/+206486.5 dpts-12092.1; `ema32_tr195` PF2.669/+211166.6 dpts-7412.0.
+- **Conclusion:** Soft lifts are **thin** — champ `ema31_mb260` Δpts **+714.6** on 5m (same ~+715 mb260 pocket as AJ hold18_mb260 tick reject). `ema31_tr185` only +324.8. Hold solo / mb265 / sls2150 inert. Soft-PF pocket and ema30/32/33/34 cut pts vs NEW KEEP ema31. **Skip tick-confirm** of thin mb260/tr185 (AJ already rejected ~+711 mb260 lineage). KEEP unchanged (ticks ema31 PF2.59/+199872.5 n230).
+- **Next:** Batch AM `TP_ARM_AM_KEEP_EMA31` 5m (TP/arm mild + resume/wait/rc under NEW KEEP ema31). Tick-confirm only clear soft≥2.5 pts lifts (not ~+0.7k thin). Prefer max_loss streak ≤7–8. No reaktor / no push.
+
+
+
+### 2026-09-26 ~18:26 Europe/Bucharest Asia Batch AM TP_ARM_AM_KEEP_EMA31 5m (43 cells) — soft≥2.0 pts champ for tick
+- **Grid:** `results/overnight_5m_grid_20260926T152420Z.json` · tag `TP_ARM_AM_KEEP_EMA31` · seed KEEP ticks `20260926T150205Z_cf1619ba` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap1000 wait14 hold16 PF2.59/+199872.5 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: TP/arm mild · resume/wait/rc · mild SL/sls/be · soft PF pocket. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_ema31_baseline`): n229 · PF **2.755** · **+218578.6**.
+- **Soft ≥2.0 pts lifts:** `cap800` PF **2.863** / **+228281.9** n229 — ΔPF **+0.108** · Δpts **+9703.3**; `tp5200_tr185` PF **2.758** / **+218903.4** n229 — ΔPF **+0.003** · Δpts **+324.8**.
+- **PF ≥~2.5 with pts lift:** `cap800` PF 2.863/+228281.9 n229; `tp5200_tr185` PF 2.758/+218903.4 n229.
+- **Under-floor PF<2.0:** `be200` PF0.601/+-9170.7; `be400` PF1.014/+634.8.
+- **Reject / dilute / inert:** inert=`tp4400`, `tp4600`, `tp5000`, `tp5200`, `tp5400`, `tp5600`, `tminb_80`; dilute=`be200` PF0.601/+-9170.7 dpts-227749.3; `be400` PF1.014/+634.8 dpts-217943.8; `tema_150` PF2.484/+156103.7 dpts-62474.9; `tminpb_100` PF2.545/+156263.7 dpts-62314.9; `rc4_w15` PF2.363/+177744.0 dpts-40834.6; `w12` PF2.416/+183335.8 dpts-35242.8; `tp5400_arm4600` PF2.435/+191627.2 dpts-26951.4; `w15` PF2.507/+192102.3 dpts-26476.3; `tp5000_w15` PF2.507/+192102.3 dpts-26476.3; `rc5` PF2.511/+194867.9 dpts-23710.7; `w16` PF2.518/+196368.6 dpts-22210.0; `rc2` PF2.455/+197498.5 dpts-21080.1; `arm3600` PF2.613/+199315.6 dpts-19263.0; `arm4200` PF2.560/+200474.2 dpts-18104.4; `tp5000_arm4200` PF2.560/+200474.2 dpts-18104.4; `tp5200_arm4200_tr185` PF2.562/+200758.9 dpts-17819.7; `rc4` PF2.596/+202399.6 dpts-16179.0; `cap1100_rc4` PF2.596/+202399.6 dpts-16179.0.
+- **Conclusion:** `cap800` is a **clear** soft≥2.5 pts refine on NEW KEEP ema31 (Δpts **+9703.3** · ΔPF **+0.108** on 5m). TP-only cells inert (trail exits dominate). `tp5200_tr185` thin +324.8. be200/be400 collapse PF. Soft-PF pocket cuts pts. Do **not** promote on 5m alone. KEEP unchanged (ticks ema31 PF2.59/+199872.5 n230).
+- **Next:** overnight **tick-confirm** `AM_tick cap800` (resume_max_break_pts=800.0, else KEEP ema31 tr190/sls2100) workers=2. Optional runners tp5200_tr185 if champ rejects. Prefer max_loss streak ≤7–8. No reaktor / no push.
+
+
+
+### 2026-09-26 ~18:46 Europe/Bucharest Asia TICK CONFIRM AM_tick cap800 on KEEP ema31 (run 20260926T153950Z_d5b5cf17) -- **NEW KEEP**
+- **Setup (ticks, 2025-01 to 2026-09):** asia **0-6**, **ema31**, **wait14**, **rc3**, **cap800**, **flat23**, **mb275**, **SL1000/TP4800**, **sls3/2100**, **near_box N=6 D=1000**, **near_box_trend=off**, **break_on_wick=true**, **max_break=15**, **trail arm4000 / trail190**, timeout market, wait_from_break, **pullback preferred**, side both, **max_hold16**. workers=2. data_source=ticks. started 2026-09-26T15:26:05.121559+00:00 finished 2026-09-26T15:39:50.214747+00:00.
+- **Result:** n230 · win44.8% · **+208866.7** · **PF 2.69** (avg 908.1 / win 3227.1 / loss -972.6). exits {'flatten': 42, 'sl': 122, 'trail': 64, 'tp': 2}. trail_armed 66 (28.7). entries {'higher_close': 51, 'ema_touch': 101, 'timeout_market': 56, 'lower_close': 22}. skipped 199 ({'no_break': 169, 'late_short': 30}). streaks max_win=6 max_loss=8. saved `results/overnight_XAUUSD_2025-01-01_2026-09-01_20260926T153950Z_d5b5cf17.json`.
+- **vs KEEP** ema31 cap1000 ticks PF2.59/+199872.5 n230 (run 20260926T150205Z_cf1619ba): ΔPF **+0.10** · Δpts **+8994.2** · Δn **+0** -- meaningful pts lift (~+8994) at PF≥2.5; max_loss=8 within ≤7–8 hard-ish filter; **NEW KEEP**.
+- **vs 5m screen** cap800 PF2.863/+228281.9 n229: 5m edge (~+9703) mostly held on ticks (tick Δpts +8994.2; PF 2.69 vs 5m 2.863).
+- **Conclusion:** NEW KEEP = N6 D1000 · near_box_trend=off · **mb275** · **TP4800** · **flat23** · SL1000 · **sls3/2100** · wick_on · trail **arm4000/tr190** · **pullback preferred** · **ema31** · **max_break=15** · **max_hold16** · **rc3** · **cap800** · **wait14** · ticks PF2.69/+208866.7 n230.
+- **Next:** Batch AN `HOLD_VOL_AN_KEEP_CAP800` 5m (cap neighborhood + trail/hold/mb/wait/arm/sls under NEW KEEP cap800). Tick-confirm soft≥2.5 pts champs (or clear pts lift at PF≥~2.0 holding ≥~157k). Prefer max_loss streak ≤7–8. No reaktor / no push.
+
+
+
+### 2026-09-26 ~19:17 Europe/Bucharest Asia Batch AN HOLD_VOL_AN_KEEP_CAP800 5m (56 cells) — thin edges; no strong tick champ
+- **Grid:** `results/overnight_5m_grid_20260926T155125Z.json` · tag `HOLD_VOL_AN_KEEP_CAP800` · seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: cap neighborhood · trail/hold · mb/wait/maxbreak · arm/sls/flat · near-box N/D · soft PF pocket. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 · PF **2.863** · **+228281.9**.
+- **Soft ≥2.0 pts lifts:** `mb260` PF **2.880** / **+228996.5** n229 — ΔPF **+0.017** · Δpts **+714.6**; `hold17_mb260` PF **2.880** / **+228996.5** n229 — ΔPF **+0.017** · Δpts **+714.6**; `tr180` PF **2.868** / **+228941.7** n229 — ΔPF **+0.005** · Δpts **+659.8**; `tr185` PF **2.866** / **+228611.7** n229 — ΔPF **+0.003** · Δpts **+329.8**; `tr185_hold17` PF **2.866** / **+228611.7** n229 — ΔPF **+0.003** · Δpts **+329.8**; `tr185_hold18` PF **2.866** / **+228611.7** n229 — ΔPF **+0.003** · Δpts **+329.8**.
+- **PF ≥~2.5 with pts lift:** `mb260` PF 2.880/+228996.5 n229 dpts+714.6; `hold17_mb260` PF 2.880/+228996.5 n229 dpts+714.6; `tr180` PF 2.868/+228941.7 n229 dpts+659.8; `tr185` PF 2.866/+228611.7 n229 dpts+329.8; `tr185_hold17` PF 2.866/+228611.7 n229 dpts+329.8; `tr185_hold18` PF 2.866/+228611.7 n229 dpts+329.8.
+- **Thin (<+2000 pts):** `mb260` dpts+714.6, `hold17_mb260` dpts+714.6, `tr180` dpts+659.8, `tr185` dpts+329.8, `tr185_hold17` dpts+329.8, `tr185_hold18` dpts+329.8.
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert=`hold18`, `hold17`, `hold20`, `mb265`, `sls2150`, `nb_N5`, `nb_N7`, `nb_D800`, `nb_D1200`, `nb_N5_D800`, `tminb_100`; dilute=`tema_180` PF2.620/+163896.5 dpts-64385.4; `pullback_required` PF2.722/+170779.2 dpts-57502.7; `w12` PF2.513/+192869.0 dpts-35412.9; `w15` PF2.610/+201906.9 dpts-26375.0; `arm4200` PF2.661/+210177.5 dpts-18104.4; `mb300` PF2.739/+213027.9 dpts-15254.0; `arm4100` PF2.722/+216189.8 dpts-12092.1; `cap850` PF2.745/+217342.8 dpts-10939.1; `cap900` PF2.745/+217342.8 dpts-10939.1; `cap850_hold17` PF2.745/+217342.8 dpts-10939.1; `cap850_tr185` PF2.748/+217662.6 dpts-10619.3; `arm3800` PF2.796/+218298.4 dpts-9983.5; `cap950` PF2.755/+218578.6 dpts-9703.3; `cap1000` PF2.755/+218578.6 dpts-9703.3; `arm3900` PF2.809/+221679.8 dpts-6602.1; `mb280` PF2.816/+222529.1 dpts-5752.8; `sls2200` PF2.825/+223584.1 dpts-4697.8; `cap700` PF2.812/+223842.0 dpts-4439.9.
+- **Conclusion:** Soft lifts are **thin** (best `mb260` Δpts **+714.6** on 5m) — same ~+0.7k mb260/tr180 pocket AJ/AL already rejected on ticks. Clear lifts (Δpts≥2000 at PF≥2.5): none. Cap neighborhood / hold / arm / near-box N/D / soft-PF mostly inert or dilute. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch AO `GATE_SIDE_AO_KEEP_CAP800` 5m (near-box trend gates breakout/outside × N/D · side/seasonal/week2 · mild SL/wick/asia_range/teff/timeout under NEW KEEP cap800). Tick-confirm only clear soft≥2.5 pts lifts (not ~+0.7k thin). Prefer max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+
+
+
+### 2026-09-26 ~19:43 Europe/Bucharest Asia Batch AO GATE_SIDE_AO_KEEP_CAP800 5m (47 cells) — no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260926T162238Z.json` · tag `GATE_SIDE_AO_KEEP_CAP800` · seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: near-box trend gates breakout/outside × N/D · side/seasonal/week2 · mild SL/wick/asia_range/teff/timeout. Error cells: none (first stub grid `overnight_5m_grid_20260926T162158Z.json` had errors only — superseded).
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 · PF **2.863** · **+228281.9**.
+- **Soft ≥2.0 / ≥2.5 pts lifts (Δpts>0):** **none**. Clear lifts (Δpts≥2000 at PF≥2.5): **none**.
+- **Inert (=baseline, 31 cells):** all near-box trend gates (breakout/outside × N/D) · wick_off · asia_range250/350 · teff_* · tflat_* · tminb_* · week2_tag · seasonal_tag · season_week2_join — confirms near-box trend still **dormant** under pullback preferred + trend=off seed (gates do not change 5m outcome vs baseline).
+- **Dilute / reject:** `side_short` PF **4.129** / **+133466.6** n89 (Δpts **−94815.3**) — high PF thin book, cut total pts; `side_long` PF **2.187** / **+94815.3** n140 (Δpts **−133466.6**, under-floor); `seasonal_filter` PF2.938/+206452.8 (Δpts−21829); `week2_filter` PF2.604/+165939.5 (Δpts−62342); `season_week2_filter` PF2.734/+167251.8 (Δpts−61030); SL scale `sl900`…`sl1400` and `sl1100_tp5200`/`sl1200_tp5400` all cut pts (best still −5838); soft timeout `tema_*` / `tminpb_80` cut ~62–65k pts.
+- **Under-floor PF<2.0:** none (side_long PF2.187 is soft-floor-ish but already pts-rejected).
+- **Conclusion:** Batch AO finds **no** soft≥2.5 pts refine on NEW KEEP cap800. Near-box trend gates remain dormant; side/seasonal/week2 and SL/timeout probes only dilute total pts. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch AP `ENTRY_HOLD_AP_KEEP_CAP800` 5m (entry/resume/wait/rc/ema/sls-wait + denser flatten×hold under KEEP cap800 — AN/AO stall on vol/gates). Tick-confirm only clear soft≥2.5 pts lifts (Δpts≥~2k), max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+
+### 2026-09-26 ~20:20 Europe/Bucharest Asia Batch AP ENTRY_HOLD_AP_KEEP_CAP800 5m (64 cells) — no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260926T164729Z.json` · tag `ENTRY_HOLD_AP_KEEP_CAP800` · seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: entry/resume/wait/rc/ema/sls-wait + denser flatten×hold + mild maxbreak + soft PF/news. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 · PF **2.863** · **+228281.9**.
+- **Soft ≥2.0 pts lifts:** **none**.
+- **PF ≥~2.5 with pts lift:** **none**.
+- **Thin (<+2000 pts):** none.
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert=`rco_on`, `hold19`, `hold22`, `flat23_hold17`, `flat23_hold18`, `flat23_hold20`, `tminb_100`; dilute (least-cut first)=`slsw4` PF2.803/+228188.1 dpts-93.8; `flat23_hold14` PF2.856/+227480.7 dpts-801.2; `w13` PF2.854/+227370.7 dpts-911.2; `w13_hold17` PF2.854/+227370.7 dpts-911.2; `flat22` PF2.870/+226886.1 dpts-1395.8; `flat22_hold17` PF2.870/+226886.1 dpts-1395.8; `flat22_hold18` PF2.870/+226886.1 dpts-1395.8; `flat22_hold20` PF2.870/+226886.1 dpts-1395.8; `slsw5` PF2.750/+226628.9 dpts-1653.0; `flat22_hold14` PF2.863/+226008.0 dpts-2273.9; `sls1900` PF2.795/+225281.9 dpts-3000.0; `flat21` PF2.866/+225273.2 dpts-3008.7; `flat21_hold14` PF2.866/+225273.2 dpts-3008.7; `flat21_hold17` PF2.866/+225273.2 dpts-3008.7; `flat21_hold18` PF2.866/+225273.2 dpts-3008.7; `flat21_hold20` PF2.866/+225273.2 dpts-3008.7; `mb16_hold17` PF2.725/+225174.7 dpts-3107.2; `maxbreak18` PF2.591/+225132.7 dpts-3149.2.
+- **Conclusion:** Batch AP finds **no** soft≥2.5 pts refine on NEW KEEP cap800. Nearest was `slsw4` Δpts **-93.8** PF2.803 (still under baseline). Entry/resume/wait/rc/ema/sls-wait and denser flatten×hold are inert or dilute (least-cut `slsw4` Δpts −93.8). **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch AQ `ASIA_TRAIL_AQ_KEEP_CAP800` 5m (asia window 0–5/0–7/1–6 + asia_range + pullback/otp + denser trail×arm×TP + mild SL:TP 1:1.5 under KEEP cap800 — AN/AO/AP stall). Tick-confirm only clear soft≥2.5 pts lifts (Δpts≥~2k). Prefer max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+
+
+### 2026-09-26 ~20:47 Europe/Bucharest Asia Batch AQ ASIA_TRAIL_AQ_KEEP_CAP800 5m (54 cells) - soft trail champ for tick
+- **Grid:** `results/overnight_5m_grid_20260926T172529Z.json` — tag `ASIA_TRAIL_AQ_KEEP_CAP800` — seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) — candles_5m — workers=2 — window 2025-01→2026-09. Axes: asia window/range · pullback/otp · trail×arm×TP · mild SL:TP 1:1.5 · soft PF pocket. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 — PF **2.863** — **+228281.9**.
+- **Soft >=2.0 pts lifts:** `tr160` PF **2.879** / **+230261.7** n229 (dPF **+0.016** dpts **+1979.8**); `tr170` PF **2.874** / **+229602.0** n229 (dPF **+0.011** dpts **+1320.1**); `tr175` PF **2.871** / **+229271.7** n229 (dPF **+0.008** dpts **+989.8**); `tp4600_tr180` PF **2.868** / **+228941.7** n229 (dPF **+0.005** dpts **+659.8**).
+- **PF >=~2.5 with pts lift:** `tr160` PF 2.879/+230261.7 n229 dpts+1979.8; `tr170` PF 2.874/+229602.0 n229 dpts+1320.1; `tr175` PF 2.871/+229271.7 n229 dpts+989.8; `tp4600_tr180` PF 2.868/+228941.7 n229 dpts+659.8.
+- **Clear dpts>=~2k:** `tr160` dpts+1979.8 (at ~2k bar).
+- **Under-floor PF<2.0:** `pullback_off` PF1.369/+65728.5; `pullback_off_otp_off` PF1.369/+65728.5; `asia0_5_w13` PF1.753/+107748.3; `asia1_5` PF1.756/+107238.0; `asia0_5` PF1.857/+119012.9; `asia0_5_mb260` PF1.895/+122705.4; `sl1500_tp2250` PF1.898/+129874.6.
+- **Reject / dilute / inert:** inert=`asia_range250`, `asia_range280`, `asia_range320`, `asia_range350`, `asia_range400`, `otp_off`, `tp4400`, `tp4600`, `tp5000`, `tp5200`, `tp5400`; dilute=`pullback_off` PF1.369/+65728.5 dpts-162553.4; `pullback_off_otp_off` PF1.369/+65728.5 dpts-162553.4; `sl1000_tp1500` PF2.032/+98828.4 dpts-129453.5; `asia1_5` PF1.756/+107238.0 dpts-121043.9; `asia0_5_w13` PF1.753/+107748.3 dpts-120533.6; `sl1200_tp1800` PF2.030/+118657.1 dpts-109624.8; `asia0_5` PF1.857/+119012.9 dpts-109269.0; `asia0_5_mb260` PF1.895/+122705.4 dpts-105576.5; `sl1500_tp2250` PF1.898/+129874.6 dpts-98407.3; `sl1400_tp2100` PF2.036/+137218.3 dpts-91063.6; `sl1200_tp2400` PF2.189/+149917.8 dpts-78364.1; `asia1_7` PF2.128/+158251.6 dpts-70030.3.
+- **Conclusion:** `tr160` is a **soft>=2.5 pts** refine on KEEP cap800 (dpts **+1979.8** ~2k bar, dPF **+0.016** on 5m). Same trail-cut pocket as AJ tr170 tick-REJECT, but tighter trail untried on ticks under ema31/cap800. TP-only / asia_range inert; asia window cuts; SL:TP 1:1.5 collapses PF; pullback_required/tema dilute. Do **not** promote on 5m alone. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** overnight **tick-confirm** `AQ_tick tr160` (trail_pts=160.0, else KEEP ema31 cap800 tr190/sls2100) workers=2. Optional runners tr170 / tr175 / tp4600_tr180 if champ rejects. Prefer max_loss streak <=7-8. If reject -> Batch AR timeout/news/sl_cap denser under KEEP (AN-AQ stall outside thin trail). No reaktor / no push.
+
+
+
+
+### 2026-09-26 ~21:20 Europe/Bucharest Asia TICK CONFIRM AQ_tick tr160 on KEEP ema31 cap800 (run 20260926T180413Z_442e6ec5) -- **REJECT**
+- **Setup (ticks, 2025-01 to 2026-09):** asia **0-6**, **ema31**, **wait14**, **rc3**, **cap800**, **flat23**, **mb275**, **SL1000/TP4800**, **sls3/2100**, **near_box N=6 D=1000**, **near_box_trend=off**, **break_on_wick=true**, **max_break=15**, **trail arm4000 / trail160**, timeout market, wait_from_break, **pullback preferred**, side both, **max_hold16**. workers=2. data_source=ticks. started 2026-09-26T17:50:32.364393+00:00 finished 2026-09-26T18:04:13.192969+00:00.
+- **Result:** n230 · win44.8% · **+208311.1** · **PF 2.69** (avg 905.7 / win 3221.7 / loss -972.6). exits {'flatten': 42, 'sl': 122, 'trail': 64, 'tp': 2}. trail_armed 66 (28.7). entries {'higher_close': 51, 'ema_touch': 101, 'timeout_market': 56, 'lower_close': 22}. skipped 199 ({'no_break': 169, 'late_short': 30}). streaks max_win=6 max_loss=8. saved `results/overnight_XAUUSD_2025-01-01_2026-09-01_20260926T180413Z_442e6ec5.json`.
+- **vs KEEP** ema31 cap800 tr190 ticks PF2.69/+208866.7 n230 (run 20260926T153950Z_d5b5cf17): ΔPF **+0.00** · Δpts **-555.6** · Δn **+0** -- pts down (~-556), PF flat; max_loss=8 at hard-ish edge; **REJECT** (no promote).
+- **vs 5m screen** tr160 PF2.879/+230261.7 n229 (dpts+1979.8): 5m soft edge did not hold on ticks (tick Δpts -555.6).
+- **Conclusion:** KEEP unchanged = N6 D1000 · near_box_trend=off · **mb275** · **TP4800** · **flat23** · SL1000 · **sls3/2100** · wick_on · trail **arm4000/tr190** · **pullback preferred** · **ema31** · **max_break=15** · **max_hold16** · **rc3** · **cap800** · **wait14** · ticks PF2.69/+208866.7 n230. AQ trail pocket thin on ticks (tr160 loses pts; AJ lineage already rejected nearby cuts).
+- **Next:** Batch AR `TIMEOUT_NEWS_SL_AR_KEEP_CAP800` 5m (denser timeout×news×sl_cap/be under KEEP ema31 cap800 — AN-AQ stall outside thin trail). Tick-confirm only clear soft≥2.5 pts lifts (Δpts≥~2k). Prefer max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+
+
+### 2026-09-26 ~21:51 Europe/Bucharest Asia Batch AR TIMEOUT_NEWS_SL_AR_KEEP_CAP800 5m (48 cells) — no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260926T182356Z.json` · tag `TIMEOUT_NEWS_SL_AR_KEEP_CAP800` · seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: denser timeout tema/tminb/tminpb × news filter/tag · sl_cap/SL scale · BE arm. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 · PF **2.863** · **+228281.9**.
+- **Soft ≥2.0 / ≥2.5 pts lifts (Δpts>0):** **none**. Clear lifts (Δpts≥2000 at PF≥2.5): **none**.
+- **Inert (=baseline):** tminb_50/150/250 · news_tag/news_tag_all · slcap_off/1200/1500/1800/2200/2500/3000 — timeout_min_break low values, news_tag, and sl_cap alone do not change 5m outcome (sl_cap dormant vs fixed SL1000).
+- **Dilute / reject (least-cut first):** `sl1050` PF2.800/+227672.2 (Δpts−609.7); `slcap1800_sl1100` PF2.689/+222443.7 (Δpts−5838.2); `sl950` PF2.791/+216093.1; `sl1150` PF2.574/+216543.7; `slcap2200_sl1200` PF2.498/+213133.8; `slcap2500_tp5200` / `sl1000_tp5000` PF2.661/+210177.5; `tminb_350` PF2.734/+209056.0; `news_filter` PF2.912/+201745.6 (Δpts−26536, higher PF but cuts pts); `news_filter_all` PF2.819/+191968.6; all tema_* / tminpb_* cut ~57–65k; `be2000` PF2.636/+171566.3; `be1500` PF2.606/+152251.9; `be800` / `be800_tr185` PF~2.00/+76k (near soft floor, heavy pts cut).
+- **Under-floor PF<2.0:** none (be800 PF2.005 is soft-floor edge).
+- **Conclusion:** Batch AR finds **no** soft≥2.5 pts refine on KEEP cap800 after AQ_tick tr160 REJECT. Timeout denser / news filter / sl_cap / BE only inert or dilute total pts (news_filter lifts PF to 2.912 but loses ~26k pts). **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch AS `CROSS_THIN_AS_KEEP_CAP800` 5m (denser AN thin-edge mb260×tr/hold crosses · ema neigh · resume/rco/hc · trail_arm_cap · SL/TP mode probes under KEEP ema31 cap800 — AN–AR stall). Tick-confirm only clear soft≥2.5 pts lifts (Δpts≥~2k). Prefer max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+
+
+### 2026-09-26 ~22:21 Europe/Bucharest Asia Batch AS CROSS_THIN_AS_KEEP_CAP800 5m (62 cells) — clear mb260×tr165 champ for tick
+- **Grid:** `results/overnight_5m_grid_20260926T185630Z.json` · tag `CROSS_THIN_AS_KEEP_CAP800` · seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: denser AN thin mb×tr/hold crosses · ema neigh · resume/rco · trail_arm_cap · SL/TP mode probes. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 · PF **2.863** · **+228281.9**.
+- **Soft ≥2.0 pts lifts:** `mb260_tr165` PF **2.893** / **+230646.5** n229 — ΔPF **+0.030** · Δpts **+2364.6**; `tr155` PF **2.882** / **+230591.7** n229 — ΔPF **+0.019** · Δpts **+2309.8**; `tr165` PF **2.877** / **+229931.9** n229 — ΔPF **+0.014** · Δpts **+1650.0**; `mb260_tr180` PF **2.885** / **+229656.3** n229 — ΔPF **+0.022** · Δpts **+1374.4**; `mb260_tr180_hold17` PF **2.885** / **+229656.3** n229 — ΔPF **+0.022** · Δpts **+1374.4**; `hold18_mb260_tr180` PF **2.885** / **+229656.3** n229 — ΔPF **+0.022** · Δpts **+1374.4**; `mb260_tr185` PF **2.883** / **+229326.3** n229 — ΔPF **+0.020** · Δpts **+1044.4**; `mb260` PF **2.880** / **+228996.5** n229 — ΔPF **+0.017** · Δpts **+714.6**; `mb260_hold17` PF **2.880** / **+228996.5** n229 — ΔPF **+0.017** · Δpts **+714.6**; `tr180` PF **2.868** / **+228941.7** n229 — ΔPF **+0.005** · Δpts **+659.8**; `tr180_hold17` PF **2.868** / **+228941.7** n229 — ΔPF **+0.005** · Δpts **+659.8**; `armcap1800_tr180` PF **2.868** / **+228941.7** n229 — ΔPF **+0.005** · Δpts **+659.8**.
+- **PF ≥~2.5 with pts lift:** `mb260_tr165` PF 2.893/+230646.5 n229 dpts+2364.6; `tr155` PF 2.882/+230591.7 n229 dpts+2309.8; `tr165` PF 2.877/+229931.9 n229 dpts+1650.0; `mb260_tr180` PF 2.885/+229656.3 n229 dpts+1374.4; `mb260_tr180_hold17` PF 2.885/+229656.3 n229 dpts+1374.4; `hold18_mb260_tr180` PF 2.885/+229656.3 n229 dpts+1374.4; `mb260_tr185` PF 2.883/+229326.3 n229 dpts+1044.4; `mb260` PF 2.880/+228996.5 n229 dpts+714.6; `mb260_hold17` PF 2.880/+228996.5 n229 dpts+714.6; `tr180` PF 2.868/+228941.7 n229 dpts+659.8.
+- **Clear Δpts≥~2k at PF≥2.5:** `mb260_tr165` dpts+2364.6 PF2.893; `tr155` dpts+2309.8 PF2.882.
+- **Thin (<+2000 pts):** `tr165` dpts+1650.0; `mb260_tr180` dpts+1374.4; `mb260_tr180_hold17` dpts+1374.4; `hold18_mb260_tr180` dpts+1374.4; `mb260_tr185` dpts+1044.4; `mb260` dpts+714.6; `mb260_hold17` dpts+714.6; `tr180` dpts+659.8; `tr180_hold17` dpts+659.8; `armcap1800_tr180` dpts+659.8.
+- **Under-floor PF<2.0:** `sl_m12` PF1.990/+194913.6.
+- **Reject / dilute / inert:** inert=`mb265`, `mb270`, `ema_tf5`, `ema_tf30`, `rco_on`, `armcap1500`, `armcap2000`, `armcap1800`, `armcap2200`, `armcap2500`; dilute=`tp_range1p5` PF2.892/+228093.8 dpts-188.1; `mb255` PF2.840/+227794.6 dpts-487.3; `flat22_mb260` PF2.872/+226979.3 dpts-1302.6; `mb16_mb260` PF2.740/+225889.3 dpts-2392.6; `cap750_mb260` PF2.834/+225253.2 dpts-3028.7; `cap750` PF2.818/+224538.6 dpts-3743.3; `ema33` PF2.807/+223234.9 dpts-5047.0; `ema32_mb260` PF2.793/+221974.3 dpts-6307.6; `ema32_tr180` PF2.782/+221909.5 dpts-6372.4; `ema32` PF2.777/+221259.7 dpts-7022.2; `arm3800_tr180_mb260` PF2.818/+219692.8 dpts-8589.1; `tp_range1` PF2.899/+219285.0 dpts-8996.9; `cap950` PF2.755/+218578.6 dpts-9703.3; `cap850` PF2.745/+217342.8 dpts-10939.1.
+- **Conclusion:** `mb260_tr165` is a **clear** soft>=2.5 pts refine on KEEP cap800 (Δpts **+2364.6**, ΔPF **+0.030** on 5m). Also clear: `tr155` dpts+2309.8 PF2.882. Cross of AN thin mb260 pocket with tighter trail (AJ/AQ single-axis ticks already REJECT nearby). EMA neigh / resume / SL-mode / tp_range mostly dilute or underfloor (sl_m12 PF1.99). Do **not** promote on 5m alone. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** overnight **tick-confirm** `AS_tick mb260_tr165` (mb260 + trail_pts=165, else KEEP ema31 cap800 tr190/sls2100) workers=2. Optional runners tr155 / tr165 / mb260_tr180 if champ rejects. Prefer max_loss streak <=7-8. If reject -> Batch AT denser untried axes (tp_r / trail_arm denser / session filters not yet crossed). No reaktor / no push.
+
+### 2026-09-26 ~22:44 Europe/Bucharest Asia TICK CONFIRM AS_tick mb260_tr165 on KEEP ema31 cap800 (run 20260926T193619Z_441c6d57) -- **REJECT**
+- **Setup (ticks, 2025-01 to 2026-09):** asia **0-6**, **ema31**, **wait14**, **rc3**, **cap800**, **flat23**, **mb260**, **SL1000/TP4800**, **sls3/2100**, **near_box N=6 D=1000**, **near_box_trend=off**, **break_on_wick=true**, **max_break=15**, **trail arm4000 / trail165**, timeout market, wait_from_break, **pullback preferred**, side both, **max_hold16**. workers=2. data_source=ticks. started 2026-09-26T19:22:44.729460+00:00 finished 2026-09-26T19:36:19.350129+00:00.
+- **Result:** n230 · win44.8% · **+208811.4** · **PF 2.70** (avg 907.9 / win 3219.6 / loss -967.0). exits {'flatten': 43, 'sl': 121, 'trail': 64, 'tp': 2}. trail_armed 66 (28.7). entries {'higher_close': 50, 'ema_touch': 100, 'timeout_market': 59, 'lower_close': 21}. skipped 199 ({'no_break': 169, 'late_short': 30}). streaks max_win=6 max_loss=8. saved 
+esults/overnight_XAUUSD_2025-01-01_2026-09-01_20260926T193619Z_441c6d57.json.
+- **vs KEEP** ema31 cap800 tr190 mb275 ticks PF2.69/+208866.7 n230 (run 20260926T153950Z_d5b5cf17): ΔPF **+0.01** · Δpts **-55.3** · Δn **+0** -- pts slightly down (~-55), PF flat; max_loss=8 at hard-ish edge; **REJECT** (no promote).
+- **vs 5m screen** mb260_tr165 PF2.893/+230646.5 n229 (dpts+2364.6): 5m soft edge did not hold on ticks (tick Δpts -55.3).
+- **Conclusion:** KEEP unchanged = N6 D1000 · near_box_trend=off · **mb275** · **TP4800** · **flat23** · SL1000 · **sls3/2100** · wick_on · trail **arm4000/tr190** · **pullback preferred** · **ema31** · **max_break=15** · **max_hold16** · **rc3** · **cap800** · **wait14** · ticks PF2.69/+208866.7 n230. AS mb×trail pocket fails on ticks (near-flat); skip optional tr155/tr165 runners (AQ/AS trail lineage already REJECT).
+- **Next:** Batch AT HOLD_SESS_AT_KEEP_CAP800 5m (denser trail_arm · tp_r/tp_near · hold/flatten expand · session/side/week2/seasonal · late-short/maxbreak mild under KEEP ema31 cap800). Tick-confirm only clear soft≥2.5 pts lifts (Δpts≥~2k). Prefer max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+
+### 2026-09-26 ~23:15 Europe/Bucharest Asia Batch AT HOLD_SESS_AT_KEEP_CAP800 5m (65 cells) — no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260926T194810Z.json` · tag `HOLD_SESS_AT_KEEP_CAP800` · seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: denser trail_arm · tp_r/tp_near · hold/flatten expand · session/side/week2/seasonal · late-short/maxbreak mild. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 · PF **2.863** · **+228281.9**.
+- **Soft ≥2.0 / ≥2.5 pts lifts (Δpts>0):** **none**. Clear lifts (Δpts≥2000 at PF≥2.5): **none**.
+- **Inert (=baseline, 14 cells):** hold17–21 · seasonal_tag · week2_tag · trend_eff_0p30/0p40 · trend_sess8/12 · trend_flat1200/1800 · otpd_off — hold expand and trend/session tags do not change 5m outcome vs baseline under KEEP cap800.
+- **Dilute / reject (least-cut first):** `sls4_2100` PF2.803/+228188.1 (Δpts −93.8); `hold15` PF2.865/+228023.3 (Δpts −258.6); `armcap2100_tr195` / `tp4400_tr195`…`tp5400_tr195` / `hold18_tr195` PF2.860/+227952.0 (Δpts −329.9); `arm3950_tr185` PF2.856/+227432.7; `w13` PF2.854/+227370.7; `flat22` PF2.870/+226886.1; `sls5_2100` PF2.750/+226628.9; `maxbreak17` PF2.670/+226339.7; `flat21` PF2.866/+225273.2; `maxbreak18` PF2.591/+225132.7; `maxbreak14` PF2.895/+224576.3 (higher PF, cuts pts); trail_arm extremes `arm3700`…`arm4500` cut ~14–20k; `seasonal_filter` PF2.938/+206452.8 (Δpts −21829); `week2_filter` PF2.604/+165939.5; `side_short` PF4.129/+133466.6 n89 (Δpts −94815); `side_long` PF2.187/+94815.3; tp_r* collapse (best `tp_r3p0` PF2.505/+179390.5 Δpts −48891).
+- **Under-floor PF<2.0:** `tp_r1p2` PF1.801/+72729.7.
+- **Conclusion:** Batch AT finds **no** soft≥2.5 pts refine on KEEP cap800 after AS_tick mb260_tr165 REJECT. Trail_arm denser / tp_r / hold-flatten / session-side only inert or dilute. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch AU `NEAR_ENTRY_AU_KEEP_CAP800` 5m (near-box N/D volume · entry/break rco/wick/hc/rc · asymmetric mb · ema/cap mild · SL:TP scale · late-short asia denser under KEEP ema31 cap800 — AN–AT stall). Tick-confirm only clear soft≥2.5 pts lifts (Δpts≥~2k). Prefer max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+
+### 2026-09-26 ~23:42 Europe/Bucharest Asia Batch AU NEAR_ENTRY_AU_KEEP_CAP800 5m (58 cells) — no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260926T201852Z.json` · tag `NEAR_ENTRY_AU_KEEP_CAP800` · seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: near-box N/D volume · entry/break rco/wick/hc/rc · asymmetric mb · ema/cap mild · SL:TP scale · late-short asia denser. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 · PF **2.863** · **+228281.9**.
+- **Soft ≥2.0 pts lifts:** `mb_a260_b275` PF **2.88** / **+228996.5** n229 — ΔPF **+0.017** · Δpts **+714.6**; `tr185` PF **2.866** / **+228611.7** n229 — ΔPF **+0.003** · Δpts **+329.8**.
+- **PF ≥~2.5 with pts lift:** same two only (thin).
+- **Clear Δpts≥~2k at PF≥2.5:** **none**.
+- **Under-floor PF<2.0:** `rc1` PF **1.762** / **+118527.1** n246.
+- **Reject / dilute / inert:** inert (=baseline, near-box N/D + rco_on + wick_off + asia_r280/320 + mb_a275_b250/b260) — near-box size knobs still **dormant** under preferred; dilute=`mb250`/`mb_a250_b275` PF2.839/+227656.1 (Δpts−625.8); `sl1050_tp5040` PF2.800/+227672.2; `sls3_1900`/`sls3_2000` PF2.795/+225281.9; `cap700` PF2.812/+223842.0; `sl1100_tp5280` PF2.689/+222443.7; `cap900` PF2.745/+217342.8; `sl950_tp4560` PF2.791/+216093.1; `ema29` PF2.654/+209262.9; `hc_off` PF2.538/+197625.5; `rc6` PF2.542/+198151.6; `ema28` PF2.510/+195613.7; `rco_wick_off` PF2.568/+154815.6; `wfb_off` PF2.013/+143524.6; `sl1000_tp1500` PF2.032/+98828.4; `sl1200_tp1800` PF2.030/+118657.1.
+- **Conclusion:** Batch AU finds **no** clear soft≥2.5 pts refine on KEEP cap800 after AT stall. Best is thin `mb_a260_b275` Δpts **+714.6** (same ~+0.7k mb260 pocket AN/AS already tick-REJECT). Near-box N/D inert; entry/break and SL:TP 1:1.5 collapse or dilute. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch AV `TRAIL_TP_AV_KEEP_CAP800` 5m (trail-off + near-TP arm/TP ladder · larger TP×trail · mild BE×toff · toff×mb260 — plan D residual after AN–AU stall). Tick-confirm only clear soft≥2.5 pts lifts (Δpts≥~2k). Prefer max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+
+### 2026-09-26 ~23:52 Europe/Bucharest Asia Batch AV TRAIL_TP_AV_KEEP_CAP800 5m (51 cells) — no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260926T205055Z.json` · tag `TRAIL_TP_AV_KEEP_CAP800` · seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: trail-off + near-TP arm/TP ladder · larger TP×trail · mild BE×toff · toff×mb260. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 · PF **2.863** · **+228281.9**.
+- **Soft ≥2.0 pts lifts:** `tp5000_tr180`…`tp7000_tr180` (6 cells) PF **2.868** / **+228941.7** n229 — ΔPF **+0.005** · Δpts **+659.8** (identical; TP inert under active trail).
+- **PF ≥~2.5 with pts lift:** same thin tr180 pocket only.
+- **Clear Δpts≥~2k at PF≥2.5:** **none**.
+- **Under-floor PF<2.0:** `toff_sl1200_tp1800` PF1.974; `toff_sl1400_tp2800` PF1.968; `toff_be1200_tp5200` PF1.971; `toff_sl1500_tp3000` PF1.829; `near_tp5200_arm5000_be1000` PF1.913; `toff_be800_tp4800` PF1.669.
+- **Reject / dilute / inert:** inert=`tp*_tr190` (TP alone inert at tr190); dilute=all trail-off TP ladder (best `toff_tp4000` PF2.684/+206392 Δpts−21890); all near-TP arm cells cut ~16–63k; arm4800–6000 cut ~28–33k; toff×mb260 dilute; BE×toff collapse.
+- **Conclusion:** Batch AV finds **no** clear soft≥2.5 pts refine on KEEP cap800. Plan D trail-off / near-TP lineages dilute under this seed; only thin tr180 Δpts **+659.8** (AS pocket, already tick-REJECT lineage). **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch AW `VOL_WAIT_AW_KEEP_CAP800` 5m (plan C denser mb/wait/max_break/asia_range + pullback × mild crosses under KEEP ema31 cap800 — AN–AV stall). Tick-confirm only clear soft≥2.5 pts lifts (Δpts≥~2k). Prefer max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+
+### 2026-09-27 ~00:20 Europe/Bucharest Asia Batch AW VOL_WAIT_AW_KEEP_CAP800 5m (51 cells) — no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260926T205424Z.json` · tag `VOL_WAIT_AW_KEEP_CAP800` · seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100).
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 · PF **2.863** · **+228281.9**.
+- **Soft ≥2.0 pts lifts:** `mb260` PF **2.88** / **+228996.5** n229 — ΔPF **+0.017** · Δpts **+714.6**.
+- **Soft detail (top):** `mb260` dpts+714.6 PF2.88.
+- **Clear Δpts≥~2k at PF≥2.5:** none.
+- **Under-floor PF<2.0:** `pullback_off` PF1.369.
+- **Reject highlight:** `pullback_off` PF1.369/+65728.5 n260 — preferred pullback required for PF.
+- **Conclusion:** Batch AW finds **no** clear soft≥2.5 pts refine on KEEP cap800 (plan C denser mb/wait/max_break). Best is thin `mb260` Δpts **+714.6** (same AN/AU/AS pocket already tick-REJECT). **Skip tick-confirm**. KEEP unchanged ticks ema31 cap800 PF2.69/+208866.7 n230.
+- **Next:** Batch AX `HOLD_TIMEOUT_AX_KEEP_CAP800` 5m (plan E earlier flatten×max_hold · timeout_ema/pullback · resume denser · mild SL:TP ~1:1.5 with trail on — AN–AW stall). Tick-confirm only clear soft≥2.5 pts lifts (Δpts≥~2k). Prefer max_loss streak ≤7–8. No reaktor push.
+
+
+
+### 2026-09-27 ~00:48 Europe/Bucharest Asia Batch AX HOLD_TIMEOUT_AX_KEEP_CAP800 5m (57 cells) - no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260926T212025Z.json` - tag `HOLD_TIMEOUT_AX_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: earlier flatten x max_hold + timeout ema/pullback + resume denser + mild SL:TP ~1:1.5 with trail on + entry-path + thin mb260 crosses. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** `hold13` PF **2.871** / **+228426.2** n229 - dPF **+0.008** - dpts **+144.3**.
+- **PF >=~2.5 with pts lift:** only `hold13` (thin).
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** `sl1600_tp2400_tr190` PF1.888/+136025.7.
+- **Reject / dilute / inert:** inert=`hold22`, `hold24`; dilute (least-cut first)=`hold12` PF2.866 dpts-449.1; `mb260_flat22_hold18` PF2.872 dpts-1302.6; `flat22` / `flat22_hold18` / `flat22_hold20` / `hold18_flat22` / `hold20_flat22` PF2.870 dpts-1395.8; `flat22_hold14` PF2.863 dpts-2273.9; `flat21*` PF2.866 dpts-3008.7; `rcap700` PF2.812 dpts-4439.9; `flat20*` PF2.855 dpts-4896.7; resume caps / timeout tema-tpull / SL:TP 1:1.5 cut further.
+- **Conclusion:** Batch AX finds **no** clear soft>=2.5 pts refine on KEEP cap800 after AN-AW stall (plan E hold/timeout). Best is thin `hold13` dpts **+144.3** (far under ~2k tick bar). Flatten earlier / resume denser / timeout gates / SL:TP 1:1.5 inert or dilute. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch AY `SOFT_CROSS_AY_KEEP_CAP800` 5m (compound thin edges hold13 x mb260 x tr185/tr180 x flat22 + week2/teff + trail_arm_cap + late-short denser + mild ema x cap - AN-AX stall). Tick-confirm only clear soft>=2.5 pts lifts (dpts>=~2k). Prefer max_loss streak <=7-8. Still seek more pts while holding PF>=~2.5. No reaktor / no push.
+
+
+### 2026-09-27 ~01:19 Europe/Bucharest Asia Batch AY SOFT_CROSS_AY_KEEP_CAP800 5m (63 cells) — no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260926T215329Z.json` · tag `SOFT_CROSS_AY_KEEP_CAP800` · seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: compound thin edges hold13×mb260×tr185/tr180×flat22×rcap700 + week2/teff + trail_arm_cap + late-short denser + mild ema×cap. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 · PF **2.863** · **+228281.9**.
+- **Soft ≥2.0 pts lifts:** `hold13_mb260_tr180` PF **2.894** / **+229800.6** n229 — ΔPF **+0.031** · Δpts **+1518.7**, `hold13_mb260_tr185` PF **2.891** / **+229470.6** n229 — ΔPF **+0.028** · Δpts **+1188.7**, `mb260_tr185` PF **2.883** / **+229326.3** n229 — ΔPF **+0.020** · Δpts **+1044.4**, `hold13_mb260` PF **2.888** / **+229140.8** n229 — ΔPF **+0.025** · Δpts **+858.9**, `otp_off_hold13_mb260` PF **2.888** / **+229140.8** n229 — ΔPF **+0.025** · Δpts **+858.9**, `mb260` PF **2.88** / **+228996.5** n229 — ΔPF **+0.017** · Δpts **+714.6**, `tr180` PF **2.868** / **+228941.7** n229 — ΔPF **+0.005** · Δpts **+659.8**, `hold13_tr185` PF **2.874** / **+228756.0** n229 — ΔPF **+0.011** · Δpts **+474.1**.
+- **PF ≥~2.5 with pts lift:** `hold13_mb260_tr180`, `hold13_mb260_tr185`, `mb260_tr185`, `hold13_mb260`, `otp_off_hold13_mb260`, `mb260`, `tr180`, `hold13_tr185`, `mb265_tr185_hold13`, `mb270_tr185_hold13`, `tr185`, `armcap2500_tr185`, `hold13`, `armcap3000_hold13`.
+- **Clear Δpts≥~2k at PF≥2.5:** none.
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert=`week2_tag`, `teff0p2`, `week2_trend_on`, `teff0p3`, `teff0p25`, `teff0p4`, `teff0p45`, `teff0p5`, `armcap1800`, `armcap2200`, `armcap2500`, `armcap3000`, `armcap3500`, `armcap4000`, `otp_off`; dilute (least-cut): `slsw4` PF2.803/+228188.1 (Δpts -93.8); `hold13_tr180_flat22` PF2.884/+227705.8 (Δpts -576.1); `sls4_2100_hold13` PF2.804/+227461.3 (Δpts -820.6); `flat22_tr185_mb260` PF2.875/+227309.1 (Δpts -972.8); `flat22_hold13_mb260` PF2.88/+227139.2 (Δpts -1142.7); `flat22` PF2.87/+226886.1 (Δpts -1395.8); `slsw5` PF2.75/+226628.9 (Δpts -1653.0); `sls3_2000` PF2.795/+225281.9 (Δpts -3000.0); `hold13_mb260_tr185_rcap700` PF2.839/+225025.7 (Δpts -3256.2); `rcap700_mb260` PF2.828/+224556.6 (Δpts -3725.3); worst: `ema29` PF2.654/+209262.9 (Δpts -19019.0); `ema30` PF2.631/+206346.3 (Δpts -21935.6); `ema30_cap700_hold13` PF2.592/+202303.7 (Δpts -25978.2); `week2_filter_teff0p30` PF2.778/+169754.8 (Δpts -58527.1); `week2_filter` PF2.604/+165939.5 (Δpts -62342.4).
+- **Conclusion:** Batch AY finds **no** clear soft≥2.5 pts refine on KEEP cap800 after AN–AX stall (compound thin edges). Best is `hold13_mb260_tr180` Δpts **+1518.7** PF2.894 (under ~2k tick bar; AS/AQ trail+mb260 lineage already tick-REJECT nearby). Week2/teff/armcap mostly inert; ema/cap/late-short dilute. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch AZ `ASIA_ENTRY_AZ_KEEP_CAP800` 5m (asia window + min_asia_range + require_close/wick + max_wait denser + mild BE-with-trail + trail_arm denser + ema_tf/max_break + thin AY compounds — AN–AY stall). Tick-confirm only clear soft≥2.5 pts lifts (Δpts≥~2k). Prefer max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+
+### 2026-09-27 ~01:48 Europe/Bucharest Asia Batch AZ ASIA_ENTRY_AZ_KEEP_CAP800 5m (71 cells) — no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260926T221943Z.json` · tag `ASIA_ENTRY_AZ_KEEP_CAP800` · seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: asia window · min_asia_range · require_close/wick · max_wait denser · mild BE-with-trail · trail_arm denser · ema_tf/max_break · thin AY compounds. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 · PF **2.863** · **+228281.9**.
+- **Soft ≥2.0 pts lifts:** `thin_ay` PF **2.894** / **+229800.6** n229 — ΔPF **+0.031** · Δpts **+1518.7**; `thin_ay_arange250` PF **2.894** / **+229800.6** n229 — ΔPF **+0.031** · Δpts **+1518.7**; `thin_ay_rco` PF **2.894** / **+229800.6** n229 — ΔPF **+0.031** · Δpts **+1518.7**; `arange250_mb260` PF **2.880** / **+228996.5** n229 — ΔPF **+0.017** · Δpts **+714.6**; `rco_on_mb260` PF **2.880** / **+228996.5** n229 — ΔPF **+0.017** · Δpts **+714.6**; `arange400_hold13` PF **2.871** / **+228426.2** n229 — ΔPF **+0.008** · Δpts **+144.3**; `wick_off_hold13` PF **2.871** / **+228426.2** n229 — ΔPF **+0.008** · Δpts **+144.3**.
+- **PF ≥~2.5 with pts lift:** `thin_ay` PF 2.894/+229800.6 n229 dpts+1518.7; `thin_ay_arange250` PF 2.894/+229800.6 n229 dpts+1518.7; `thin_ay_rco` PF 2.894/+229800.6 n229 dpts+1518.7; `arange250_mb260` PF 2.880/+228996.5 n229 dpts+714.6; `rco_on_mb260` PF 2.880/+228996.5 n229 dpts+714.6; `arange400_hold13` PF 2.871/+228426.2 n229 dpts+144.3; `wick_off_hold13` PF 2.871/+228426.2 n229 dpts+144.3.
+- **Thin (<+2000 pts):** `thin_ay` dpts+1518.7, `thin_ay_arange250` dpts+1518.7, `thin_ay_rco` dpts+1518.7, `arange250_mb260` dpts+714.6, `rco_on_mb260` dpts+714.6, `arange400_hold13` dpts+144.3, `wick_off_hold13` dpts+144.3.
+- **Clear Δpts≥~2k at PF≥2.5:** **none**.
+- **Under-floor PF<2.0:** `be400` PF1.040/+1753.3; `be600` PF1.440/+28075.2; `asia1_5` PF1.756/+107238.0; `asia0_5` PF1.857/+119012.9; `asia0_5_mb260` PF1.895/+122705.4; `be800_mb260` PF1.979/+75194.4; `thin_ay_be800` PF1.984/+75515.2.
+- **Reject / dilute / inert:** inert=`arange200`, `arange250`, `arange350`, `arange400`, `rco_on`, `wick_off`, `ema_tf5`, `ema_tf30`; dilute=`be400` PF1.040/+1753.3 dpts-226528.6; `be600` PF1.440/+28075.2 dpts-200206.7; `be800_mb260` PF1.979/+75194.4 dpts-153087.5; `thin_ay_be800` PF1.984/+75515.2 dpts-152766.7; `be800` PF2.005/+76194.4 dpts-152087.5; `be800_tr180` PF2.009/+76474.3 dpts-151807.6; `be1000_hold13` PF2.223/+102387.7 dpts-125894.2; `be1000` PF2.224/+102555.0 dpts-125726.9; `asia1_5` PF1.756/+107238.0 dpts-121043.9; `asia0_5` PF1.857/+119012.9 dpts-109269.0; `asia0_5_mb260` PF1.895/+122705.4 dpts-105576.5; `be1200` PF2.468/+131788.3 dpts-96493.6; `asia0_8` PF2.005/+142871.1 dpts-85410.8; `be1500` PF2.606/+152251.9 dpts-76030.0; `rco_wick_off` PF2.568/+154815.6 dpts-73466.3; `asia1_7` PF2.128/+158251.6 dpts-70030.3; `asia0_7_hold13` PF2.210/+166733.8 dpts-61548.1; `thin_ay_asia07` PF2.208/+166821.9 dpts-61460.0.
+- **Conclusion:** Batch AZ finds **no** clear soft≥2.5 pts refine on KEEP cap800 after AN–AY stall (asia/entry denser). Best is `thin_ay` Δpts **+1518.7** on 5m (under ~2k tick bar; same AY thin hold13×mb260×tr180 pocket, AS/AQ lineage already tick-REJECT). Asia window / BE / denser wait mostly dilute; arange/rco/wick/maxbreak mostly inert or thin. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BA `ASYM_RESUME_BA_KEEP_CAP800` 5m (asym min_break long/short · resume denser · hc_off · trail_arm_mode asia/from_fill · timeout_min_pullback denser · late-short asia_pts denser · tp_range_mult · near_box_trend closes_dir/net_ext · thin AY residual crosses — AN–AZ stall). Tick-confirm only clear soft≥2.5 pts lifts (Δpts≥~2k). Prefer max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+
+
+### 2026-09-27 ~02:14 Europe/Bucharest Asia Batch BA ASYM_RESUME_BA_KEEP_CAP800 5m (69 cells) — no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260926T225152Z.json` · tag `ASYM_RESUME_BA_KEEP_CAP800` · seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: asym min_break long/short · resume denser · hc_off · trail_arm_mode asia/from_fill · timeout_min_pullback denser · late-short asia_pts denser · tp_range_mult · near_box_trend residual · thin AY residual crosses. Error cells: none (1 under-floor).
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 · PF **2.863** · **+228281.9**.
+- **Soft ≥2.0 pts lifts:** `thin_ay_mba260_mbb275` PF **2.894** / **+229800.6** n229 — ΔPF **+0.031** · Δpts **+1518.7**; `mba260_mbb275_tr180` PF **2.885** / **+229656.3** n229 — ΔPF **+0.022** · Δpts **+1374.4**; `tp_rng2p0` PF **2.889** / **+229534.2** n229 — ΔPF **+0.026** · Δpts **+1252.3**; `mba260_mbb275` PF **2.880** / **+228996.5** n229 — ΔPF **+0.017** · Δpts **+714.6**; `mba275_mbb260_hold13` PF **2.871** / **+228426.2** n229 — ΔPF **+0.008** · Δpts **+144.3**.
+- **PF ≥~2.5 with pts lift:** same five (all thin; AY/AS mb260×tr180 pocket + mild tp_range_mult).
+- **Clear Δpts≥~2k at PF≥2.5:** **none**.
+- **Under-floor PF<2.0:** `rc1` PF **1.762** / **+118527.1** n246.
+- **Reject / dilute / inert:** inert=`nb_outside`/`nb_net_ext`/`nb_closes_dir`/`nb_breakout`/`mba275_mbb260`/`mba275_mbb250` (near-box trend still dormant; short-side loosen inert); dilute worst=`arm_from_fill_tr200` PF4.480/+33295.1 (Δpts −194986.8), `arm_from_fill` PF4.973/+35229.5, `arm_asia_cap1800` PF2.238/+126032.3, `arm_asia` PF2.421/+147555.8, `tpull*` gates cut ~64–74k, `rc1` under-floor; milder dilute=`mba250_mbb275` / late-short asia denser / resume extremes.
+- **Conclusion:** Batch BA finds **no** clear soft≥2.5 pts refine on KEEP cap800 after AN–AZ stall (asym/resume). Best is `thin_ay_mba260_mbb275` Δpts **+1518.7** PF2.894 (under ~2k tick bar; same AY thin hold13×mb260×tr180 pocket, AS/AQ lineage already tick-REJECT). Trail_arm asia/from_fill and timeout_min_pullback collapse pts; near-box trend inert. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BB `PULL_SL_BB_KEEP_CAP800` 5m (pullback required/off · sl_mode asia_opposite/range/m12 · timeout_max_ema_dist · timeout_min_break denser · mild SL:TP fixed scale with trail on · trail denser mid · thin AY residual × pullback/timeout — AN–BA stall). Tick-confirm only clear soft≥2.5 pts lifts (Δpts≥~2k). Prefer max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+
+### 2026-09-27 ~02:49 Europe/Bucharest Asia Batch BB PULL_SL_BB_KEEP_CAP800 5m (74 cells) — no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260926T231911Z.json` · tag `PULL_SL_BB_KEEP_CAP800` · seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) · candles_5m · workers=2 · window 2025-01→2026-09. Axes: pullback required/off · sl_mode asia_opposite/range/m12 · timeout_max_ema_dist · timeout_min_break denser · mild SL:TP fixed scale with trail on · trail denser mid · thin AY residual × pullback/timeout — AN–BA stall. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 · PF **2.863** · **+228281.9**.
+- **Soft ≥2.0 pts lifts:** `tr175_mb260` PF **2.888** / **+229986.3** n229 — ΔPF **+0.025** · Δpts **+1704.4**, `thin_ay_mba260_mbb275` PF **2.894** / **+229800.6** n229 — ΔPF **+0.031** · Δpts **+1518.7**, `tr170` PF **2.874** / **+229602.0** n229 — ΔPF **+0.011** · Δpts **+1320.1**, `tr175_hold13` PF **2.879** / **+229416.0** n229 — ΔPF **+0.016** · Δpts **+1134.1**, `tr175` PF **2.871** / **+229271.7** n229 — ΔPF **+0.008** · Δpts **+989.8**, `tr195_mb260` PF **2.877** / **+228666.6** n229 — ΔPF **+0.014** · Δpts **+384.7**, `tr185` PF **2.866** / **+228611.7** n229 — ΔPF **+0.003** · Δpts **+329.8**.
+- **PF ≥~2.5 with pts lift:** `tr175_mb260`, `thin_ay_mba260_mbb275`, `tr170`, `tr175_hold13`, `tr175`, `tr195_mb260`, `tr185`.
+- **Clear Δpts≥~2k at PF≥2.5:** **none**.
+- **Under-floor PF<2.0:** `pb_off` PF **1.369** / **+65728.5** n260, `pb_off_mb260` PF **1.398** / **+70553.7** n260, `sl_asia_cap2500` PF **1.929** / **+195904.3** n229, `sl_m12_0p2` PF **1.984** / **+192998.1** n229, `sl_m12_0p25` PF **1.985** / **+193836.1** n229, `sl_m12_0p333` PF **1.99** / **+194913.6** n229.
+- **Reject / dilute / inert:** inert=`tminb100`, `tminb150`, `tminb200`, `tminb250`, `sl1000_tp4000`, `sl1000_tp4500`, `sl1000_tp5200`, `sl1000_tp5600`; dilute (least-cut): `tr195` PF2.86/+227952.0 (Δpts -329.9); `sl1050_tp5040` PF2.8/+227672.2 (Δpts -609.7); `tr200` PF2.858/+227621.7 (Δpts -660.2); `tr205` PF2.855/+227291.7 (Δpts -990.2); `tr210` PF2.852/+226961.7 (Δpts -1320.2); `sl1100_tp5280` PF2.689/+222443.7 (Δpts -5838.2); `sl1100_tp4400` PF2.689/+222443.7 (Δpts -5838.2); `tminb300` PF2.805/+221133.0 (Δpts -7148.9); `sl950_tp4560` PF2.791/+216093.1 (Δpts -12188.8); `tema1500` PF2.866/+213677.6 (Δpts -14604.3); worst: `tminb200_pb_req` PF2.722/+170779.2 (Δpts -57502.7); `pb_required_w15` PF2.709/+167798.1 (Δpts -60483.8); `sl800_tp4000` PF2.451/+166919.3 (Δpts -61362.6); `tema300` PF2.613/+166379.5 (Δpts -61902.4); `tema200` PF2.62/+163896.5 (Δpts -64385.4); `pb_required_w11` PF2.323/+128839.4 (Δpts -99442.5).
+- **Conclusion:** Batch BB finds **no** clear soft≥2.5 pts refine on KEEP cap800 after AN–BA stall (pullback/sl_mode/timeout). Best is `tr175_mb260` Δpts **+1704.4** PF2.888 (under ~2k tick bar; trail+mb260 pocket near AS/AQ/AY already tick-REJECT lineage). Pullback_off / sl_asia / sl_m12 collapse or under-floor; SL:TP scale mostly dilute/inert under active trail. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BC `NEWS_SLCAP_BC_KEEP_CAP800` 5m (news_mode/set · sl_cap denser · seasonal/side diagnostic · otp_off · trend_flat/sessions · skip_late residual · tp_r/range mild · thin BB tr175_mb260 compounds — AN–BB stall). Tick-confirm only clear soft≥2.5 pts lifts (Δpts≥~2k). Prefer max_loss streak ≤7–8. Still seek more pts while holding PF≥~2.5. No reaktor / no push.
+
+### 2026-09-27 ~03:20 Europe/Bucharest Asia Batch BC NEWS_SLCAP_BC_KEEP_CAP800 5m (75 cells) - no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260926T234904Z.json` - tag `NEWS_SLCAP_BC_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: news_mode/set + sl_cap denser + seasonal/side + otp_off + trend_flat/sessions + skip_late residual + tp_r/range mild + thin BB tr175_mb260 compounds - AN-BB stall. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** `thin_bb_hold13` PF **2.896** / **+230130.6** n229 - dPF **+0.033** - dpts **+1848.7**, `otp_off_tr175_mb260` PF **2.888** / **+229986.3** n229 - dPF **+0.025** - dpts **+1704.4**, `thin_bb` PF **2.888** / **+229986.3** n229 - dPF **+0.025** - dpts **+1704.4**, `thin_bb_news_skip` PF **2.888** / **+229986.3** n229 - dPF **+0.025** - dpts **+1704.4**, `thin_bb_slcap1600` PF **2.888** / **+229986.3** n229 - dPF **+0.025** - dpts **+1704.4**, `thin_bb_slcap2500` PF **2.888** / **+229986.3** n229 - dPF **+0.025** - dpts **+1704.4**, `thin_bb_otp_off` PF **2.888** / **+229986.3** n229 - dPF **+0.025** - dpts **+1704.4**, `thin_bb_tflat1000` PF **2.888** / **+229986.3** n229 - dPF **+0.025** - dpts **+1704.4**.
+- **PF >=~2.5 with pts lift:** `thin_bb_hold13`, `otp_off_tr175_mb260`, `thin_bb`, `thin_bb_news_skip`, `thin_bb_slcap1600`, `thin_bb_slcap2500`, `thin_bb_otp_off`, `thin_bb_tflat1000`, `slcap1600_tr175`, `slsw4_tr175`, `slcap2500_mb260`.
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert=`news_skip`, `news_skip_high`, `news_skip_all`, `news_flatten`, `news_flatten_high`, `news_flatten_all`, `news_pause`, `news_pause_high`, `news_pause_all`, `news_skip_sched`, `slcap1200`, `slcap1400`, `slcap1600`, `slcap1800`, `slcap2200`, `slcap2500`, `slcap3000`, `slcap3500`, `slcap4000`, `season_winter`, `season_winter_join`, `season_summer`, `season_summer_join`, `season_q1`, `season_q1_join`; dilute (least-cut): `slsw4` PF2.803/+228188.1 (dpts -93.8); `tp_rng1p5` PF2.892/+228093.8 (dpts -188.1); `slsw5` PF2.75/+226628.9 (dpts -1653.0); `tp_rng2p5` PF2.847/+226306.0 (dpts -1975.9); `slsw1` PF2.877/+226187.5 (dpts -2094.4); `thin_bb_slsw2` PF2.854/+225876.9 (dpts -2405.0); `slsw2` PF2.83/+224187.5 (dpts -4094.4); `slsa1800` PF2.723/+223193.6 (dpts -5088.3); `slsw2_slsa1800` PF2.723/+223193.6 (dpts -5088.3); `slsa1500` PF2.666/+222757.2 (dpts -5524.7); worst: `week2_on` PF2.604/+165939.5 (dpts -62342.4); `side_short_tr175` PF4.143/+134051.4 (dpts -94230.5); `side_short` PF4.129/+133466.6 (dpts -94815.3); `tp_r1p5` PF2.032/+98828.4 (dpts -129453.5); `side_long_mb260` PF2.207/+95529.9 (dpts -132752.0); `side_long` PF2.187/+94815.3 (dpts -133466.6).
+- **Conclusion:** Batch BC finds **no** clear soft>=2.5 pts refine on KEEP cap800 after AN-BB stall (news/sl_cap/seasonal). Best is `thin_bb_hold13` dpts **+1848.7** PF2.896 (under ~2k tick bar; same BB tr175_mb260 pocket, AS/AQ trail+mb lineage already tick-REJECT). News/sl_cap/seasonal/otp/trend_flat mostly inert; side long/short and week2 dilute total pts. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BD `CROSS_POCKET_BD_KEEP_CAP800` 5m (denser trail x mb x hold x arm x mild SL/wait/flatten + hc/resume/near-box around BC thin pocket - AN-BC stall). Tick-confirm only clear soft>=2.5 pts lifts (dpts>=~2k). Prefer max_loss streak <=7-8. Still seek more pts while holding PF>=~2.5. No reaktor / no push.
+
+### 2026-09-27 ~03:57 Europe/Bucharest Asia Batch BD CROSS_POCKET_BD_KEEP_CAP800 5m (82 cells) - clear champs = prior tick-REJECT pocket; skip tick
+- **Grid:** `results/overnight_5m_grid_20260927T002046Z.json` - tag `CROSS_POCKET_BD_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: denser trail x mb x hold x arm x mild SL/wait/flatten + hc/resume/near-box around BC thin pocket - AN-BC stall. Error cells: none (flat24 invalid hour).
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** `tr165_mb260` PF **2.893** / **+230646.5** n229 - dPF **+0.030** - dpts **+2364.6**, `hold13_tr170_mb260` PF **2.899** / **+230460.9** n229 - dPF **+0.036** - dpts **+2179.0**, `tr170_mb260` PF **2.891** / **+230316.6** n229 - dPF **+0.028** - dpts **+2034.7**, `tr160` PF **2.879** / **+230261.7** n229 - dPF **+0.016** - dpts **+1979.8**, `hold13_tr175_mb260` PF **2.896** / **+230130.6** n229 - dPF **+0.033** - dpts **+1848.7**, `tr175_mb260` PF **2.888** / **+229986.3** n229 - dPF **+0.025** - dpts **+1704.4**, `nb_N4_D1000_tr175_mb260` PF **2.888** / **+229986.3** n229 - dPF **+0.025** - dpts **+1704.4**, `nb_N8_D1000_tr175_mb260` PF **2.888** / **+229986.3** n229 - dPF **+0.025** - dpts **+1704.4**, `nb_N6_D800_tr175_mb260` PF **2.888** / **+229986.3** n229 - dPF **+0.025** - dpts **+1704.4**, `nb_N6_D1200_tr175_mb260` PF **2.888** / **+229986.3** n229 - dPF **+0.025** - dpts **+1704.4**.
+- **PF >=~2.5 with pts lift:** `tr165_mb260` dpts+2364.6, `hold13_tr170_mb260` dpts+2179.0, `tr170_mb260` dpts+2034.7, `tr160` dpts+1979.8, `hold13_tr175_mb260` dpts+1848.7, `tr175_mb260` dpts+1704.4, `nb_N4_D1000_tr175_mb260` dpts+1704.4, `nb_N8_D1000_tr175_mb260` dpts+1704.4, `nb_N6_D800_tr175_mb260` dpts+1704.4, `nb_N6_D1200_tr175_mb260` dpts+1704.4, `tp4600_tr175_mb260` dpts+1704.4, `tp5000_tr175_mb260` dpts+1704.4, `tp5200_tr175_mb260` dpts+1704.4, `tr165` dpts+1650.0, `tr165_mb265` dpts+1650.0, `tr165_mb270` dpts+1650.0, `hold13_tr180_mb260` dpts+1518.7, `hold15_tr175_mb260` dpts+1445.8, `tr180_mb260` dpts+1374.4, `tr170` dpts+1320.1, `tr170_mb265` dpts+1320.1, `tr170_mb270` dpts+1320.1, `hold12_tr175_mb260` dpts+1255.3, `tr165_mb255` dpts+1162.7, `sl1050_tr175_mb260` dpts+1144.7, `hold13_tr175_mb265` dpts+1134.1, `tr175` dpts+989.8, `tr175_mb265` dpts+989.8, `tr175_mb270` dpts+989.8, `hold14_tr175_mb260` dpts+903.2, `tr170_mb255` dpts+832.8, `mb260` dpts+714.6, `tr180` dpts+659.8, `tr180_mb265` dpts+659.8, `tr180_mb270` dpts+659.8, `hold13_tr175_mb255` dpts+646.8, `tr175_mb255` dpts+502.5, `tr185` dpts+329.8, `tr180_mb255` dpts+172.5, `wait13_tr175_mb260` dpts+73.0.
+- **Clear dpts>=~2k at PF>=2.5:** `tr165_mb260` dpts+2364.6 PF2.893, `hold13_tr170_mb260` dpts+2179.0 PF2.899, `tr170_mb260` dpts+2034.7 PF2.891 — **same AS_tick mb260_tr165 / AQ_tick tr160 REJECT pocket** (do not re-tick).
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert=`mb270`, `mb265`, `nb_N4_D1000`, `nb_N8_D1000`, `nb_N6_D800`, `nb_N6_D1200`; dilute (least-cut): `flat22_hold13_tr175_mb260` PF2.888/+228129.0 (dpts -152.9); `flat22_tr175_mb260` PF2.88/+227969.1 (dpts -312.8); `mb255` PF2.84/+227794.6 (dpts -487.3); `sl1050` PF2.8/+227672.2 (dpts -609.7); `mb250` PF2.839/+227656.1 (dpts -625.8); `rcap700_tr175_mb260` PF2.836/+225531.4 (dpts -2750.5); `sl1100_tr175_mb260` PF2.698/+223526.6 (dpts -4755.3); `arm3900_tr175_mb260` PF2.834/+223399.2 (dpts -4882.7); worst: `rc4` PF2.547/+197690.6 (dpts -30591.3); `hc_off` PF2.538/+197625.5 (dpts -30656.4); `rc5` PF2.511/+194867.9 (dpts -33414.0); `wait12_tr175_mb260` PF2.522/+193814.8 (dpts -34467.1); `rc2_tr175_mb260` PF2.382/+189126.7 (dpts -39155.2); `rc2` PF2.362/+187439.0 (dpts -40842.9).
+- **Conclusion:** Batch BD 5m 'clear' champs (`tr165_mb260` dpts **+2364.6** PF2.893; `hold13_tr170_mb260` +2179; `tr170_mb260` +2034.7) are the **exact AS_tick mb260_tr165 REJECT pocket** (ticks Δpts −55.3) / AQ tr160 REJECT neighborhood. Near-box N/D and TP mild cells inert (=baseline). **Skip tick-confirm** (no fresh pocket). KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BE `PTS_ORTHO_BE_KEEP_CAP800` 5m (pivot off trail×mb pocket: denser max_hold later + skip_late denser + cap residual + trend_sessions/flat + pullback-required wait + sl_range diagnostic + asym mb extremes — AN-BD stall). Tick-confirm only **fresh** clear soft>=2.5 pts lifts (dpts>=~2k) not already tick-REJECT. Prefer max_loss streak <=7-8. Still seek more pts while holding PF>=~2.5. No reaktor / no push.
+### 2026-09-27 ~04:14 Europe/Bucharest Asia Batch BE PTS_ORTHO_BE_KEEP_CAP800 5m (85 cells) - no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260927T010023Z.json` - tag `PTS_ORTHO_BE_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: denser max_hold later + skip_late denser + cap residual + trend_sessions/flat + pullback-required wait + sl_range diagnostic + asym mb extremes - AN-BD stall. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** **none**.
+- **PF >=~2.5 with pts lift:** **none**.
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** `rc1` PF1.762/+118527.1.
+- **Reject / dilute / inert:** inert=`hold17`..`hold22`, `ema_tf10`, `ema_tf60`, `otp_off`, `otp_off_hold18`, `tflat*`, `tsess*`, `mba275_mbb250`; dilute (least-cut): `slsw4`/`hold18_slsw4` PF2.803/+228188.1 (dpts -93.8); `mba250_mbb275` PF2.839 dpts-625.8; `mba275_mbb225` PF2.798 dpts-749.0; `slsw5` PF2.75 dpts-1653.0; `cap750` PF2.818 dpts-3743.3; `cap700` PF2.812 dpts-4439.9; worst: `slrng*` ~PF2.0-2.1 dpts~-28k..-37k; `rc2` PF2.362 dpts-40842.9; `pb_req*` PF2.58-2.72 dpts~-57k..-64k.
+- **Conclusion:** Batch BE finds **no** soft>=2.5 pts refine on KEEP cap800 after AN-BD stall (orthogonal axes). Max-hold later / trend_sessions/flat / ema_tf / otp inert (=baseline). Skip_late / asym mb / cap residual / sl_range / pullback-required dilute or under-floor. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230). Overnight idle leftover `20260926T193619Z_441c6d57` = prior AS_tick mb260_tr165 REJECT (already logged) — not re-scored.
+- **Next:** Batch BF `TP_TRAIL_BF_KEEP_CAP800` 5m (plan D TP/arm denser with trail ON + trail-off TP scale residual + near_box_trend breakout/outside/closes_dir/net_ext x N/D + timeout_min_pullback + mild wait/maxbreak/ema — AN-BE stall). Tick-confirm only **fresh** clear soft>=2.5 pts lifts (dpts>=~2k) not already tick-REJECT (avoid AS/AQ mb260_tr165 pocket). Prefer max_loss streak <=7-8. Still seek more pts while holding PF>=~2.5. No reaktor / no push.
+### 2026-09-27 ~04:27 Europe/Bucharest Asia Batch BF TP_TRAIL_BF_KEEP_CAP800 5m (94 cells) - no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260927T012635Z.json` - tag `TP_TRAIL_BF_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: plan D TP/arm denser with trail ON + trail-off TP scale + near_box_trend breakout/outside/closes_dir/net_ext x N/D + timeout_min_pullback + mild wait/maxbreak/ema - AN-BE stall. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** **none**.
+- **PF >=~2.5 with pts lift:** **none**.
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert= all `tp4000`..`tp6000`, `arm4000_tp4400`, all `nb_*` trend gates (dormant under preferred); dilute (least-cut): `wait13` PF2.854 dpts-911.2; `tr210_arm4000` PF2.852 dpts-1320.2; `maxbreak17` PF2.67 dpts-1942.2; `tr220_arm4000` PF2.847 dpts-1979.9; `maxbreak14` PF2.895 dpts-3705.6 (PF up, pts down); `arm3900` PF2.809 dpts-6602.1; worst: `toff_tp*` PF2.21-2.68 dpts~-22k..-62k; `tpull*` PF~2.7 dpts~-63k..-76k.
+- **Conclusion:** Batch BF finds **no** soft>=2.5 pts refine on KEEP cap800 after AN-BE stall (plan D / near-box trend). TP-only inert under active trail (trail exits before TP). Near-box trend gates inert (=baseline; dormant under preferred). Arm shifts / trail-off / tpull / wait/maxbreak/ema dilute. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BG `SLTP_RATIO_BG_KEEP_CAP800` 5m (prefer SL:TP ~1:1.5+ with trail ON denser + mild SL/TP/trail/hold/flatten compounds; avoid AS/AQ mb260_tr165 pocket — AN-BF stall). Tick-confirm only **fresh** clear soft>=2.5 pts lifts (dpts>=~2k). Prefer max_loss streak <=7-8. Still seek more pts while holding PF>=~2.5. No reaktor / no push.
+### 2026-09-27 ~04:42 Europe/Bucharest Asia Batch BG SLTP_RATIO_BG_KEEP_CAP800 5m (81 cells) - clear champs = prior tick-REJECT pocket; skip tick
+- **Grid:** `results/overnight_5m_grid_20260927T013027Z.json` - tag `SLTP_RATIO_BG_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: prefer SL:TP ~1:1.5+ denser with trail ON + mild trail/hold/flatten/arm compounds; trail denser alone; avoid AS/AQ mb260_tr165 pocket - AN-BF stall. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** `tr140` PF **2.890** / **+231581.9** n229 - dPF **+0.027** - dpts **+3300.0**, `tr150` PF **2.885** / **+230921.7** n229 - dPF **+0.022** - dpts **+2639.8**, `tr160` PF **2.879** / **+230261.7** n229 - dPF **+0.016** - dpts **+1979.8**, `tr170` PF **2.874** / **+229602.0** n229 - dPF **+0.011** - dpts **+1320.1**.
+- **PF >=~2.5 with pts lift:** `tr140`, `tr150`, `tr160`, `tr170`.
+- **Clear dpts>=~2k at PF>=2.5:** `tr140` dpts+3300.0 PF2.890, `tr150` dpts+2639.8 PF2.885 - **same AQ_tick tr160 / AS_tick mb260_tr165 / AJ trail-tighten REJECT pocket** (do not re-tick tr140-170).
+- **Under-floor PF<2.0:** `sl800_tp1200` PF1.658/+57000.2; `sl2000_tp3000` PF1.803/+150625.0; `sl900_tp1350` PF1.810/+75277.7; `sl1800_tp2700` PF1.873/+147285.6; `sl1600_tp2400` PF1.888/+136025.7; `sl1500_tp2250` PF1.898/+129874.6; `sl800_tp2000` PF1.909/+93364.8; `sl1000_tp1500_arm1200` PF1.991/+89026.7.
+- **Reject / dilute / inert:** inert=`tp4000_keep_sl` (=baseline); dilute (least-cut): `tr195` PF2.86/+227952.0 (dpts -329.9); `sl1050_keep_tp` PF2.8/+227672.2 (dpts -609.7); `tr205` PF2.855/+227291.7 (dpts -990.2); `tr215` PF2.85/+226631.9 (dpts -1650.0); `tr230` PF2.841/+225641.7 (dpts -2640.2); `tr250` PF2.831/+224321.7 (dpts -3960.2); `sl1100_keep_tp` PF2.689/+222443.7 (dpts -5838.2); worst: `sl800_tp1200` dpts -171281.7 and other tight 1:1.5 SL:TP cells (~ -129k to -153k).
+- **Conclusion:** Batch BG finds **no fresh** soft>=2.5 pts refine on KEEP cap800 after AN-BF stall (SL:TP ratio). Clear 5m champs `tr140`/`tr150` are deeper into the **already tick-REJECT trail-tighten pocket** (AQ tr160 / AS mb260_tr165 / AJ). Prefer SL:TP ~1:1.5 with trail ON collapses pts vs KEEP 1000/4800 trail structure. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BH `HOLD_FLAT_BH_KEEP_CAP800` 5m (plan E denser flatten/max_hold on KEEP + otp_off volume + mild ema/wait/maxbreak/asia_range/mb crosses; trail widen-only tr200+; avoid tr140-170 / AS/AQ pocket - AN-BG stall). Tick-confirm only **fresh** clear soft>=2.5 pts lifts (dpts>=~2k) not already tick-REJECT. Prefer max_loss streak <=7-8. Still seek more pts while holding PF>=~2.5. No reaktor / no push.
+
+### 2026-09-27 ~04:51 Europe/Bucharest Asia Batch BH HOLD_FLAT_BH_KEEP_CAP800 5m (93 cells) - no pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260927T015113Z.json` - tag `HOLD_FLAT_BH_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: plan E denser flatten/max_hold on KEEP + otp_off volume + mild ema/wait/maxbreak/asia_range/mb; trail widen-only tr200+; avoid tr140-170 / AS/AQ pocket - AN-BG stall. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** `otp_off_mb260` PF **2.88** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**; `mb260` PF **2.88** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**; `mb260_hold18` PF **2.88** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**; `hold13` PF **2.871** / **+228426.2** n229 - dPF **+0.008** - dpts **+144.3**.
+- **PF >=~2.5 with pts lift:** `otp_off_mb260`, `mb260`, `mb260_hold18`, `hold13`.
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert=['flat23', 'hold17', 'hold18', 'hold20', 'hold19', 'hold21', 'hold22', 'hold18_flat23', 'hold20_flat23', 'otp_off', 'otp_off_hold18', 'arange200', 'arange250', 'arange350', 'arange400', 'arange250_otp_off', 'mb265', 'mb270', 'te0p2', 'te0p25']; dilute (least-cut): `hold15` PF2.865 (dpts -258.6); `hold12` PF2.866 (dpts -449.1); `otp_off_mb250` PF2.839 (dpts -625.8); `mb250` PF2.839 (dpts -625.8); `tr200` PF2.858 (dpts -660.2); `tr200_hold18` PF2.858 (dpts -660.2); `hold14` PF2.856 (dpts -801.2); `otp_off_hold14` PF2.856 (dpts -801.2); worst: `wait11` PF2.469 (dpts -38001.1); `otp_off_wait12` PF2.513 (dpts -35412.9); `wait12` PF2.513 (dpts -35412.9); `ema28` PF2.51 (dpts -32668.2); `wait15_hold14` PF2.603 (dpts -27176.2); `otp_off_wait15` PF2.61 (dpts -26375.0); `wait15` PF2.61 (dpts -26375.0); `wait15_flat22` PF2.625 (dpts -26222.2).
+- **Conclusion:** Batch BH finds **no** clear soft>=2.5 pts refine on KEEP cap800 after AN-BG stall (plan E / volume). Best is `otp_off_mb260` dpts **+714.6** PF2.88 (under ~2k tick bar; prior mb260 thin pocket). Flatten/hold/ema/wait/maxbreak/te mostly inert (=baseline); otp_off does not lift trade count on this seed (n still 229). **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BI `ARM_RESUME_BI_KEEP_CAP800` 5m (trail_arm denser mid + resume/hc/wick/rco residual + skip_late denser + mild flatten/hold/TP crosses; avoid tr140-170 / AS/AQ pocket - AN-BH stall). Tick-confirm only **fresh** clear soft>=2.5 pts lifts (dpts>=~2k). Prefer max_loss streak <=7-8. Still seek more pts while holding PF>=~2.5. No reaktor / no push.
+
+### 2026-09-27 ~05:17 Europe/Bucharest Asia Batch BI ARM_RESUME_BI_KEEP_CAP800 5m (88 cells) - no pts lift; skip tick
+- **Grid:** esults/overnight_5m_grid_20260927T015414Z.json\ - tag \ARM_RESUME_BI_KEEP_CAP800\ - seed KEEP ticks 60926T153950Z_d5b5cf17\ (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: trail_arm denser mid + resume/hc/wick/rco + skip_late denser + mild flatten/hold/TP; avoid tr140-170 / AS/AQ pocket - AN-BH stall. Error cells: none.
+- **Baseline 5m KEEP** (\KEEP_cap800_baseline\): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** \	hin_bh_mb260\ PF **2.88** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**; \	hin_bh_hold13\ PF **2.871** / **+228426.2** n229 - dPF **+0.008** - dpts **+144.3**.
+- **PF >=~2.5 with pts lift:** \	hin_bh_mb260\, \	hin_bh_hold13\.
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** c1\ PF **1.762** / **+118527.1** n246.
+- **Reject / dilute / inert:** inert=\rm4000_tp5200\/\rm4000_tp5600\/\wick_off\/co_on\/\rmcap*\ (=baseline); dilute (least-cut): \slsw4\ PF2.803/+228188.1 (dpts -93.8); \rm3950\ PF2.853/+227097.9 (dpts -1184.0); \wick_off_flat22\/co_on_flat22\ PF2.87 (dpts -1395.8); \slsw5\ PF2.75 (dpts -1653.0); worst: co_wick_off\ PF2.568/+154815.6 (dpts -73466.3); \hc_off_arm3800\ PF2.409 (dpts -47236.2); c2*\ / low arm3000-3400 / c4\/c5\ cut ~30-43k.
+- **Conclusion:** Batch BI finds **no** clear soft>=2.5 pts refine on KEEP cap800 after AN-BH stall (arm/resume). Best is \	hin_bh_mb260\ dpts **+714.6** PF2.88 (under ~2k tick bar; prior mb260 thin pocket). Arm denser mid / resume / hc_off / skip_late dilute or under-floor; wick/rco/armcap inert. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BJ \BE_VOLUME_BJ_KEEP_CAP800\ 5m (be_arm denser + one_trade_per_day off volume + asia start/end denser + min_asia_range denser + max_break denser + ema/wait denser + trail widen-only tr200+; avoid tr140-170 / AS/AQ pocket - AN-BI stall). Tick-confirm only **fresh** clear soft>=2.5 pts lifts (dpts>=~2k). Prefer max_loss streak <=7-8. Still seek more pts while holding PF>=~2.5. No reaktor / no push.
+
+
+### 2026-09-27 ~05:43 Europe/Bucharest Asia Batch BJ BE_VOLUME_BJ_KEEP_CAP800 5m (87 cells) - clear maxbreak19 champ for tick
+- **Grid:** `results/overnight_5m_grid_20260927T022144Z.json` - tag `BE_VOLUME_BJ_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: be_arm denser + one_trade_per_day off volume + asia start/end denser + min_asia_range denser + max_break denser + ema/wait denser + trail widen-only tr200+; avoid tr140-170 / AS/AQ pocket - AN-BI stall. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** `maxbreak19` PF **2.583** / **+230413.3** n261 - dPF **-0.280** - dpts **+2131.4**; `otp_off_mb260` PF **2.880** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**; `thin_bh_mb260` PF **2.880** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**; `thin_bh_hold13` PF **2.871** / **+228426.2** n229 - dPF **+0.008** - dpts **+144.3**.
+- **PF >=~2.5 with pts lift:** `maxbreak19`, `otp_off_mb260`, `thin_bh_mb260`, `thin_bh_hold13`.
+- **Clear dpts>=~2k at PF>=2.5:** `maxbreak19` dpts+2131.4 PF2.583.
+- **Under-floor PF<2.0:** `asia0_5` PF1.857/+119012.9; `asia1_5` PF1.756/+107238.0; `be800_tr220` PF1.994/+75354.4; `be800_flat22` PF1.993/+75282.5; `thin_bh_mb260_be800` PF1.979/+75194.4; `ema32_be800` PF1.974/+72879.8; `asia0_7_be800` PF1.548/+48036.6; `be600` PF1.440/+28075.2; `be500` PF1.204/+11172.1; `otp_off_be500` PF1.204/+11172.1.
+- **Reject / dilute / inert:** inert=['otp_off', 'otp_off_hold18', 'arange200', 'arange250', 'arange280', 'arange320', 'arange350', 'arange400', 'arange250_otp_off']; dilute (least-cut): `otp_off_mb250` PF2.839 (dpts -625.8); `otp_off_tr200` PF2.858 (dpts -660.2); `tr200` PF2.858 (dpts -660.2); `otp_off_wait13` PF2.854 (dpts -911.2); `wait13` PF2.854 (dpts -911.2); `tr210` PF2.852 (dpts -1320.2); `maxbreak17` PF2.670 (dpts -1942.2); `tr220` PF2.847 (dpts -1979.9); worst: `be200` PF0.629 (dpts -236452.6); `be300` PF1.017 (dpts -227724.3); `be400` PF1.040 (dpts -226528.6); `be500_hold14` PF1.194 (dpts -217668.1); `be500_flat22` PF1.199 (dpts -217399.6); `be500_tr200` PF1.202 (dpts -217209.9); `be500` PF1.204 (dpts -217109.8); `otp_off_be500` PF1.204 (dpts -217109.8).
+- **Conclusion:** `maxbreak19` is a **clear** soft>=2.5 pts refine on KEEP cap800 (dpts **+2131.4**, dPF **-0.280** on 5m; n261). Lonely maxbreak peak (mb18/20 do not lift; denser be_arm / asia / arange / ema/wait / otp_off mostly dilute or underfloor). Thin residual otp_off_mb260/thin_bh_mb260 dpts+714.6 under ~2k bar. Do **not** promote on 5m alone. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** overnight **tick-confirm** `BJ_tick maxbreak19` (max_break_candles_after=19, else KEEP ema31 cap800 tr190/sls2100) workers=2. Optional note runners maxbreak18 / maxbreak17 / otp_off_mb260 if champ rejects (not auto-queue thin mb260). Prefer max_loss streak <=7-8. If reject -> Batch BK plan-F denser (seasonal/week2/side + untried timeout/news residual). No reaktor / no push.
+
+### 2026-09-27 ~06:12 Europe/Bucharest Asia BJ_tick maxbreak19 ticks - REJECT
+- **Run:** `results/overnight_XAUUSD_2025-01-01_2026-09-01_20260927T030123Z_ba655e3e.json` - run_id `20260927T030123Z_ba655e3e` - data_source=ticks - workers=2 - window 2025-01 to 2026-09 - finished `2026-09-27T03:01:23.256195+00:00`.
+- **Overrides vs KEEP:** `max_break_candles_after=19` (else KEEP asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16).
+- **Result:** n262 - PF **2.43** - **+209682.8** - win42.7% - max_loss_streak **9** (max_win 6) - exits {"flatten":46,"sl":145,"trail":69,"tp":2}.
+- **vs KEEP** ticks `20260926T153950Z_d5b5cf17` PF2.69/+208866.7 n230: dPF **-0.26** - dpts **+816.1**.
+- **Decision:** **REJECT** - dpts +816.1 under ~2k promote bar; PF 2.43 under soft >=2.5; max_loss streak 9 > 8 hard-ish filter. 5m overpromised (+230.4k PF2.58 -> ticks +209.7k PF2.43; n261->262). KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BK `PLAN_F_BK_KEEP_CAP800` 5m (plan F denser: real seasonal/week2/news tag|filter + untried timeout_max_ema_dist / timeout_min_break / timeout_min_pullback denser + pullback-required / rco residual; avoid side-only and trail-tighten pocket; prefer combined for total pts). Tick-confirm only fresh soft>=2.5 pts lifts (dpts>=~2k) with max_loss streak <=7-8. No reaktor / no push.
+
+### 2026-09-27 ~06:44 Europe/Bucharest Asia Batch BK PLAN_F_BK_KEEP_CAP800 5m (75 cells) - no clear pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260927T031651Z.json` - tag `PLAN_F_BK_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: plan F denser real seasonal/week2/news tag|filter + timeout_max_ema_dist / timeout_min_break / timeout_min_pullback denser + pullback-required / rco residual; avoid side-only and tr140-170 / AS/AQ pocket; after BJ_tick maxbreak19 REJECT. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** `thin_bh_mb260` PF **2.880** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**, `thin_bh_hold13` PF **2.871** / **+228426.2** n229 - dPF **+0.008** - dpts **+144.3**.
+- **PF >=~2.5 with pts lift:** `thin_bh_mb260`, `thin_bh_hold13`.
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** `pb_off` PF1.369/+65728.5.
+- **Reject / dilute / inert:** inert=[`season_tag`, `season_tag_join`, `week2_tag`, `season_tag_week2_tag`, `news_tag_sched`, `news_tag_high`, `news_tag_all`, `tminbreak50`, `tminbreak100`, `tminbreak150`, `tminbreak200`, `tminbreak250`, `tminbreak250_otp_off`, `rco_on`, `otp_off`]; dilute (least-cut): `news_tag_sched_hold14` PF2.856 (dpts -801.2); `temd2500` PF2.898 (dpts -1426.0); `tminbreak300_mb260` PF2.899 (dpts -3148.9); `temd3000` PF2.850 (dpts -3426.0); `temd2000` PF2.886 (dpts -4671.4); `temd2000_tmb250` PF2.886 (dpts -4671.4); worst: `tminpb150` PF2.694 (dpts -65369.7); `temd200` PF2.620 (dpts -64385.4); `tminpb200` PF2.722 (dpts -64369.7); `tminpb300` PF2.722 (dpts -64369.7); `tminpb400` PF2.722 (dpts -64369.7); `tminpb500` PF2.722 (dpts -64369.7); `tminpb750` PF2.722 (dpts -64369.7); `tminpb1000` PF2.722 (dpts -64369.7).
+- **Conclusion:** Batch BK finds **no** clear soft>=2.5 pts refine on KEEP cap800 after AN-BJ stall (plan F). Best is `thin_bh_mb260` dpts **+714.6** PF2.880 (under ~2k tick bar; prior mb260 thin pocket). Seasonal/week2/news tag mostly inert; filters + timeout knobs + pb_required/rco dilute; `pb_off` under-floor. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BL `SL_EMA_TF_BL_KEEP_CAP800` 5m (untried residual after A-F stall: ema_tf_min denser + SL fixed/cap denser holding SL:TP~1:1.5+ with trail ON + asymmetric mb above/below + trail_arm_cap denser + mild compounds; avoid tr140-170 / AS/AQ / maxbreak19 / side-only). Tick-confirm only fresh soft>=2.5 pts lifts (dpts>=~2k) with max_loss streak <=7-8. No reaktor / no push.
+
+### 2026-09-27 ~06:53 Europe/Bucharest Asia Batch BL SL_EMA_TF_BL_KEEP_CAP800 5m (71 cells) - no clear pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260927T035139Z.json` - tag `SL_EMA_TF_BL_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: after A-F stall — ema_tf_min denser + SL fixed/cap denser (SL:TP~1:1.5+ trail ON) + asymmetric mb above/below + trail_arm_cap denser + mild compounds; avoid tr140-170 / AS/AQ / maxbreak19 / side-only. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** `etf30_mb260` PF **2.880** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**, `mba260_mbb275` PF **2.880** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**, `thin_bh_mb260` PF **2.880** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**.
+- **PF >=~2.5 with pts lift:** `etf30_mb260`, `mba260_mbb275`, `thin_bh_mb260`.
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert=[`etf5`, `etf20`, `etf10`, `etf30`, `etf45`, `etf60`, `slcap1200`, `slcap1500`, `slcap1800`, `slcap2200`, `slcap2500`, `slcap3000`, `slcap3500`, `slcap4000`, `armcap3000`, `armcap2000`, `armcap3500`, `armcap4000`, `armcap4500`, `armcap5000`, `armcap6000`, `mba275_mbb250`, `mba275_mbb260`]; dilute (least-cut): `mba250_mbb275` PF2.839 (dpts -625.8); `etf10_tr200` PF2.858 (dpts -660.2); `etf30_tr200` PF2.858 (dpts -660.2); `armcap4000_tr200` PF2.858 (dpts -660.2); `etf10_hold14` PF2.856 (dpts -801.2); `mba200_mbb275` PF2.758 (dpts -4127.8); worst: `sl800_tp4000` PF2.451 (dpts -61362.6); `sl800_tp4800` PF2.451 (dpts -61362.6); `sl1600_tp6400` PF2.115 (dpts -31702.6); `sl1500_tr220` PF2.183 (dpts -29789.2); `sl1500_tp6000` PF2.196 (dpts -27749.3); `sl1500_tp4800` PF2.196 (dpts -27749.3); `sl2000_tp8000` PF2.046 (dpts -25456.0); `sl1800_tp7200` PF2.108 (dpts -24973.7).
+- **Conclusion:** Batch BL finds **no** clear soft>=2.5 pts refine on KEEP cap800 after BK stall (SL/ema_tf/asymm). Best is `etf30_mb260` dpts **+714.6** PF2.880 (under ~2k tick bar; prior mb260 thin pocket). ema_tf / sl_cap / armcap mostly inert (=baseline); SL retunes dilute PF/pts; asymmetric mba260_mbb275 equals thin mb260 pocket. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BM `TREND_EFF_BM_KEEP_CAP800` 5m (plan-F residual denser: trend_efficiency_min / trend_flat_pts / trend_sessions + week2_mode tag|filter compounds + mild near_box D/N denser; avoid tr140-170 / AS/AQ / maxbreak19 / side-only / mb260-only chase). Tick-confirm only fresh soft>=2.5 pts lifts (dpts>=~2k) with max_loss streak <=7-8. No reaktor / no push.
+
+### 2026-09-27 ~06:55 Europe/Bucharest Asia Batch BM TREND_EFF_BM_KEEP_CAP800 5m (75 cells) - no clear pts lift; skip tick
+- **Grid:** 
+esults/overnight_5m_grid_20260927T035345Z.json - tag TREND_EFF_BM_KEEP_CAP800 - seed KEEP ticks 20260926T153950Z_d5b5cf17 (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: plan-F residual denser trend_efficiency_min / trend_flat_pts / trend_sessions + week2_mode tag|filter compounds + mild near_box D/N denser; after BL stall. Error cells: none.
+- **Baseline 5m KEEP** (KEEP_cap800_baseline): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** thin_bh_mb260 PF **2.880** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**.
+- **PF >=~2.5 with pts lift:** thin_bh_mb260.
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert=[te0p1_w2tag, te0p15_w2tag, te0p2_w2tag, te0p25_w2tag, te0p3_w2tag, te0p35_w2tag, te0p4_w2tag, te0p45_w2tag, te0p5_w2tag, te0p55_w2tag, te0p6_w2tag, tflat500_w2tag, tflat800_w2tag, tflat1000_w2tag, tflat1200_w2tag, tflat1500_w2tag, tflat1800_w2tag, tflat2000_w2tag, tflat2500_w2tag, tflat3000_w2tag, nbars3, nbars4, nbars5, nbars7, nbars8]; dilute (least-cut): te0p6_w2filter PF2.894 (dpts -11414.1); te0p55_w2filter PF2.856 (dpts -15763.0); te0p5_w2filter PF2.779 (dpts -29884.7); tsess20_w2filter PF2.716 (dpts -38659.5); te0p45_w2filter PF2.808 (dpts -39414.3); te0p45_tf2000_w2f PF2.808 (dpts -39414.3); worst: te0p1_w2filter PF2.724 (dpts -96402.0); te0p15_w2filter PF2.689 (dpts -86666.0); tsess4_w2filter PF2.667 (dpts -85651.3); te0p25_tf1000_tsess8_w2f PF2.733 (dpts -79096.6); te0p2_w2filter PF2.739 (dpts -76242.0); te0p2_tf800_w2f PF2.739 (dpts -76242.0); te0p3_tsess8_w2f PF2.763 (dpts -67689.2); te0p25_w2filter PF2.785 (dpts -66832.2).
+- **Conclusion:** Batch BM finds **no** clear soft>=2.5 pts refine on KEEP cap800 after BL stall (trend/week2). Best is thin_bh_mb260 dpts **+714.6** PF2.880 (under ~2k tick bar; prior mb260 thin pocket). week2 tag / near_box D/N mostly inert; week2 filter + te/tflat/tsess dilute. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BN SL_MODE_BN_KEEP_CAP800 5m (untried sl_mode asia_opposite/range/m12_frac denser + sl_range_mult / sl_m12_frac / sl_cap compounds with trail ON; avoid tr140-170 / AS/AQ / maxbreak19 / side-only / mb260-only chase). Tick-confirm only fresh soft>=2.5 pts lifts (dpts>=~2k) with max_loss streak <=7-8. No reaktor / no push.
+
+### 2026-09-27 ~07:16 Europe/Bucharest Asia Batch BN SL_MODE_BN_KEEP_CAP800 5m (50 cells) - no clear pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260927T035618Z.json` - tag `SL_MODE_BN_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: sl_mode asia_opposite/range/m12_frac denser + sl_range_mult / sl_m12_frac / sl_cap compounds with trail ON; avoid tr140-170 / AS/AQ / maxbreak19 / side-only / mb260-only chase; after BM stall. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft PF>=2.5 by pts:** `thin_bh_mb260` PF2.880 / +228996.5 n229 (dpts **+714.6**, dpf +0.017) â€” under ~2k tick bar; prior mb260 thin pocket. Only soft>=2.5 cell besides baseline.
+- **Top by pts (any PF):** thin_bh_mb260 +228996.5 PF2.880; KEEP baseline +228281.9 PF2.863; `sl_range_m2p0_cap4000` +226572.1 PF1.949 (under-floor); `sl_asia_opp_cap4000` +223718.1 PF2.011; `sl_asia_opp_cap1200` +210594.8 PF2.479.
+- **Under-floor PF<2:** 19/50 (mostly sl_range/m12 retunes with large caps).
+- **Conclusion:** Batch BN finds **no** clear soft>=2.5 pts refine on KEEP cap800 after BM stall (sl_mode). Best is thin_bh_mb260 dpts **+714.6** PF2.880 (under ~2k tick bar). asia_opposite/range/m12_frac + mult/cap compounds dilute PF/pts vs fixed SL1000 KEEP; no fresh champ. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BO `TP_MODE_BO_KEEP_CAP800` 5m (untried residual after A-F+BN stall: tp_mode range_mult/r_mult/m12 denser + tp_range_mult/tp_r_mult + mild fixed TP ladder SL:TP~1:1.5+ trail ON + trail_arm_mode asia/from_fill/off residual + mild armxTP; avoid tr140-170 / AS/AQ / maxbreak19 / side-only / mb260-only / sl_mode retunes). Tick-confirm only fresh soft>=2.5 pts lifts (dpts>=~2k) with max_loss streak <=7-8. No reaktor / no push.
+
+
+### 2026-09-27 ~07:41 Europe/Bucharest Asia Batch BO TP_MODE_BO_KEEP_CAP800 5m (58 cells) - no clear pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260927T042124Z.json` - tag `TP_MODE_BO_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: tp_mode range_mult/r_mult/m12 denser + mild fixed TP ladder + trail_arm_mode asia/from_fill/off residual; avoid tr140-170 / AS/AQ / maxbreak19 / side-only / mb260-only / sl_mode retunes; after BN stall. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** `tp_range_m2p0` PF **2.889** / **+229534.2** n229 - dPF **+0.026** - dpts **+1252.3**, `tp_m12` PF **2.871** / **+229231.2** n229 - dPF **+0.008** - dpts **+949.3**, `thin_bh_mb260` PF **2.880** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**, `tp_range_m2_tr200` PF **2.883** / **+228904.0** n229 - dPF **+0.020** - dpts **+622.1**, `tp_m12_tr200` PF **2.865** / **+228571.0** n229 - dPF **+0.002** - dpts **+289.1**, `tp_m12_hold14` PF **2.865** / **+228557.1** n229 - dPF **+0.002** - dpts **+275.2**.
+- **PF >=~2.5 with pts lift:** `tp_range_m2p0`, `tp_m12`, `thin_bh_mb260`, `tp_range_m2_tr200`, `tp_m12_tr200`, `tp_m12_hold14`.
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** `tp_r1p0` PF1.683/+57935.5, `tp_r1p25` PF1.841/+77229.7.
+- **Reject / dilute / inert:** inert=[`tp_r4p0`, `tp_fixed_4200`, `tp_fixed_5400`, `tp_fixed_6000`]; dilute (least-cut): `tp_range_m1p5` PF2.892 (dpts -188.1); `tp_range_m1p5_tr200` PF2.887 (dpts -778.3); `tp_range_m4p0` PF2.854 (dpts -1080.1); `tp_range_m3p0` PF2.852 (dpts -1327.2); `tp_range_m1p5_hold14` PF2.881 (dpts -1542.5); `tp_range_m2p5` PF2.847 (dpts -1975.9); worst: `arm_from_fill` PF4.973 (dpts -193052.4); `arm_from_fill_tp_r2` PF4.973 (dpts -193052.4); `tp_r1p5` PF2.032 (dpts -129453.5); `tp_r1p5_tr200` PF2.032 (dpts -129453.5); `tp_fixed_1500` PF2.032 (dpts -129453.5); `arm_asia_tp_r1p5` PF2.045 (dpts -129229.6); `tp_r1p5_hold14_flat22` PF2.047 (dpts -128998.4); `tp_r1p5_arm3500` PF2.054 (dpts -127329.1).
+- **Conclusion:** Batch BO finds **no** clear soft>=2.5 pts refine on KEEP cap800 after BN stall (tp_mode). Best is `tp_range_m2p0` dpts **+1252.3** PF2.889 (under ~2k tick bar; tp_mode thin, not tick-chase). Fixed TP ladder / r_mult tight ratios / arm_from_fill / arm_asia / arm_off dilute or collapse pts (arm_from_fill high PF tiny pts). **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BP `ENTRY_ASIA_BP_KEEP_CAP800` 5m (untried residual after A-F+BO stall: min_asia_range denser + ema_period denser + require_close_outside / break_on_wick entry quality + mild otp_off×arange×ema compounds + thin tp_range_m2 sentinel compound with arange/ema only — not mb260/tr140-170). Tick-confirm only fresh soft>=2.5 pts lifts (dpts>=~2k) with max_loss streak <=7-8. No reaktor / no push.
+
+
+### 2026-09-27 ~08:18 Europe/Bucharest Asia Batch BP ENTRY_ASIA_BP_KEEP_CAP800 5m (56 cells) - no clear pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260927T044606Z.json` - tag `ENTRY_ASIA_BP_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: min_asia_range denser + ema_period denser + require_close_outside / break_on_wick entry quality + mild otp_off x arange x ema compounds + thin tp_range_m2 sentinel with arange/ema only; avoid tr140-170 / AS/AQ / maxbreak19 / side-only / mb260-only; after BO stall. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** `tpm2` PF **2.889** / **+229534.2** n229 - dPF **+0.026** - dpts **+1252.3**, `tpm2_arange350` PF **2.889** / **+229534.2** n229 - dPF **+0.026** - dpts **+1252.3**, `tpm2_rco` PF **2.889** / **+229534.2** n229 - dPF **+0.026** - dpts **+1252.3**, `thin_bh_mb260` PF **2.880** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**.
+- **PF >=~2.5 with pts lift:** `tpm2`, `tpm2_arange350`, `tpm2_rco`, `thin_bh_mb260`.
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert=[`arange150`, `arange200`, `arange225`, `arange275`, `arange250`, `arange300`, `arange325`, `arange400`, `arange350`, `ema31`, `rco_on`, `wick_off`, `rco_arange350`, `wick_off_arange350`, `otp_off`, `otp_off_arange250`, `otp_off_arange400`, `otp_off_rco`, `arange400_ema31`]; dilute (least-cut): `arange350_hold14` PF2.856 (dpts -801.2); `arange350_wait13` PF2.854 (dpts -911.2); `arange450` PF2.840 (dpts -2845.5); `arange500` PF2.840 (dpts -2845.5); `tpm2_ema33` PF2.832 (dpts -3821.1); `tpm2_arange350_ema33` PF2.832 (dpts -3821.1); worst: `rco_wick_off` PF2.568 (dpts -73466.3); `ema40` PF2.139 (dpts -71698.4); `ema45` PF2.157 (dpts -69196.1); `ema37` PF2.226 (dpts -63328.3); `ema23` PF2.459 (dpts -37892.3); `ema35` PF2.510 (dpts -34197.2); `ema28` PF2.510 (dpts -32668.2); `ema27` PF2.514 (dpts -32194.2).
+- **Conclusion:** Batch BP finds **no** clear soft>=2.5 pts refine on KEEP cap800 after BO stall (entry/asia). Best is `tpm2` dpts **+1252.3** PF2.889 (under ~2k tick bar; BO tpm2 thin pocket, not tick-chase). arange denser / ema denser dilute; rco/wick/otp mostly inert (=baseline); tpm2 compounds with arange/rco equal BO thin pocket. **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BQ `WAIT_RESUME_BQ_KEEP_CAP800` 5m (untried residual after A-F+BP stall: max_wait denser + resume_closes denser + resume_max_break denser/cap pocket + skip_late denser + use_higher_close off + mild wait x resume compounds + thin tpm2 x wait/resume sentinel; avoid tr140-170 / AS/AQ / maxbreak19 / side-only / mb260-only / arange-only). Tick-confirm only fresh soft>=2.5 pts lifts (dpts>=~2k) with max_loss streak <=7-8. No reaktor / no push.
+
+
+### 2026-09-27 ~08:42 Europe/Bucharest Asia Batch BQ WAIT_RESUME_BQ_KEEP_CAP800 5m (79 cells) - no clear pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260927T052236Z.json` - tag `WAIT_RESUME_BQ_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: max_wait denser + resume_closes denser + resume_max_break denser/cap pocket + skip_late denser + use_higher_close off + mild wait x resume compounds + thin tpm2 x wait/resume sentinel; avoid tr140-170 / AS/AQ / maxbreak19 / side-only / mb260-only / arange-only; after BP stall. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** `tpm2` PF **2.889** / **+229534.2** n229 - dPF **+0.026** - dpts **+1252.3**, `thin_bh_mb260` PF **2.880** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**.
+- **PF >=~2.5 with pts lift:** `tpm2`, `thin_bh_mb260`.
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** `rc1` PF1.762/+118527.1, `wait8` PF1.833/+120991.4.
+- **Reject / dilute / inert:** inert=[`wait14`, `rc3`, `rcap800`, `slw3`, `sls2100`]; dilute (least-cut): `slw4` PF2.803 (dpts -93.8); `wait13` PF2.854 (dpts -911.2); `slw5` PF2.750 (dpts -1653.0); `slw1` PF2.877 (dpts -2094.4); `slw2` PF2.830 (dpts -4094.4); `rcap700` PF2.812 (dpts -4439.9); worst: `wait9` PF2.024 (dpts -84469.8); `hc_off_wait16` PF2.218 (dpts -62883.0); `wait16_rc2` PF2.172 (dpts -62276.4); `wait24` PF2.266 (dpts -60572.3); `wait10` PF2.306 (dpts -53951.1); `tpm2_wait12_rc4` PF2.369 (dpts -51420.5); `hc_off_wait12` PF2.351 (dpts -50651.6); `wait12_rc4` PF2.391 (dpts -48489.7).
+- **Conclusion:** Batch BQ finds **no** clear soft>=2.5 pts refine on KEEP cap800 after BP stall (wait/resume). Best is `tpm2` dpts **+1252.3** PF2.889 (under ~2k tick bar; BO tpm2 thin pocket, not tick-chase). wait/resume/skip_late denser mostly dilute; hc_off dilute; KEEP wait14/rc3/rcap800/slw3/sls2100 inert (=baseline). **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BR `NEARBOX_REQ_BR_KEEP_CAP800` 5m (untried residual after A-F+BQ stall: pullback-required activates dormant near_box recovery + near_box D/N denser + near_box_trend breakout/outside/net_ext/closes_dir + mild wait/otp/hold/flatten compounds + thin tpm2 sentinel; avoid tr140-170 / AS/AQ / maxbreak19 / side-only / mb260-only / wait-resume retunes). Tick-confirm only fresh soft>=2.5 pts lifts (dpts>=~2k) with max_loss streak <=7-8. No reaktor / no push.
+
+
+### 2026-09-27 ~09:11 Europe/Bucharest Asia Batch BR NEARBOX_REQ_BR_KEEP_CAP800 5m (64 cells) - no clear pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260927T054651Z.json` - tag `NEARBOX_REQ_BR_KEEP_CAP800` - seed KEEP ticks `20260926T153950Z_d5b5cf17` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP4800 wick_on trail arm4000/tr190 flat23 sls3/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.69/+208866.7 n230) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: pullback-required activates dormant near_box recovery + near_box D/N denser + near_box_trend breakout/outside/net_ext/closes_dir + mild wait/otp/hold/flatten compounds + thin tpm2 sentinel; avoid tr140-170 / AS/AQ / maxbreak19 / side-only / mb260-only / wait-resume retunes; after BQ stall. Error cells: none.
+- **Baseline 5m KEEP** (`KEEP_cap800_baseline`): n229 - PF **2.863** - **+228281.9**.
+- **Soft >=2.0 pts lifts:** `tpm2` PF **2.889** / **+229534.2** n229 - dPF **+0.026** - dpts **+1252.3**, `thin_bh_mb260` PF **2.880** / **+228996.5** n229 - dPF **+0.017** - dpts **+714.6**.
+- **PF >=~2.5 with pts lift:** `tpm2`, `thin_bh_mb260`.
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert=[`pref_breakout`, `pref_outside`, `pref_N5_D800`, `pref_N10_D1200`]; dilute (least-cut still huge): `pb_req_D1800` PF2.747 (dpts -47595); `pb_req_D2000` PF2.679 (dpts -49387.1); `pb_req_D1500` PF2.782 (dpts -51058); worst: `pb_req_breakout_wait12` PF2.587 (dpts -83132.8); `pb_req_outside_wait12` PF2.601 (dpts -80279.2); `pb_req_wait12` PF2.546 (dpts -76079.6); `pb_req_closes_dir*` / `pb_req_nb_off` ~dpts -63370.
+- **Conclusion:** Batch BR finds **no** clear soft>=2.5 pts refine on KEEP cap800 after BQ stall (nearbox/required). Best is `tpm2` dpts **+1252.3** PF2.889 (under ~2k tick bar; BO thin pocket, not tick-chase). `pullback_mode=required` destroys ~47k–83k pts vs preferred baseline; near_box D/N/trend under required cannot recover. Preferred-mode near_box trend/N/D cells inert (=baseline; near_box still dormant). **Skip tick-confirm**. KEEP unchanged (ticks ema31 cap800 PF2.69/+208866.7 n230).
+- **Next:** Batch BS `TPM2_COMPOUND_BS_KEEP_CAP800` 5m (push recurring tpm2 thin +1252 with orthogonal hold/flat/wait/otp/trail-widen/arm/arange/ema/maxbreak compounds to seek dpts>=~2k; avoid mb260 / tr140-170 / pb_req / maxbreak19 / side-only). Tick-confirm only fresh soft>=2.5 pts lifts (dpts>=~2k) with max_loss streak <=7-8. No reaktor / no push.
+
+
+### 2026-09-27 ~09:53 Europe/Bucharest Asia BS clear → tick kick tpm2_sls4
+- **5m clear champs** (Batch BS `TPM2_COMPOUND_BS_KEEP_CAP800`, grid `overnight_5m_grid_20260927T061635Z.json`): `tpm2_sls4` PF2.842 / +231169.0 n235 (dpts **+2887.1**); `tpm2_hold12` PF2.904 / +230539.0 n229 (dpts **+2257.1**) vs 5m KEEP baseline PF2.863/+228281.9.
+- **Kicked ticks:** `tpm2_sls4` = KEEP + `tp_mode=range_mult` `tp_range_mult=2.0` `skip_late_short_wait=4` (workers=2, data_source=ticks, window 2025-01→2026-09). Echo OK. Runner `tpm2_hold12` queued after.
+- **KEEP unchanged** pending tick: `20260926T153950Z_d5b5cf17` PF2.69/+208866.7 n230.
+- **Next:** score BS tick tpm2_sls4 when finished (max_loss streak ≤7–8); then tpm2_hold12 if needed. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-09-27 ~10:20 Europe/Bucharest Asia BS tick tpm2_sls4 → NEW KEEP
+- **Tick:** `tpm2_sls4` = prior KEEP + `tp_mode=range_mult` `tp_range_mult=2.0` `skip_late_short_wait=4` — run `20260927T070719Z_f35e5620` — data_source=ticks — window 2025-01→2026-09 — workers=2.
+- **Result:** n235 — PF **2.70** — **+212960.2** — win%45.1 — max_loss_streak **8** (max_win 6) — exits {"sl": 124, "tp": 14, "flatten": 34, "trail": 63}.
+- **vs KEEP** `20260926T153950Z_d5b5cf17` PF2.69/+208866.7 n230: ΔPF **+0.01** — Δpts **+4093.5** — Δn **+5**.
+- **Streak filter:** max_loss=8 (prefer ≤7–8) — PASS at edge.
+- **Decision:** **PROMOTE NEW KEEP**.
+- **NEW KEEP** (if promoted): asia0-6 · ema31 · wait14 · rc3 · cap800 · flat23 · mb275 · SL1000 / TP range_mult×2 · sls4/2100 · trail arm4000/tr190 · timeout market · wait_from_break · pullback preferred · near_box N6 D1000 trend=off · side both · ticks → PF2.70/+212960.2 n235 (`20260927T070719Z_f35e5620`).
+- **Next:** tick-confirm runner `tpm2_hold12` (exact 5m cell: tpm2 + max_hold_hours=12 on prior KEEP base sls3) vs NEW KEEP. Then residual 5m on NEW KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-09-27 ~10:51 Europe/Bucharest Asia BS runner tick tpm2_hold12 — REJECT vs NEW KEEP
+- **Tick:** `tpm2_hold12` = prior KEEP base + `tp_mode=range_mult` `tp_range_mult=2.0` `max_hold_hours=12` (sls3, not compounded with sls4) — run `20260927T073419Z_3be95680` — data_source=ticks — window 2025-01→2026-09 — workers=2.
+- **Result:** n230 — PF **2.74** — **+212070.6** — win%45.7 — max_loss_streak **8** (max_win 6) — exits {"tp": 13, "flatten": 33, "sl": 121, "trail": 63}.
+- **vs NEW KEEP** `20260927T070719Z_f35e5620` PF2.70/+212960.2 n235: ΔPF **+0.04** — Δpts **-889.6** — Δn **-5**.
+- **vs old KEEP** `20260926T153950Z_d5b5cf17` PF2.69/+208866.7 n230: ΔPF **+0.05** — Δpts **+3203.9**.
+- **Streak filter:** max_loss=8 (prefer ≤7–8) — PASS at edge.
+- **Decision:** **REJECT** — pts down vs NEW KEEP (Δpts -889.6 < ~2k); KEEP stays `tpm2_sls4` PF2.70/+212960.2 n235.
+- **KEEP unchanged:** asia0-6 · ema31 · wait14 · rc3 · cap800 · flat23 · mb275 · SL1000 / TP range_mult×2 · sls4/2100 · trail arm4000/tr190 · hold16 · timeout market · wait_from_break · pullback preferred · near_box N6 D1000 trend=off · side both · ticks → PF2.70/+212960.2 n235 (`20260927T070719Z_f35e5620`).
+- **Next:** Batch BT `RESIDUAL_BT_NEW_KEEP_TPM2_SLS4` 5m on NEW KEEP seed (tpm2+sls4 baked in): denser hold/flat/wait/trail-widen/arm/otp/arange/ema/maxbreak/sls/rc compounds; avoid tr140-170 / pb_req / maxbreak19 / mb260-only / AS/AQ / hold12-alone retread. Tick-confirm only fresh soft≥2.5 pts lifts (Δpts≥~2k), max_loss streak ≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-09-27 ~11:16 Europe/Bucharest Asia Batch BT RESIDUAL_BT_NEW_KEEP_TPM2_SLS4 5m (73 cells) - no clear pts lift; skip tick
+- **Grid:** `results/overnight_5m_grid_20260927T075145Z.json` - tag `RESIDUAL_BT_NEW_KEEP_TPM2_SLS4` - seed KEEP ticks `20260927T070719Z_f35e5620` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP range_mult×2 wick_on trail arm4000/tr190 flat23 sls4/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.70/+212960.2 n235) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: denser hold/flat/wait/trail-widen/arm/otp/arange/ema/maxbreak/sls/rc/tpr compounds on NEW KEEP; avoid tr140-170 / pb_req / maxbreak19 / mb260-only / AS/AQ / hold12-alone. Error cells: none.
+- **Baseline 5m KEEP** (`NEW_KEEP_tpm2_sls4_baseline`): n235 - PF **2.842** - **+231169.0**.
+- **Soft >=2.0 pts lifts:** `tpr2_1` PF **2.854** / **+232701.3** n235 - dPF **+0.012** - dpts **+1532.3**, `tpr2_25` PF **2.853** / **+232608.0** n235 - dPF **+0.011** - dpts **+1439.0**, `sls5` PF **2.822** / **+232369.1** n239 - dPF **-0.020** - dpts **+1200.1**, `otp_off_sls5` PF **2.822** / **+232369.1** n239 - dPF **-0.020** - dpts **+1200.1**, `tpr2_1_tr200` PF **2.849** / **+232061.1** n235 - dPF **+0.007** - dpts **+892.1**, `flat22` PF **2.860** / **+231236.8** n235 - dPF **+0.018** - dpts **+67.8**, `otp_off_flat22` PF **2.860** / **+231236.8** n235 - dPF **+0.018** - dpts **+67.8**, `hold18_flat22` PF **2.860** / **+231236.8** n235 - dPF **+0.018** - dpts **+67.8**.
+- **PF >=~2.5 with pts lift:** `tpr2_1`, `tpr2_25`, `sls5`, `otp_off_sls5`, `tpr2_1_tr200`, `flat22`, `otp_off_flat22`, `hold18_flat22`.
+- **Clear dpts>=~2k at PF>=2.5:** **none**.
+- **Under-floor PF<2.0:** `be_arm500` PF1.171/+9892.9.
+- **Reject / dilute / inert:** inert=[`hold17`, `hold18`, `hold20`, `otp_off`, `arange250`, `arange280`, `arange350`, `arange400`]; dilute (least-cut): `hold15` PF2.843 (dpts -251.1), `sls5_hold14` PF2.809 (dpts -405.5), `otp_off_tr200` PF2.836 (dpts -630.2), `tr200` PF2.836 (dpts -630.2), `hold13` PF2.843 (dpts -647.3); worst: `be_arm500` PF1.171 (dpts -221276.1), `be_arm1000` PF2.137 (dpts -131338.0), `rc2` PF2.292 (dpts -46925.4), `arm3200` PF2.500 (dpts -42895.6), `rc5` PF2.503 (dpts -35858.2), `wait12` PF2.499 (dpts -35632.5), `rc4` PF2.530 (dpts -34163.8), `arm5000` PF2.450 (dpts -33155.3).
+- **Conclusion:** Batch BT finds **no** clear soft>=2.5 pts refine on NEW KEEP tpm2+sls4. Best is `tpr2_1` dpts **+1532.3** PF2.854 (under ~2k tick bar). be_arm destroys; arm/rc/wait/ema mostly dilute; hold/arange/otp mostly inert. **Skip tick-confirm**. KEEP unchanged (ticks tpm2+sls4 PF2.70/+212960.2 n235).
+- **Next:** Batch BU `TPR_COMPOUND_BU_NEW_KEEP_TPM2_SLS4` 5m (push recurring tpr2_1/tpr2_25/sls5 thin with orthogonal hold/flat/trail/sls/otp/wait/mb/ema compounds to seek dpts>=~2k; thin plan-F seasonal/week2/news/side/timeout sentinels on NEW KEEP; avoid tr140-170 / pb_req / maxbreak19 / mb260-only / be_arm / hold12-alone / full BK timeout retread). Tick-confirm only fresh soft>=2.5 pts lifts (dpts>=~2k) with max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-09-27 ~11:43 Europe/Bucharest Asia Batch BU TPR_COMPOUND_BU_NEW_KEEP_TPM2_SLS4 5m (65 cells) - clear dpts>=~2k; tick-confirm champ
+- **Grid:** `results/overnight_5m_grid_20260927T081726Z.json` - tag `TPR_COMPOUND_BU_NEW_KEEP_TPM2_SLS4` - seed KEEP ticks `20260927T070719Z_f35e5620` (asia0-6 ema31 mb275 prefer near_box N6 D1000 trend=off SL1000/TP range_mult×2 wick_on trail arm4000/tr190 flat23 sls4/2100 maxbreak15 rc3 cap800 wait14 hold16 PF2.70/+212960.2 n235) - candles_5m - workers=2 - window 2025-01 to 2026-09. Axes: denser tp_range around 2.1 + tpr2_1/tpr2_25/sls5 orthogonal hold/flat/trail/otp/wait/mb/ema compounds; thin plan-F seasonal/week2/news/side/timeout sentinels. Error cells: none.
+- **Baseline 5m KEEP** (`NEW_KEEP_tpm2_sls4_baseline`): n235 - PF **2.842** - **+231169.0**.
+- **Soft >=2.0 pts lifts (top):** `tpr2_25_sls5` PF **2.835** / **+234028.0** n239 - dPF **-0.007** - dpts **+2859.0**, `tpr2_1_sls5` PF **2.835** / **+233989.4** n239 - dPF **-0.007** - dpts **+2820.4**, `tpr2_1_otp_off_sls5` PF **2.835** / **+233989.4** n239 - dPF **-0.007** - dpts **+2820.4**, `tpr2_1_sls5_flat22` PF **2.852** / **+233938.1** n239 - dPF **+0.010** - dpts **+2769.1**, `tpr2_4` PF **2.855** / **+232845.1** n235 - dPF **+0.013** - dpts **+1676.1**, `tpr2_25_flat22` PF **2.873** / **+232798.9** n235 - dPF **+0.031** - dpts **+1629.9**, `tpr2_1_flat22` PF **2.873** / **+232769.1** n235 - dPF **+0.031** - dpts **+1600.1**, `tpr2_1` PF **2.854** / **+232701.3** n235 - dPF **+0.012** - dpts **+1532.3**.
+- **Clear dpts>=~2k at PF>=2.5:** `tpr2_25_sls5` PF **2.835** / **+234028.0** n239 - dPF **-0.007** - dpts **+2859.0**, `tpr2_1_sls5` PF **2.835** / **+233989.4** n239 - dPF **-0.007** - dpts **+2820.4**, `tpr2_1_otp_off_sls5` PF **2.835** / **+233989.4** n239 - dPF **-0.007** - dpts **+2820.4**, `tpr2_1_sls5_flat22` PF **2.852** / **+233938.1** n239 - dPF **+0.010** - dpts **+2769.1**.
+- **Under-floor PF<2.0:** none.
+- **Reject / dilute / inert:** inert=[`season_tag`, `week2_tag`, `news_tag_sched`, `tminbreak250`, `ematf5`, `ematf10`, `ematf30`, `wick_off`, `rco_on`]; dilute (worst): `side_long` PF2.220 (dpts -134962.7), `tpr2_1_side_long` PF2.235 (dpts -133751.1), `side_short` PF3.893 (dpts -96206.3), `tpr2_1_side_short` PF3.900 (dpts -95885.6), `week2_filter` PF2.650 (dpts -60423.0), `temd1000` PF2.676 (dpts -35862.8), `tpr2_1_temd1000` PF2.689 (dpts -34330.5), `tpr2_1_wait15` PF2.608 (dpts -24669.8).
+- **Side diagnostic:** `tpr2_1_side_short` PF3.900/+135283.4 n95; `side_short` PF3.893/+134962.7 n95; `tpr2_1_side_long` PF2.235/+97417.9 n140; `side_long` PF2.220/+96206.3 n140; (prefer combined for total pts).
+- **Conclusion:** Batch BU unlocks clear soft>=2.5 pts compounds on NEW KEEP via **tpr×sls5**. Champ `tpr2_25_sls5` (tp_range_mult=2.25, skip_late_short_wait=5) dpts **+2859.0** PF2.835. Runner `tpr2_1_sls5_flat22` slightly better PF. Plan-F filters mostly cut pts; side-split shorts strong / longs weak — keep combined.
+- **KEEP unchanged pending tick:** ticks tpm2+sls4 PF2.70/+212960.2 n235 (`20260927T070719Z_f35e5620`).
+- **Next:** overnight **tick-confirm** `BU_tick tpr2_25_sls5` (KEEP + tp_range_mult=2.25 + skip_late_short_wait=5) workers=2. If reject → tick runner `tpr2_1_sls5` or `tpr2_1_sls5_flat22`; else promote if pts lift + PF>=~2.5 + max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-09-27 ~12:12 Europe/Bucharest Asia BU_tick tpr2_25_sls5 -> NEW KEEP
+- **Tick:** `tpr2_25_sls5` = prior KEEP + `tp_mode=range_mult` `tp_range_mult=2.25` `skip_late_short_wait=5` - run `20260927T090050Z_65ffdcc2` - data_source=ticks - window 2025-01 to 2026-09 - workers=2.
+- **Result:** n239 - PF **2.69** - **+215812.6** - win%45.2 - max_loss_streak **8** (max_win 6) - exits {"flatten":36,"sl":126,"tp":13,"trail":64}.
+- **vs KEEP** `20260927T070719Z_f35e5620` PF2.70/+212960.2 n235: dPF **-0.01** - dpts **+2852.4** - dn **+4**.
+- **Streak filter:** max_loss=8 (prefer <=7-8) - PASS at edge.
+- **Decision:** **PROMOTE NEW KEEP**.
+- **NEW KEEP** (promoted): asia0-6 · ema31 · wait14 · rc3 · cap800 · flat23 · mb275 · SL1000 / TP range_mult×2.25 · sls5/2100 · trail arm4000/tr190 · hold16 · timeout market · wait_from_break · pullback preferred · near_box N6 D1000 trend=off · side both · ticks -> PF2.69/+215812.6 n239 (`20260927T090050Z_65ffdcc2`).
+- **Next:** tick-confirm runner `tpr2_1_sls5` (tp_range_mult=2.1 + skip_late_short_wait=5 on prior KEEP base; vs NEW KEEP). Then `tpr2_1_sls5_flat22` if needed; else residual 5m on NEW KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-09-27 ~12:43 Europe/Bucharest Asia BU_runner tick tpr2_1_sls5 - REJECT vs NEW KEEP
+- **Tick:** 	pr2_1_sls5 = NEW KEEP base + 	p_range_mult=2.1 skip_late_short_wait=5 (flat23) - run 20260927T092843Z_953a2d35 - data_source=ticks - window 2025-01 to 2026-09 - workers=2.
+- **Result:** n239 - PF **2.69** - **+215842.7** - win%45.2 - max_loss_streak **8** (max_win 6) - exits {"flatten":35,"sl":126,"tp":15,"trail":63}.
+- **vs NEW KEEP** 20260927T090050Z_65ffdcc2 PF2.69/+215812.6 n239: dPF **+0.00** - dpts **+30.1** - dn **+0**.
+- **Streak filter:** max_loss=8 (prefer <=7-8) - PASS at edge.
+- **Decision:** **REJECT** - dpts +30.1 is noise under ~2k pts bar (5m overpromised tpr2.1 vs tpr2.25).
+- **KEEP unchanged:** asia0-6 / ema31 / wait14 / rc3 / cap800 / flat23 / mb275 / SL1000 / TP range_multx2.25 / sls5/2100 / trail arm4000/tr190 / hold16 / timeout market / wait_from_break / pullback preferred / near_box N6 D1000 trend=off / side both / ticks -> PF2.69/+215812.6 n239 (20260927T090050Z_65ffdcc2).
+- **Next:** tick-confirm runner 	pr2_1_sls5_flat22 (tp_range_mult=2.1 + sls5 + flatten_hour=22; 5m PF2.852/+233938 dpts+2769). If reject/no lift -> Batch BV residual 5m on NEW KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-09-27 ~13:22 Europe/Bucharest Asia BU_runner tick tpr2_1_sls5_flat22 - REJECT vs NEW KEEP
+- **Tick:** tpr2_1_sls5_flat22 = NEW KEEP base + tp_range_mult=2.1 + skip_late_short_wait=5 + flatten_hour=22 - run `20260927T095958Z_b7f4aec0` - data_source=ticks - window 2025-01 to 2026-09 - workers=2.
+- **Result:** n239 - PF **2.71** - **+215944.3** - win%45.6 - max_loss_streak **8** (max_win 6) - exits {'flatten': 36, 'sl': 125, 'tp': 15, 'trail': 63}.
+- **vs NEW KEEP** `20260927T090050Z_65ffdcc2` PF2.69/+215812.6 n239: dPF **+0.02** - dpts **+131.7** - dn **+0**.
+- **Streak filter:** max_loss=8 (prefer <=7-8) - PASS at edge.
+- **Decision:** **REJECT** - dpts +131.7 is noise under ~2k pts bar (5m overpromised flat22 compound vs KEEP tpr2.25).
+- **KEEP unchanged:** asia0-6 / ema31 / wait14 / rc3 / cap800 / flat23 / mb275 / SL1000 / TP range_multx2.25 / sls5/2100 / trail arm4000/tr190 / hold16 / timeout market / wait_from_break / pullback preferred / near_box N6 D1000 trend=off / PF2.69/+215812.6 n239 (`20260927T090050Z_65ffdcc2`).
+- **Next:** Batch BV `RESIDUAL_BV_NEW_KEEP_TPR225_SLS5` 5m on NEW KEEP seed (tpr2.25+sls5 baked in): denser hold/flat/wait/trail-widen/arm/otp/arange/ema/maxbreak/sls/rc/tpr-around-2.25/mb; avoid tr140-170 / pb_req / maxbreak19 / mb260 / be_arm / tpr2_1_sls5_flat22 retread. Tick-confirm only clear soft>=2.5 pts lifts (dpts>=~2k), max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-09-27 ~13:46 Europe/Bucharest Asia Batch BV RESIDUAL_BV_NEW_KEEP_TPR225_SLS5 5m — no clear pts lift (skip tick)
+- **Grid:** `results/overnight_5m_grid_20260927T102253Z.json` — tag `RESIDUAL_BV_NEW_KEEP_TPR225_SLS5` — seed KEEP ticks `20260927T090050Z_65ffdcc2` (asia0-6 ema31 wait14 rc3 cap800 flat23 mb275 SL1000 TP range_multx2.25 sls5/2100 trail arm4000/tr190 hold16 near_box N6 D1000 trend=off) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 97 cells (1 error: flat24 hour must be in 0..23).
+- **Baseline 5m KEEP** (`NEW_KEEP_tpr225_sls5_baseline`): n239 — PF **2.835** — **+234028.0**.
+- **Top by pts vs baseline:**
+  - `hold12`: PF **2.845** / **+234539.8** n239 — dPF **+0.010** — dpts **+511.8**
+  - `tpr2_4`: PF **2.838** / **+234397.1** n239 — dPF **+0.003** — dpts **+369.1**
+  - `tpr2_4_flat22`: PF **2.856** / **+234359.2** n239 — dPF **+0.021** — dpts **+331.2**
+  - `flat22`: PF **2.854** / **+234099.8** n239 — dPF **+0.019** — dpts **+71.8**
+  - `otp_off_flat22`: PF **2.854** / **+234099.8** n239 — dPF **+0.019** — dpts **+71.8**
+- **Soft >=2.5 with pts lift:** hold12 / tpr2_4 / tpr2_4_flat22 / flat22 family — all dpts **under ~2k** tick bar (best hold12 **+511.8**).
+- **Dilute / reject notes:** wait11/12 and arm3200-3500 / arm5000 / rc2 / hc_off / side_long cut PF or pts hard; side_short PF3.771/+134.8k thin n99 (prefer combined); season/week2/news tag inert (=baseline).
+- **Conclusion:** Batch BV finds **no** clear soft>=2.5 pts refine on NEW KEEP tpr2.25+sls5 after BU_runner reject. Best 5m lift hold12 dpts **+511.8** PF2.845 — skip tick-confirm. KEEP unchanged (ticks PF2.69/+215812.6 n239 `20260927T090050Z_65ffdcc2`).
+- **Next:** Batch BW `RESIDUAL_BW_NEARBOX_TP_ASIA_NEW_KEEP` 5m — near_box N/D/trend gates, asia start/end denser, pullback/rco/wick, TP-fixed + trail-near-TP arms, SL:TP ~1:1.5 fixed pairs, sl_cap/range_mult, timeout denser, season/week2/news **filter** (not tag), be_arm mild; avoid BV retreads. Tick-confirm only clear soft>=2.5 pts lifts (dpts>=~2k), max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+### 2026-09-27 ~18:21 Europe/Bucharest Asia Batch BW RESIDUAL_BW_NEARBOX_TP_ASIA_NEW_KEEP 5m - no soft pts lift (skip tick)
+- **Grid:** 
+esults/overnight_5m_grid_20260927T104744Z.json - tag RESIDUAL_BW_NEARBOX_TP_ASIA_NEW_KEEP - seed KEEP ticks 20260927T090050Z_65ffdcc2 (asia0-6 ema31 wait14 rc3 cap800 flat23 mb275 SL1000 TP range_multx2.25 sls5/2100 trail arm4000/tr190 hold16 near_box N6 D1000 trend=off) - candles_5m - workers=2 - window 2025-01 to 2026-09 - 91 cells (0 errors). Scored after Lenovo reconnect (offline streak cleared).
+- **Baseline 5m KEEP** (NEW_KEEP_baseline): n239 - PF **2.835** - **+234028.0**.
+- **CLEAR dpts>=~2k at PF>=2.5:** none.
+- **Soft >=2.5 with pts lift:** none (0 cells with dpts>0).
+- **Inert (=baseline, 31 cells):** near_box N/D/trend family (incl. nb_off) - confirms near-box dormant under preferred; rco_on; wick_off; slcap1200-2500; tminbreak150/200.
+- **Best PF-up / pts-down (reject for pts goal):** season_filter PF **2.951** / **+211778.9** n206 - dPF **+0.116** - dpts **-22249.1**; 
+ews_filter_sched PF **2.890** / **+208952.0** n212 - dpts **-25076.0**; 	emd2000 PF **2.857** / **+229356.6** n233 - dpts **-4671.4**.
+- **Hard rejects:** fixed SL:TP ~1:1.5 pairs and fixed-TP / trail-near-TP arms cut pts hard (best fixed TP still dpts <=-7.4k); asia0_4/0_5/0_7/1_5/2_6 and pb_off/wfb_off/be_arm dilute; week2_filter dpts **-59771.8**.
+- **Conclusion:** Batch BW finds **no** soft>=2.5 pts refine on NEW KEEP after BV stall. Near-box / asia denser / TP-fixed / SL:TP-fixed / filter-skip axes do not lift total points. KEEP unchanged (ticks PF2.69/+215812.6 n239 20260927T090050Z_65ffdcc2).
+- **Next:** Batch BX PLANF_RESIDUAL_BX_NEW_KEEP_TPR225_SLS5 5m - denser plan-F seasonal/week2/news tag|filter|join + timeout compounds + trend_eff/sessions/flat + ema_tf + resume + hold19-22/flatten expand + tp_r_mult + mild mb volume; avoid BW near-box/TP-fixed/SL-pair retreads and BV hold12-20/tr/arm pocket. Tick-confirm only clear soft>=2.5 pts lifts (dpts>=~2k), max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-09-27 ~18:46 Europe/Bucharest Asia Batch BX PLANF_RESIDUAL_BX_NEW_KEEP_TPR225_SLS5 5m — no clear soft pts lift (skip tick)
+- **Grid:** `results/overnight_5m_grid_20260927T152846Z.json` — tag `PLANF_RESIDUAL_BX_NEW_KEEP_TPR225_SLS5` — seed KEEP ticks `20260927T090050Z_65ffdcc2` (asia0-6 ema31 wait14 rc3 cap800 flat23 mb275 SL1000 TP range_multx2.25 sls5/2100 trail arm4000/tr190 hold16 near_box N6 D1000 trend=off) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 140 cells (0 errors). Finished ~15:30Z; scored after Lenovo reconnect (offline streak cleared).
+- **Baseline 5m KEEP** (`NEW_KEEP_baseline`): n239 — PF **2.835** — **+234028.0**.
+- **CLEAR dpts>=~2k at PF>=2.5:** none.
+- **Soft >=2.5 with pts lift (3 cells, all under ~2k tick bar):**
+  - `temd2000_wait13`: PF **2.933** / **+235088.9** n233 — dPF **+0.098** — dpts **+1060.9**
+  - `tr180`: PF **2.840** / **+234667.8** n239 — dPF **+0.005** — dpts **+639.8**
+  - `hold22_flat22`: PF **2.854** / **+234099.8** n239 — dPF **+0.019** — dpts **+71.8**
+- **Inert (=baseline, 44 cells):** season/week2/news **tag** family; tminbreak50/100/250; teff/tsess/tflat family; ematf5/10/30/60; hold19/21/22/24; otp_off_hold19/21; armcap1800/2500.
+- **Best PF-up / pts-down (reject for pts goal):**
+  - `armmode_from_fill`: PF **4.736** / **+34947.7** n239 — dPF **+1.901** — dpts **-199080.3**
+  - `armmode_from_fill_tr200`: PF **4.303** / **+33283.6** n239 — dPF **+1.468** — dpts **-200744.4**
+  - `side_short`: PF **3.771** / **+134792.8** n99 — dPF **+0.936** — dpts **-99235.2**
+  - `season_filter`: PF **2.951** / **+211778.9** n206 — dPF **+0.116** — dpts **-22249.1**
+  - `season_filter_week2_tag`: PF **2.951** / **+211778.9** n206 — dPF **+0.116** — dpts **-22249.1**
+- **Hard rejects:** trail_arm_mode from_fill / asia cut pts hard (~-67k to -200k) despite high PF; tpr1.5–2.5 and rc1/side_long dilute; side_short thin PF3.771/+134.8k n99 (prefer combined); season/news **filter** trade PF for pts (−22k/−25k).
+- **Conclusion:** Batch BX finds **no** clear soft>=2.5 pts refine on NEW KEEP after BW stall. Plan-F denser + timeout/trend/ema_tf/resume/hold-flat/tp_r/mb axes do not clear the ~2k pts bar (best `temd2000_wait13` dpts **+1060.9** PF2.933). KEEP unchanged (ticks PF2.69/+215812.6 n239 `20260927T090050Z_65ffdcc2`).
+- **Next:** Batch BY `COMPOUND_BY_THIN_SOFT_NEW_KEEP` 5m — compound thin soft pocket (`temd2000`×wait13×tr180×hold22_flat22) + untried residual on this seed: asymmetric min_break, max_break denser, skip_late_short denser, otp_off compounds with soft pocket, mild mb 250/300 around KEEP, resume denser; avoid BX arm_mode/tpr-under-2.25/side-only and BW near-box/TP-fixed/SL-pair retreads. Tick-confirm only clear soft>=2.5 pts lifts (dpts>=~2k), max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-09-27 ~21:54 Europe/Bucharest Asia Batch BY COMPOUND_BY_THIN_SOFT_NEW_KEEP 5m — CLEAR pts lifts → tick kick
+- **Grid:** `results/overnight_5m_grid_20260927T154742Z.json` — tag `COMPOUND_BY_THIN_SOFT_NEW_KEEP` — seed KEEP ticks `20260927T090050Z_65ffdcc2` (asia0-6 ema31 wait14 rc3 rmb800 flat23 mb275 SL1000 TP range_multx2.25 sls5/2100 trail arm4000/tr190 hold16 near_box N6 D1000 trend=off) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 80 cells (0 errors).
+- **Baseline 5m KEEP** (`NEW_KEEP_baseline`): n239 — PF **2.835** — **+234028.0**.
+- **Top by pts vs baseline:**
+  - `temd1800_wait13_tr180`: PF **2.962** / **+236698.7** n232 — dPF **+0.127** — dpts **+2670.7**
+  - `temd2000_wait13_tr170`: PF **2.943** / **+236309.0** n233 — dPF **+0.108** — dpts **+2281.0**
+  - `tr175_temd2000_wait13`: PF **2.940** / **+236003.7** n233 — dPF **+0.105** — dpts **+1975.7**
+  - `temd2000_wait13_tr180`: PF **2.938** / **+235698.7** n233 — dPF **+0.103** — dpts **+1670.7**
+  - `temd2000_wait13_tr180_otp_off`: PF **2.938** / **+235698.7** n233 — dPF **+0.103** — dpts **+1670.7**
+  - `tr182_temd2000_wait13`: PF **2.937** / **+235576.9** n233 — dPF **+0.102** — dpts **+1548.9**
+  - `temd2000_wait13_tr185`: PF **2.935** / **+235393.7** n233 — dPF **+0.100** — dpts **+1365.7**
+  - `tr188_temd2000_wait13`: PF **2.934** / **+235210.7** n233 — dPF **+0.099** — dpts **+1182.7**
+- **CLEAR dpts>=~2k at PF>=2.5:**
+  - `temd1800_wait13_tr180`: PF **2.962** / **+236698.7** n232 — dPF **+0.127** — dpts **+2670.7**
+  - `temd2000_wait13_tr170`: PF **2.943** / **+236309.0** n233 — dPF **+0.108** — dpts **+2281.0**
+- **Soft >=2.5 with pts lift (under/at tick bar):** `temd1800_wait13_tr180`, `temd2000_wait13_tr170`, `tr175_temd2000_wait13`, `temd2000_wait13_tr180`, `temd2000_wait13_tr180_otp_off`, `tr182_temd2000_wait13`, `temd2000_wait13_tr185`, `tr188_temd2000_wait13`, `temd2000_wait13`, `rc3_rmb800_temd2000_wait13` (soft count 24).
+- **Under-floor PF<2.0:** 0.
+- **Inert (=baseline) count:** 3.
+- **Conclusion:** Batch BY compounds BX thin soft pocket (temd x wait13 x tr~180) and clears the ~2k pts bar on 5m. Champ `temd1800_wait13_tr180` dpts **+2670.7** PF2.962; runner `temd2000_wait13_tr170` dpts **+2281.0** PF2.943. KEEP unchanged pending tick (`20260927T090050Z_65ffdcc2` PF2.69/+215812.6 n239).
+- **Note:** overnight API also had loaded stray 5m `20260927T155922Z_bffa99d4` (fixed TP4000 / trail_arm off / sls3 / not KEEP seed) PF2.68/+206392 n229 — **ignore** (not a KEEP candidate).
+- **Next:** tick-confirm champ `temd1800_wait13_tr180` (timeout_max_ema_dist_pts=1800, max_wait_candles=13, trail_pts=180) on KEEP seed; then runner `temd2000_wait13_tr170` if needed. max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-09-27 ~22:16 Europe/Bucharest Asia BY_tick temd1800_wait13_tr180 - REJECT vs NEW KEEP
+- **Tick:** `temd1800_wait13_tr180` = KEEP + `timeout_max_ema_dist_pts=1800` `max_wait_candles=13` `trail_pts=180` - run `20260927T190817Z_6cb9b76d` - data_source=ticks - window 2025-01 to 2026-09 - workers=2.
+- **Result:** n232 - PF **2.78** - **+214810.0** - win%46.6 - max_loss_streak **6** (max_win 7) - exits {"flatten":39,"sl":119,"tp":13,"trail":61}.
+- **vs NEW KEEP** `20260927T090050Z_65ffdcc2` PF2.69/+215812.6 n239: dPF **+0.09** - dpts **-1002.6** - dn **-7**.
+- **Streak filter:** max_loss=6 (prefer <=7-8) - PASS.
+- **Decision:** **REJECT** - dpts -1002.6 under ~2k pts bar (5m overpromised dpts+2670); PF lift alone does not promote when total points fall.
+- **KEEP unchanged:** asia0-6 / ema31 / wait14 / rc3 / cap800 / flat23 / mb275 / SL1000 / TP range_multx2.25 / sls5/2100 / trail arm4000/tr190 / hold16 / timeout market / wait_from_break / pullback preferred / near_box N6 D1000 trend=off / side both / ticks -> PF2.69/+215812.6 n239 (`20260927T090050Z_65ffdcc2`).
+- **Next:** tick-confirm runner `temd2000_wait13_tr170` (timeout_max_ema_dist_pts=2000, max_wait_candles=13, trail_pts=170) on KEEP seed. If reject -> Batch BZ residual/compound on untried soft pocket (tr175/tr182/temd2000_wait13_tr180 family under ~2k + asymmetric mb / max_break denser). max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-09-27 ~22:44 Europe/Bucharest Asia BY_runner tick temd2000_wait13_tr170 - REJECT vs NEW KEEP
+- **Tick:** `temd2000_wait13_tr170` = KEEP + `timeout_max_ema_dist_pts=2000` `max_wait_candles=13` `trail_pts=170` - run `20260927T193059Z_5f697dbd` - data_source=ticks - window 2025-01 to 2026-09 - workers=2.
+- **Result:** n233 - PF **2.76** - **+213519.6** - win%46.4 - max_loss_streak **6** (max_win 7) - exits {"flatten":39,"sl":120,"tp":13,"trail":61}.
+- **vs NEW KEEP** `20260927T090050Z_65ffdcc2` PF2.69/+215812.6 n239: dPF **+0.07** - dpts **-2293.0** - dn **-6**.
+- **Streak filter:** max_loss=6 (prefer <=7-8) - PASS.
+- **Decision:** **REJECT** - dpts -2293 under ~2k pts bar (5m overpromised dpts+2281); both BY clear 5m champs (temd1800_wait13_tr180 and this runner) lost points on ticks despite PF lift.
+- **KEEP unchanged:** asia0-6 / ema31 / wait14 / rc3 / cap800 / flat23 / mb275 / SL1000 / TP range_multx2.25 / sls5/2100 / trail arm4000/tr190 / hold16 / timeout market / wait_from_break / pullback preferred / near_box N6 D1000 trend=off / side both / ticks -> PF2.69/+215812.6 n239 (`20260927T090050Z_65ffdcc2`).
+- **Next:** Batch BZ `COMPOUND_BZ_SOFT_NEAR2K_NEW_KEEP` 5m — denser compounds around soft under-~2k pocket (`tr175`/`tr182`/`temd2000_wait13_tr180`/`tr185`/`tr188` × mild temd 1900–2100 × wait13–14 × hold/flat/arm/ema/rc) + untried trail_arm mild + ema denser; avoid retread of rejected ticks temd1800_tr180 / temd2000_tr170 and BY mb/maxbreak/sls singles already screened. Tick-confirm only clear soft>=2.5 pts lifts (dpts>=~2k), max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-09-27 ~23:20 Europe/Bucharest Asia Batch BZ COMPOUND_BZ_SOFT_NEAR2K_NEW_KEEP 5m - CLEAR pts lifts -> tick kick
+- **Grid:** 
+esults/overnight_5m_grid_20260927T194757Z.json - tag COMPOUND_BZ_SOFT_NEAR2K_NEW_KEEP - seed KEEP ticks 20260927T090050Z_65ffdcc2 (asia0-6 ema31 wait14 rc3 rmb800 flat23 mb275 SL1000 TP range_multx2.25 sls5/2100 trail arm4000/tr190 hold16 near_box N6 D1000 trend=off) - candles_5m - workers=2 - window 2025-01 to 2026-09 - 84 cells (0 errors).
+- **Baseline 5m KEEP** (NEW_KEEP_baseline): n239 - PF **2.835** - **+234028.0**.
+- **Top by pts vs baseline:**
+  - tr172_temd1900_wait13: PF **2.966** / **+237186.8** n232 - dPF **+0.131** - dpts **+3158.8**
+  - tr174_temd1900_wait13: PF **2.965** / **+237065.0** n232 - dPF **+0.130** - dpts **+3037.0**
+  - tr175_temd1900_wait13: PF **2.965** / **+237003.7** n232 - dPF **+0.130** - dpts **+2975.7**
+  - tr176_temd1900_wait13: PF **2.964** / **+236942.7** n232 - dPF **+0.129** - dpts **+2914.7**
+  - tr178_temd1900_wait13: PF **2.963** / **+236820.9** n232 - dPF **+0.128** - dpts **+2792.9**
+  - tr180_temd1900_wait13: PF **2.962** / **+236698.7** n232 - dPF **+0.127** - dpts **+2670.7**
+  - tr182_temd1900_wait13: PF **2.961** / **+236576.9** n232 - dPF **+0.126** - dpts **+2548.9**
+  - tr183_temd1900_wait13: PF **2.961** / **+236515.8** n232 - dPF **+0.126** - dpts **+2487.8**
+- **CLEAR dpts>=~2k at PF>=2.5:**
+  - tr172_temd1900_wait13: PF **2.966** / **+237186.8** n232 - dPF **+0.131** - dpts **+3158.8**
+  - tr174_temd1900_wait13: PF **2.965** / **+237065.0** n232 - dPF **+0.130** - dpts **+3037.0**
+  - tr175_temd1900_wait13: PF **2.965** / **+237003.7** n232 - dPF **+0.130** - dpts **+2975.7**
+  - tr176_temd1900_wait13: PF **2.964** / **+236942.7** n232 - dPF **+0.129** - dpts **+2914.7**
+  - tr178_temd1900_wait13: PF **2.963** / **+236820.9** n232 - dPF **+0.128** - dpts **+2792.9**
+  - tr180_temd1900_wait13: PF **2.962** / **+236698.7** n232 - dPF **+0.127** - dpts **+2670.7**
+  - tr182_temd1900_wait13: PF **2.961** / **+236576.9** n232 - dPF **+0.126** - dpts **+2548.9**
+  - tr183_temd1900_wait13: PF **2.961** / **+236515.8** n232 - dPF **+0.126** - dpts **+2487.8**
+  - tr185_temd1900_wait13: PF **2.960** / **+236393.7** n232 - dPF **+0.125** - dpts **+2365.7**
+  - tpr2_4_tr175_temd2000_wait13: PF **2.944** / **+236387.8** n233 - dPF **+0.109** - dpts **+2359.8**
+  - tr186_temd1900_wait13: PF **2.959** / **+236332.9** n232 - dPF **+0.124** - dpts **+2304.9**
+  - tr172_temd2000_wait13: PF **2.942** / **+236186.8** n233 - dPF **+0.107** - dpts **+2158.8**
+  - tr172_temd2100_wait13: PF **2.942** / **+236186.8** n233 - dPF **+0.107** - dpts **+2158.8**
+  - tpr2_4_tr180_temd2000_wait13: PF **2.941** / **+236077.8** n233 - dPF **+0.106** - dpts **+2049.8**
+  - tr174_temd2000_wait13: PF **2.941** / **+236065.0** n233 - dPF **+0.106** - dpts **+2037.0**
+  - tr174_temd2100_wait13: PF **2.941** / **+236065.0** n233 - dPF **+0.106** - dpts **+2037.0**
+- **Soft >=2.5 with pts lift (under/at tick bar sample):** tr172_temd1900_wait13, tr174_temd1900_wait13, tr175_temd1900_wait13, tr176_temd1900_wait13, tr178_temd1900_wait13, tr180_temd1900_wait13, tr182_temd1900_wait13, tr183_temd1900_wait13, tr185_temd1900_wait13, tpr2_4_tr175_temd2000_wait13, tr186_temd1900_wait13, tr172_temd2000_wait13 (soft count 56).
+- **Under-floor PF<2.0:** 0.
+- **Inert (=baseline) count:** 0.
+- **Best PF-up / pts-down (reject for pts goal sample):**
+  - hc_off_tr175_temd2000_wait13: PF **2.603** / **+201373.5** n233 - dpts **-32654.5**
+  - arm4500_tr180_temd2000_wait13: PF **2.600** / **+205849.7** n233 - dpts **-28178.3**
+  - arm4500_tr175_temd2000_wait13: PF **2.602** / **+206079.7** n233 - dpts **-27948.3**
+  - arm3500_tr180_temd2000_wait13: PF **2.759** / **+212154.6** n233 - dpts **-21873.4**
+  - arm3500_tr175_temd2000_wait13: PF **2.762** / **+212509.6** n233 - dpts **-21518.4**
+  - ema29_tr180_temd2000_wait13: PF **2.720** / **+216047.1** n233 - dpts **-17980.9**
+- **Conclusion:** Batch BZ densifies BY soft under-~2k pocket (tr~172-188 x temd1900/2000/2100 x wait13) after both BY clear ticks REJECT. Champ 	r172_temd1900_wait13 dpts **+3158.8** PF2.966; temd1900 ladder dominates clears. KEEP unchanged pending tick (20260927T090050Z_65ffdcc2 PF2.69/+215812.6 n239).
+- **Next:** tick-confirm champ 	r172_temd1900_wait13 (trail_pts=172, timeout_max_ema_dist_pts=1900, max_wait_candles=13) on KEEP seed; then runner 	r174_temd1900_wait13 if needed. Avoid retread of rejected BY ticks temd1800_tr180 / temd2000_tr170. max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-09-27 ~23:50 Europe/Bucharest Asia BZ_tick tr172_temd1900_wait13 - REJECT vs NEW KEEP
+- **Tick:** `tr172_temd1900_wait13` = KEEP + `trail_pts=172` `timeout_max_ema_dist_pts=1900` `max_wait_candles=13` - run `20260927T203646Z_ff446762` - data_source=ticks - window 2025-01 to 2026-09 - workers=2.
+- **Result:** n232 - PF **2.78** - **+214397.2** - win%46.6 - max_loss_streak **6** (max_win 7) - exits {"flatten":39,"sl":119,"tp":13,"trail":61}.
+- **vs NEW KEEP** `20260927T090050Z_65ffdcc2` PF2.69/+215812.6 n239: dPF **+0.09** - dpts **-1415.4** - dn **-7**.
+- **Streak filter:** max_loss=6 (prefer <=7-8) - PASS.
+- **Decision:** **REJECT** - dpts -1415.4 under ~2k pts bar (5m overpromised dpts+3158.8); PF lift alone does not promote when total points fall. Same tick-vs-5m pattern as BY champ/runner rejects.
+- **KEEP unchanged:** asia0-6 / ema31 / wait14 / rc3 / cap800 / flat23 / mb275 / SL1000 / TP range_multx2.25 / sls5/2100 / trail arm4000/tr190 / hold16 / timeout market / wait_from_break / pullback preferred / near_box N6 D1000 trend=off / side both / ticks -> PF2.69/+215812.6 n239 (`20260927T090050Z_65ffdcc2`).
+- **Next:** tick-confirm runner `tr174_temd1900_wait13` (trail_pts=174, timeout_max_ema_dist_pts=1900, max_wait_candles=13) on KEEP seed. If reject -> Batch CA residual/compound on untried BZ soft clears (tr175-188 x temd1900 ladder already screened on 5m but not ticks; prefer axes outside rejected BY/BZ tick trio: asymmetric mb, max_break denser, mild arm/hold not retread). max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-09-28 ~00:13 Europe/Bucharest Asia BZ_runner tick tr174_temd1900_wait13 - REJECT vs NEW KEEP
+- **Tick:** `tr174_temd1900_wait13` = KEEP + `trail_pts=174` `timeout_max_ema_dist_pts=1900` `max_wait_candles=13` - run `20260927T210451Z_ad92f714` - data_source=ticks - window 2025-01 to 2026-09 - workers=2.
+- **Result:** n232 - PF **2.78** - **+214908.1** - win%46.6 - max_loss_streak **6** (max_win 7) - exits {"flatten":39,"sl":119,"tp":13,"trail":61}.
+- **vs NEW KEEP** `20260927T090050Z_65ffdcc2` PF2.69/+215812.6 n239: dPF **+0.09** - dpts **-904.5** - dn **-7**.
+- **Streak filter:** max_loss=6 (prefer <=7-8) - PASS.
+- **Decision:** **REJECT** - dpts -904.5 under ~2k pts bar (5m overpromised dpts+3037); PF lift alone does not promote when total points fall. Fourth consecutive temd/tr/wait13 tick reject (BY champ/runner + BZ champ/runner).
+- **KEEP unchanged:** asia0-6 / ema31 / wait14 / rc3 / cap800 / flat23 / mb275 / SL1000 / TP range_multx2.25 / sls5/2100 / trail arm4000/tr190 / hold16 / timeout market / wait_from_break / pullback preferred / near_box N6 D1000 trend=off / side both / ticks -> PF2.69/+215812.6 n239 (`20260927T090050Z_65ffdcc2`).
+- **Next:** Batch CA `RESIDUAL_CA_OUTSIDE_TEMD_POCKET_NEW_KEEP` 5m - axes outside failed temd×tr×wait13 tick pocket: asymmetric mb, max_break denser, skip_late denser, mild mb volume, otp_off, resume denser, pullback/rco, mild arm/hold/trail alone, be_arm, wait alone; avoid BY/BZ temd×tr×wait13 retreads and BW near-box/TP-fixed/SL-pair. Tick-confirm only clear soft>=2.5 pts lifts (dpts>=~2k), max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-09-28 ~00:41 Europe/Bucharest Asia Batch CA RESIDUAL_CA_OUTSIDE_TEMD_POCKET_NEW_KEEP 5m — no clear pts lifts
+- **Grid:** `results/overnight_5m_grid_20260927T211723Z.json` — tag `RESIDUAL_CA_OUTSIDE_TEMD_POCKET_NEW_KEEP` — seed KEEP ticks `20260927T090050Z_65ffdcc2` (asia0-6 ema31 wait14 rc3 rmb800 flat23 mb275 SL1000 TP range_multx2.25 sls5/2100 trail arm4000/tr190 hold16 near_box N6 D1000 trend=off) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 129 cells (0 errors).
+- **Baseline 5m KEEP** (`NEW_KEEP_baseline`): n239 — PF **2.835** — **+234028.0**.
+- **Top by pts vs baseline:**
+  - `tr175`: PF **2.843** / **+234987.8** n239 — dPF **+0.008** — dpts **+959.8**
+  - `tr180`: PF **2.840** / **+234667.8** n239 — dPF **+0.005** — dpts **+639.8**
+  - `tr185`: PF **2.838** / **+234347.8** n239 — dPF **+0.003** — dpts **+319.8**
+  - `maxbreak19`: PF **2.535** / **+234159.4** n273 — dPF **-0.300** — dpts **+131.4**
+  - `tr188`: PF **2.836** / **+234155.8** n239 — dPF **+0.001** — dpts **+127.8**
+  - `hold15_flat22` / `hold16_flat22` / `hold17_flat22` / `hold18_flat22` / `hold19_flat22` / `hold20_flat22`: PF **2.854** / **+234099.8** n239 — dPF **+0.019** — dpts **+71.8**
+- **CLEAR dpts≥~2k at PF≥2.5:** none.
+- **Soft ≥2.5 with pts lift (under ~2k tick bar):** 11 cells — best `tr175` dpts **+959.8**; hold*_flat22 cluster +71.8.
+- **Under-floor PF<2.0:** `be_arm400` PF0.955; `pb_off` PF1.369; `be_arm600` PF1.370; `be_arm800` PF1.911.
+- **Inert (=baseline):** 13 (otp_off family, rco_on, wick_off, several hold*_flat23).
+- **Best PF-up / pts-down (reject for pts goal):** `maxbreak10` dpts **-59701.6**; asymmetric mb×maxbreak12 ~-27k; `maxbreak12/13/14` cut pts; `sls3_2100` PF2.915 dpts -1326.
+- **Conclusion:** Batch CA screens axes outside failed BY/BZ temd×tr×wait13 tick pocket after fourth consecutive temd tick reject. **No** clear soft≥2.5 pts refine (best `tr175` dpts **+959.8** under ~2k bar). KEEP unchanged (ticks PF2.69/+215812.6 n239 `20260927T090050Z_65ffdcc2`).
+- **Next:** Batch CB `RESIDUAL_CB_TPR_SL_EMA_SOFT_NEW_KEEP` 5m — denser tp_range_mult around KEEP 2.25; SL fixed/sl_cap denser preserving ~1:1.5+; ema_period denser; CA soft pocket compounds **without** temd (`tr175`/`tr180` × hold_flat22 / wait); trail-near-TP arm×tpm compounds; mild min_asia_range + asia window micro. Avoid BY/BZ temd×tr×wait13 retreads, CA singles already screened, BW near-box/TP-fixed, BX armmode from_fill / season filter. Tick-confirm only clear soft≥2.5 pts lifts (dpts≥~2k), max_loss streak ≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-09-28 ~01:14 Europe/Bucharest Asia Batch CB RESIDUAL_CB_TPR_SL_EMA_SOFT_NEW_KEEP 5m - no clear pts lifts
+- **Grid:** `results/overnight_5m_grid_20260927T214441Z.json` - tag `RESIDUAL_CB_TPR_SL_EMA_SOFT_NEW_KEEP` - seed KEEP ticks `20260927T090050Z_65ffdcc2` (asia0-6 ema31 wait14 rc3 cap800 flat23 mb275 SL1000 TP range_multx2.25 sls5/2100 trail arm4000/tr190 hold16 near_box N6 D1000 trend=off) - candles_5m - workers=2 - window 2025-01 to 2026-09 - 113 cells (0 errors).
+- **Baseline 5m KEEP** (`NEW_KEEP_baseline`): n239 - PF **2.835** - **+234028.0**.
+- **Top by pts vs baseline:**
+  - `tr175_tpm2_4` / `arm4000_tr175_tpm2_4`: PF **2.846** / **+235371.9** n239 - dPF **+0.011** - dpts **+1343.9**
+  - `tr172_hold16/17/18_flat22`: PF **2.863** / **+235251.7** n239 - dPF **+0.028** - dpts **+1223.7**
+  - `tr172_hold16_flat23`: PF **2.844** / **+235179.9** n239 - dPF **+0.009** - dpts **+1151.9**
+  - `tr175_hold16/17/18_flat22`: PF **2.861** / **+235059.6** n239 - dPF **+0.026** - dpts **+1031.6**
+  - `tr180_tpm2_4_hold16_flat22`: PF **2.861** / **+235009.0** n239 - dPF **+0.026** - dpts **+981.0**
+- **CLEAR dpts>=~2k at PF>=2.5:** none.
+- **Soft >=2.5 with pts lift (under ~2k tick bar):** 24 cells - best `tr175_tpm2_4` dpts **+1343.9**; also `tpm2_4` / `sl1000_tpm2_4` / `mar250_tpm2_4` / `mar350_tpm2_4` / `tr175_wait13` thin.
+- **Under-floor PF<2.0:** `asia1_5` PF1.803; `asia0_5_tpm2_4` PF1.890; `asia0_5` PF1.899; `asia0_8` PF1.998.
+- **Inert (=baseline):** 10 (slcap* family, mar200/250/350/400).
+- **Best PF-near / pts-down (reject for pts goal):** asia window micro cuts ~57k-113k; `ema36` dpts **-55611**; `sl850` **-41313**; large arm x tpm cut pts; `tr175/180_wait12` ~-35k.
+- **Conclusion:** Batch CB densifies tpr/SL/ema + CA soft pocket compounds without temd after CA stall. **No** clear soft>=2.5 pts refine (best dpts **+1343.9** under ~2k bar). Asia micro / tight SL / oversized arm x tpm rejected. KEEP unchanged (ticks PF2.69/+215812.6 n239 `20260927T090050Z_65ffdcc2`).
+- **Next:** Batch CC `RESIDUAL_CC_SOFT_COMPOUND_PLAN_EF_NEW_KEEP` 5m - compound CB soft pocket to seek dpts>=~2k (`tr172/175/178` x `tpm2.4/2.5` x hold_flat22 x mild wait/mar/sl); plan-E hold/flatten denser; mild rc/rmb/otp x soft; thin plan-F only if compounds stall. Avoid BY/BZ temd x tr x wait13, CA/CB singles already screened, BW near-box/TP-fixed, asia micro underfloor, wait12, arm>=4800, sl850. Tick-confirm only clear soft>=2.5 pts lifts (dpts>=~2k), max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-09-28 ~01:49 Europe/Bucharest Asia Batch CC RESIDUAL_CC_SOFT_COMPOUND_PLAN_EF_NEW_KEEP 5m - no clear pts lifts
+- **Grid:** 
+esults/overnight_5m_grid_20260927T221820Z.json - tag RESIDUAL_CC_SOFT_COMPOUND_PLAN_EF_NEW_KEEP - seed KEEP ticks 20260927T090050Z_65ffdcc2 (asia0-6 ema31 wait14 rc3 cap800 flat23 mb275 SL1000 TP range_multx2.25 sls5/2100 trail arm4000/tr190 hold16 near_box N6 D1000 trend=off) - candles_5m - workers=2 - window 2025-01 to 2026-09 - 127 cells (8 errors: hold*_flat24 hour must be in 0..23).
+- **Baseline 5m KEEP** (NEW_KEEP_baseline): n239 - PF **2.835** - **+234028.0**.
+- **Top by pts vs baseline:**
+  - 	r170_tpm2_4: PF **2.848** / **+235697.2** n239 - dPF **+0.013** - dpts **+1669.2**
+  - 	r172_tpm2_4 / 	r172_tpm2_4_wait14 / mar250_tr172_tpm2_4 / mar350_tr172_tpm2_4: PF **2.847** / **+235567.0** n239 - dPF **+0.012** - dpts **+1539.0**
+  - 	r172_tpm2_4_hold16/17/18_flat22: PF **2.865** / **+235529.1** n239 - dPF **+0.030** - dpts **+1501.1**
+  - 	r175_tpm2_4 family: PF **2.846** / **+235371.9** n239 - dPF **+0.011** - dpts **+1343.9**
+- **CLEAR dpts>=~2k at PF>=2.5:** none.
+- **Soft >=2.5 with pts lift (under ~2k tick bar):** 50 cells - best 	r170_tpm2_4 dpts **+1669.2**; tpm2.5 compounds mostly pts-down vs tpm2.4.
+- **Under-floor PF<2.0:** 0.
+- **Inert (=baseline):** 7 (news_skip + several hold*_flat23).
+- **Best PF-up / pts-down (reject for pts goal):** side_short PF3.771 dpts **-99235**; season_filter PF2.951 dpts **-22249**; hold*_flat21 cluster dpts **-1856**; rc2/4/5 x soft cut 35k-47k.
+- **Conclusion:** Batch CC compounds CB soft pocket (tr x tpm2.4/2.5 x hold_flat22 x wait/mar/sl) after CA/CB stall. **No** clear soft>=2.5 pts refine (best dpts **+1669.2** under ~2k bar). Plan-F side/season/week2 and rc denser reject for total pts. KEEP unchanged (ticks PF2.69/+215812.6 n239 20260927T090050Z_65ffdcc2).
+- **Next:** Batch CD RESIDUAL_CD_TR170_TPM_DENSE_NEW_KEEP 5m - densify CC soft champ pocket (	r166-171 x 	pm2.30-2.45 x hold_flat22 / mild ema29-33 / mild sls / mild arm3900-4100 / mild maxbreak16-18) to seek dpts>=~2k; avoid CC cells already screened, BY/BZ temd x tr x wait13, CA singles, BW near-box/TP-fixed, asia micro, wait12, flat24, arm>=4500, sl850, rc/side/season plan-F retreads. Tick-confirm only clear soft>=2.5 pts lifts (dpts>=~2k), max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
 
