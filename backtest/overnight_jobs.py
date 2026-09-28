@@ -75,6 +75,8 @@ class OvernightJobParams:
     break_on_wick: bool = False
     # Pullback
     pullback_mode: str = "required"  # off | required | preferred
+    pullback_ref: str = "ema"  # ema | fib
+    pullback_fib: float = 0.5
     ema_period: int = 21
     max_wait_candles: int = 8
     wait_from_break: bool = False
@@ -108,6 +110,10 @@ class OvernightJobParams:
     max_hold_hours: float = 10.0
     flatten_hour: int = 18
     one_trade_per_day: bool = True
+    reentry_enabled: bool = False
+    reentry_closes: int = 1
+    reentry_sl_pts: float = 1000.0
+    reentry_tp_pts: float = 3000.0
     side_filter: str = "both"
     seasonal_mode: str = "off"  # off | tag | filter
     seasonal_join: bool = False
@@ -711,6 +717,8 @@ def _run(params: OvernightJobParams) -> None:
             break_on_wick=bool(params.break_on_wick),
             require_close_outside=not bool(params.break_on_wick),
             pullback_mode=str(params.pullback_mode or "required"),
+            pullback_ref=str(getattr(params, "pullback_ref", "ema") or "ema"),
+            pullback_fib=float(getattr(params, "pullback_fib", 0.5) if getattr(params, "pullback_fib", None) is not None else 0.5),
             ema_period=int(params.ema_period),
             max_wait_candles=int(params.max_wait_candles),
             wait_from_break=bool(params.wait_from_break),
@@ -743,6 +751,10 @@ def _run(params: OvernightJobParams) -> None:
             max_hold_hours=float(params.max_hold_hours),
             flatten_hour=int(params.flatten_hour),
             one_trade_per_day=bool(params.one_trade_per_day),
+            reentry_enabled=bool(getattr(params, "reentry_enabled", False)),
+            reentry_closes=max(1, int(getattr(params, "reentry_closes", 1) or 1)),
+            reentry_sl_pts=float(getattr(params, "reentry_sl_pts", 1000.0) or 0.0),
+            reentry_tp_pts=float(getattr(params, "reentry_tp_pts", 3000.0) or 0.0),
             side_filter=str(params.side_filter or "both"),
             seasonal_mode=str(params.seasonal_mode or "off"),
             seasonal_join=bool(params.seasonal_join),
@@ -1024,7 +1036,8 @@ def _run(params: OvernightJobParams) -> None:
             result["month_errors"] = errors
 
         DEFAULT_RESULTS.mkdir(parents=True, exist_ok=True)
-        tag = f"overnight_{params.symbol}_{params.date_from}_{params.date_to}"
+        src_tag = "ticks" if src == "ticks" else "5m"
+        tag = f"overnight_{params.symbol}_{src_tag}_{params.date_from}_{params.date_to}"
         path, run_id = unique_result_path(tag)
         result["run_id"] = run_id
         path.write_text(json.dumps(result, indent=2, default=str))

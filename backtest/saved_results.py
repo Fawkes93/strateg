@@ -27,7 +27,7 @@ KNOWN_KINDS = frozenset(
 )
 
 _PEEK_BYTES = 8192
-_STR_KEYS = ("kind", "symbol", "date_from", "date_to", "finished_at", "from", "to")
+_STR_KEYS = ("kind", "symbol", "date_from", "date_to", "finished_at", "from", "to", "data_source")
 _NUM_KEYS = ("trades", "alerts", "sum_pts", "run_count", "ticks")
 
 
@@ -252,6 +252,12 @@ def _label(name: str, fields: Dict[str, Any], kind: str) -> str:
         parts.append(f"{fields['alerts']} alerts")
     elif fields.get("trades") is not None:
         parts.append(f"{fields['trades']} trades")
+    if kind == "overnight_break":
+        source = fields.get("data_source")
+        if source == "ticks":
+            parts.append("ticks")
+        elif source == "candles_5m":
+            parts.append("5m candles")
     if fields.get("sum_pts") is not None:
         parts.append(f"sum {fields['sum_pts']}")
     head = " · ".join(parts)

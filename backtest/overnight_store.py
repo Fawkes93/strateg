@@ -68,6 +68,7 @@ _SUMMARY_KEYS = (
     "skip_reasons",
     "trail_armed_pct",
     "be_armed_pct",
+    "reentry",
     "avg_win_pts",
     "avg_loss_pts",
 )

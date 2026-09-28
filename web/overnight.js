@@ -23,6 +23,8 @@
     "ob-break-wick",
     "ob-max-break-candles",
     "ob-pullback-mode",
+    "ob-pullback-ref",
+    "ob-pullback-fib",
     "ob-ema",
     "ob-max-wait",
     "ob-wait-from-break",
@@ -62,6 +64,10 @@
     "ob-be-arm",
     "ob-max-hold",
     "ob-flatten",
+    "ob-reentry",
+    "ob-reentry-closes",
+    "ob-reentry-sl",
+    "ob-reentry-tp",
     "ob-one-per-day",
     "ob-workers",
     "ob-data",
@@ -267,6 +273,14 @@
     if (timeoutEma) timeoutEma.disabled = timeoutOff;
     if (timeoutBreak) timeoutBreak.disabled = timeoutOff;
     if (timeoutPullback) timeoutPullback.disabled = timeoutOff;
+    const fib = $("ob-pullback-fib");
+    const ref = $("ob-pullback-ref") && $("ob-pullback-ref").value;
+    if (fib) fib.disabled = mode === "off" || ref !== "fib";
+    const reOn = $("ob-reentry") && $("ob-reentry").checked;
+    ["ob-reentry-closes", "ob-reentry-sl", "ob-reentry-tp"].forEach(function (id) {
+      const el = $(id);
+      if (el) el.disabled = !reOn;
+    });
     const nearOff = mode !== "required";
     ["ob-near-bars", "ob-near-pts", "ob-near-trend"].forEach(function (id) {
       const el = $(id);
@@ -450,10 +464,22 @@
         </label>
         <label>Pullback mode
           <select id="ob-pullback-mode">
-            <option value="required" selected>required (EMA or higher-close)</option>
+            <option value="required" selected>required (level or higher-close)</option>
             <option value="preferred">preferred (timeout action)</option>
             <option value="off">off (enter on break close)</option>
           </select>
+          <span class="field-help">Required waits for the level or a higher/lower close. Preferred can still fill at the timeout. Off enters on the break close.</span>
+        </label>
+        <label>Pullback level
+          <select id="ob-pullback-ref">
+            <option value="ema" selected>EMA</option>
+            <option value="fib">Fib of the Asia box</option>
+          </select>
+          <span class="field-help">Fib uses the Asia start-to-end high and low. Fib 0 is the edge in the trade direction (the high on a long, the low on a short). Fib 1 is the other edge. A long that touches 0.5 has pulled back halfway through the box.</span>
+        </label>
+        <label>Fib level
+          <input type="number" id="ob-pullback-fib" value="0.5" min="0" max="1" step="0.001" />
+          <span class="field-help">0.5 is the midpoint. 0.618 is a deeper pullback, closer to the far side of the box. Higher/lower close and preferred timeout still run beside this.</span>
         </label>
         <label>EMA period (15m)
           <input type="number" id="ob-ema" value="21" min="5" max="100" />
@@ -524,6 +550,22 @@
           <input type="number" id="ob-late-short-asia" value="3000" min="0" step="100"
             title="Only skip late shorts when Asia range is below this. 0 = any Asia size." />
         </label>
+        <div class="ob-near-box" id="ob-reentry-box">
+          <div class="ob-near-box-title">Second trade</div>
+          <p class="field-help">Only after the first trade exits at its stop. The loss stays. Then this many signal candles in a row must close back through that original fill. The last of those closes is the new entry, with its own fixed stop and target. No trail. 1 candle is the first close back through.</p>
+          <div class="ob-near-box-fields">
+            <label class="chk"><input type="checkbox" id="ob-reentry" /> On</label>
+            <label>Closes through fill
+              <input type="number" id="ob-reentry-closes" value="1" min="1" max="8" step="1" />
+            </label>
+            <label>SL (pts)
+              <input type="number" id="ob-reentry-sl" value="1000" min="0" step="50" />
+            </label>
+            <label>TP (pts)
+              <input type="number" id="ob-reentry-tp" value="3000" min="0" step="50" />
+            </label>
+          </div>
+        </div>
         <label>Side filter
           <select id="ob-side">
             <option value="both" selected>both</option>
@@ -695,6 +737,9 @@
       </div>
       <p class="muted" id="ob-meta">No run yet.</p>
       <div class="hero-grid" id="ob-hero"></div>
+      <h3>Second trade</h3>
+      <p class="table-note" id="ob-reentry-note">Turn the second trade on to see only those extra entries here. They are also included in the totals above.</p>
+      <div class="hero-grid" id="ob-reentry-hero"></div>
       <div class="ob-params" id="ob-run-params" hidden></div>
       <p class="table-note" id="ob-skip-breakdown"></p>
       <h3>Streaks</h3>
@@ -870,6 +915,8 @@
 
   const ENTRY_LABELS = {
     ema_touch: "EMA touch",
+    fib_touch: "Fib touch",
+    reentry: "Second trade",
     higher_close: "Higher close resume",
     lower_close: "Lower close resume",
     break_close: "Break close",
@@ -888,6 +935,8 @@
     ["break_on_wick", "Wick break"],
     ["max_break_candles_after", "Max break bars"],
     ["pullback_mode", "Pullback"],
+    ["pullback_ref", "Pullback level"],
+    ["pullback_fib", "Fib level"],
     ["ema_period", "EMA"],
     ["max_wait_candles", "Max wait"],
     ["wait_from_break", "Wait from break"],
@@ -929,6 +978,10 @@
     ["max_hold_hours", "Max hold h"],
     ["flatten_hour", "Flatten hour"],
     ["one_trade_per_day", "One per day"],
+    ["reentry_enabled", "Second trade"],
+    ["reentry_closes", "Second-trade closes"],
+    ["reentry_sl_pts", "Second-trade SL"],
+    ["reentry_tp_pts", "Second-trade TP"],
   ];
 
   const PARAM_FORM_IDS = {
@@ -940,6 +993,8 @@
     break_on_wick: "ob-break-wick",
     max_break_candles_after: "ob-max-break-candles",
     pullback_mode: "ob-pullback-mode",
+    pullback_ref: "ob-pullback-ref",
+    pullback_fib: "ob-pullback-fib",
     ema_period: "ob-ema",
     max_wait_candles: "ob-max-wait",
     wait_from_break: "ob-wait-from-break",
@@ -980,6 +1035,10 @@
     max_hold_hours: "ob-max-hold",
     flatten_hour: "ob-flatten",
     one_trade_per_day: "ob-one-per-day",
+    reentry_enabled: "ob-reentry",
+    reentry_closes: "ob-reentry-closes",
+    reentry_sl_pts: "ob-reentry-sl",
+    reentry_tp_pts: "ob-reentry-tp",
   };
 
   function fmtParam(key, raw) {
@@ -1466,6 +1525,26 @@
         heroItem("Avg loss", result.avg_loss_pts) +
         heroItem("Skipped", result.skipped);
     }
+    const reHero = $("ob-reentry-hero");
+    const reNote = $("ob-reentry-note");
+    const re = result.reentry || {};
+    if (reHero) {
+      const n = Number(re.trades) || 0;
+      reHero.innerHTML = n
+        ? heroItem("Trades", n) +
+          heroItem("Win %", re.win_pct != null ? re.win_pct + "%" : "—") +
+          heroItem("Sum pts", re.sum_pts) +
+          heroItem("Avg pts", re.avg_pts) +
+          heroItem("PF", re.profit_factor != null ? re.profit_factor : "—") +
+          heroItem("Avg win", re.avg_win_pts) +
+          heroItem("Avg loss", re.avg_loss_pts)
+        : "";
+    }
+    if (reNote) {
+      reNote.textContent = (Number(re.trades) || 0)
+        ? "These numbers are only the second entries, the ones taken after a stop. They are already inside the totals above."
+        : "No second trades in this run. Turn the section on and set how many closes must come back through the fill.";
+    }
     renderRunParams(result);
     renderStreaks(result, streakHero, stb);
     if (breakdown) {
@@ -1754,6 +1833,8 @@
         near_box_bars: Math.max(0, Number(($("ob-near-bars") && $("ob-near-bars").value) || 0)),
         near_box_pts: Number(($("ob-near-pts") && $("ob-near-pts").value) || 0),
         near_box_trend: ($("ob-near-trend") && $("ob-near-trend").value) || "off",
+        pullback_ref: ($("ob-pullback-ref") && $("ob-pullback-ref").value) || "ema",
+        pullback_fib: Number(($("ob-pullback-fib") && $("ob-pullback-fib").value) || 0.5),
         use_higher_close: $("ob-higher-close") && $("ob-higher-close").checked,
         resume_closes: Math.max(1, Number($("ob-resume-closes") && $("ob-resume-closes").value) || 1),
         resume_max_break_pts: Number(($("ob-resume-max-break") && $("ob-resume-max-break").value) || 0),
@@ -1776,6 +1857,10 @@
         max_hold_hours: Number($("ob-max-hold").value),
         flatten_hour: Number($("ob-flatten").value),
         one_trade_per_day: $("ob-one-per-day") && $("ob-one-per-day").checked,
+        reentry_enabled: $("ob-reentry") && $("ob-reentry").checked,
+        reentry_closes: Math.max(1, Number($("ob-reentry-closes") && $("ob-reentry-closes").value) || 1),
+        reentry_sl_pts: Number(($("ob-reentry-sl") && $("ob-reentry-sl").value) || 0),
+        reentry_tp_pts: Number(($("ob-reentry-tp") && $("ob-reentry-tp").value) || 0),
         side_filter: $("ob-side").value,
         seasonal_mode: ($("ob-seasonal-mode") && $("ob-seasonal-mode").value) || "off",
         seasonal_join: $("ob-seasonal-join") && $("ob-seasonal-join").checked,
@@ -1826,6 +1911,10 @@
   syncTpControls();
   const modeEl = $("ob-pullback-mode");
   if (modeEl) modeEl.addEventListener("change", syncPullbackControls);
+  const refEl = $("ob-pullback-ref");
+  if (refEl) refEl.addEventListener("change", syncPullbackControls);
+  const reEl = $("ob-reentry");
+  if (reEl) reEl.addEventListener("change", syncPullbackControls);
   const resumeEl = $("ob-higher-close");
   if (resumeEl) resumeEl.addEventListener("change", syncPullbackControls);
   const trailModeEl = $("ob-trail-arm-mode");

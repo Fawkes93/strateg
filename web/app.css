@@ -1229,6 +1229,16 @@ body.ab-page #ab-sub .ab-loss {
     height: min(78vh, 980px);
   }
 }
+.dmy-native {
+  display: none;
+}
+.dmy-date {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.dmy-date.dmy-bad {
+  border-color: var(--bad);
+}
 .ab-chart-wrap {
   position: relative;
   width: 100%;
