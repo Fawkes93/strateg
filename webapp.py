@@ -493,6 +493,8 @@ class OvernightRunRequest(BaseModel):
     max_break_candles_after: int = 8
     break_on_wick: bool = False
     pullback_mode: str = "required"  # off | required | preferred
+    pullback_ref: str = "ema"  # ema | fib
+    pullback_fib: float = 0.5
     ema_period: int = 21
     max_wait_candles: int = 8
     wait_from_break: bool = False
@@ -525,6 +527,10 @@ class OvernightRunRequest(BaseModel):
     max_hold_hours: float = 10.0
     flatten_hour: int = 18
     one_trade_per_day: bool = True
+    reentry_enabled: bool = False
+    reentry_closes: int = 1
+    reentry_sl_pts: float = 1000.0
+    reentry_tp_pts: float = 3000.0
     side_filter: str = "both"
     seasonal_mode: str = "off"
     seasonal_join: bool = False
@@ -559,6 +565,8 @@ def overnight_run(body: OvernightRunRequest):
         max_break_candles_after=int(body.max_break_candles_after),
         break_on_wick=bool(body.break_on_wick),
         pullback_mode=str(body.pullback_mode or "required"),
+        pullback_ref=str(body.pullback_ref or "ema"),
+        pullback_fib=float(body.pullback_fib if body.pullback_fib is not None else 0.5),
         ema_period=int(body.ema_period),
         max_wait_candles=int(body.max_wait_candles),
         wait_from_break=bool(body.wait_from_break),
@@ -593,6 +601,10 @@ def overnight_run(body: OvernightRunRequest):
         max_hold_hours=float(body.max_hold_hours),
         flatten_hour=int(body.flatten_hour),
         one_trade_per_day=bool(body.one_trade_per_day),
+        reentry_enabled=bool(body.reentry_enabled),
+        reentry_closes=max(1, int(body.reentry_closes or 1)),
+        reentry_sl_pts=float(body.reentry_sl_pts or 0.0),
+        reentry_tp_pts=float(body.reentry_tp_pts or 0.0),
         side_filter=str(body.side_filter or "both"),
         seasonal_mode=str(body.seasonal_mode or "off"),
         seasonal_join=bool(body.seasonal_join),

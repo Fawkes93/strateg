@@ -50,11 +50,18 @@
       const opt = document.createElement("option");
       opt.value = String(run.id);
       const sum = run.summary || {};
+      const src =
+        run.data_source === "ticks"
+          ? "ticks"
+          : run.data_source === "candles_5m"
+            ? "5m candles"
+            : "";
       opt.textContent =
         "#" +
         run.id +
         " " +
         (run.symbol || "") +
+        (src ? " " + src : "") +
         " " +
         run.date_from +
         "→" +

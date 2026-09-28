@@ -13,6 +13,19 @@ from backtest import jobs as jobs_mod
 from backtest import session_jobs as session_mod
 
 
+def test_overnight_label_names_the_data_source():
+    assert "5m candles" in sr._label(
+        "overnight_XAUUSD_5m_2025-05-01_2025-08-01.json",
+        {"symbol": "XAU/USD", "date_from": "2025-05-01", "date_to": "2025-08-01", "trades": 4, "data_source": "candles_5m"},
+        "overnight_break",
+    )
+    assert "ticks" in sr._label(
+        "overnight_XAUUSD_ticks_2025-05-01_2025-08-01.json",
+        {"symbol": "XAU/USD", "trades": 4, "data_source": "ticks"},
+        "overnight_break",
+    )
+
+
 def test_classify_filename():
     assert sr.classify_filename("batch_XAUUSD_20260831T094332.json") == "batch_sweep"
     assert (

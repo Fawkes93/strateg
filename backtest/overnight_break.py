@@ -38,6 +38,7 @@ from statistics import mean
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from zoneinfo import ZoneInfo
 
+from backtest.asia_box import fib_px
 from backtest.candles import Candle, CandleBuilder, aggregate_tf, is_market_open, to_utc
 from backtest.config import point_size
 from backtest.dukascopy import Tick, reaktor_symbol
@@ -75,6 +76,10 @@ class OvernightParams:
     break_on_wick: bool = False  # True → same as require_close_outside False
     # Pullback / entry
     pullback_mode: str = "required"  # off | required | preferred
+    # ema = wait for the EMA. fib = wait for a retracement of the Asia box.
+    # Fib 0 is the Asia edge in the trade direction, Fib 1 the other edge.
+    pullback_ref: str = "ema"  # ema | fib
+    pullback_fib: float = 0.5
     ema_period: int = 21
     ema_tf_min: int = 15
     max_wait_candles: int = 8  # 15m candles after break
@@ -127,6 +132,13 @@ class OvernightParams:
     max_hold_hours: float = 10.0
     flatten_hour: int = 18  # local hour hard flatten
     one_trade_per_day: bool = True
+    # Second entry only after the first trade exits at its stop.
+    # Needs this many signal candles in a row to close back through the
+    # original fill. Fixed stop and target from that new fill. No trail.
+    reentry_enabled: bool = False
+    reentry_closes: int = 1
+    reentry_sl_pts: float = 1000.0
+    reentry_tp_pts: float = 3000.0
     side_filter: str = "both"  # both | long | short
     # Month bias (Bucharest). off = ignore table. tag = stamp only.
     # filter = skip Asia breaks that fight the month.
@@ -152,6 +164,17 @@ def _normalize_params(params: OvernightParams) -> OvernightParams:
     if params.pullback_mode == "ema":
         params.pullback_mode = "required"
         params.use_higher_close = False
+    ref = str(getattr(params, "pullback_ref", "ema") or "ema").strip().lower()
+    params.pullback_ref = "fib" if ref == "fib" else "ema"
+    try:
+        params.pullback_fib = min(1.0, max(0.0, float(params.pullback_fib)))
+    except (TypeError, ValueError):
+        params.pullback_fib = 0.5
+    try:
+        params.reentry_closes = max(1, int(params.reentry_closes or 1))
+    except (TypeError, ValueError):
+        params.reentry_closes = 1
+    params.reentry_enabled = bool(params.reentry_enabled)
     if bool(params.break_on_wick):
         params.require_close_outside = False
     elif not params.require_close_outside:
@@ -650,7 +673,49 @@ def entry_label(reason: str) -> str:
         "timeout_market": "Timeout market",
         "near_box_timeout": "Near-box timeout",
         "seasonal_join": "Seasonal join (inside box)",
+        "fib_touch": "Fib touch",
+        "reentry": "Second trade",
     }.get(reason, reason or "—")
+
+
+def trade_fib_px(asia_high: float, asia_low: float, side: str, level: float) -> float:
+    """Asia-box fib. Fib 0 is the edge in the trade direction, Fib 1 the other edge."""
+    if side == "UP":
+        return fib_px(asia_high, asia_low, level)
+    return fib_px(asia_low, asia_high, level)
+
+
+def _close_through(side: str, close: float, entry: float) -> bool:
+    if side == "UP":
+        return close >= entry - 1e-9
+    return close <= entry + 1e-9
+
+
+def reentry_signal_candle(
+    candles: Sequence[Candle],
+    *,
+    after: datetime,
+    side: str,
+    entry: float,
+    need: int,
+    tz: ZoneInfo,
+    flatten_local: datetime,
+) -> Optional[Candle]:
+    """Nth signal candle in a row that closes back through the original fill."""
+    streak = 0
+    required = max(1, int(need))
+    for candle in candles:
+        if candle.close_time <= after:
+            continue
+        if _local(candle.open_time, tz) >= flatten_local:
+            break
+        if _close_through(side, candle.close, entry):
+            streak += 1
+            if streak >= required:
+                return candle
+        else:
+            streak = 0
+    return None
 
 
 def _fmt_px(x: Optional[float]) -> str:
@@ -684,6 +749,8 @@ def _decision_line(
     best_resume_pts: Optional[float] = None,
     use_higher_close: bool = True,
     resume_closes: int = 1,
+    pullback_ref: str = "ema",
+    pullback_fib: float = 0.5,
 ) -> str:
     parts: List[str] = [entry_label(reason)]
     if wait_n is not None:
@@ -707,9 +774,16 @@ def _decision_line(
             kind = "higher" if side == "UP" else "lower"
             parts.append(f"{resume_closes} consecutive {kind} closes")
         if same_bar_ema:
-            parts.append("EMA also touched this bar (close wins)")
+            touched = "Fib" if pullback_ref == "fib" else "EMA"
+            parts.append(f"{touched} also touched this bar (close wins)")
+        elif pullback_ref == "fib":
+            parts.append(f"Fib {pullback_fib:g}")
         elif ema is not None:
             parts.append(f"EMA {_fmt_px(ema)}")
+    elif reason == "fib_touch":
+        parts.append(
+            f"Fib {pullback_fib:g} at {_fmt_px(ema)} fill {_fmt_px(entry)}".strip()
+        )
     elif reason == "ema_touch":
         rel = (
             f"({entry_vs_ema_pts:+.0f} pts vs EMA)"
@@ -1083,6 +1157,7 @@ def _simulate_from_entry(
     trail_arm_pts: Optional[float] = None,
     trail_dist_pts: Optional[float] = None,
     trail_from_fill: bool = False,
+    be_arm_override: Optional[float] = None,
 ) -> Tuple[str, datetime, float, float, bool, float, float, float, float]:
     """
     Walk ticks after fill.
@@ -1102,10 +1177,13 @@ def _simulate_from_entry(
     arm_pts = float(params.trail_arm_pts or 0.0) if trail_arm_pts is None else float(trail_arm_pts)
     gap = float(params.trail_pts or 0.0) if trail_dist_pts is None else float(trail_dist_pts)
     be_arm = 0.0
-    try:
-        be_arm = max(0.0, float(getattr(params, "be_arm_pts", 0.0) or 0.0))
-    except (TypeError, ValueError):
-        be_arm = 0.0
+    if be_arm_override is not None:
+        be_arm = max(0.0, float(be_arm_override))
+    else:
+        try:
+            be_arm = max(0.0, float(getattr(params, "be_arm_pts", 0.0) or 0.0))
+        except (TypeError, ValueError):
+            be_arm = 0.0
     if trail_from_fill and gap > 0:
         trail_armed = True
         if side == "UP":
@@ -1217,6 +1295,7 @@ def _simulate_from_candles(
     trail_arm_pts: Optional[float] = None,
     trail_dist_pts: Optional[float] = None,
     trail_from_fill: bool = False,
+    be_arm_override: Optional[float] = None,
 ) -> Tuple[str, datetime, float, float, bool, float, float, float, float]:
     """Walk 5m bars from start_index (inclusive). Tightest stop > TP on the same bar."""
     trail_armed = False
@@ -1237,10 +1316,13 @@ def _simulate_from_candles(
     arm_pts = float(params.trail_arm_pts or 0.0) if trail_arm_pts is None else float(trail_arm_pts)
     gap = float(params.trail_pts or 0.0) if trail_dist_pts is None else float(trail_dist_pts)
     be_arm = 0.0
-    try:
-        be_arm = max(0.0, float(getattr(params, "be_arm_pts", 0.0) or 0.0))
-    except (TypeError, ValueError):
-        be_arm = 0.0
+    if be_arm_override is not None:
+        be_arm = max(0.0, float(be_arm_override))
+    else:
+        try:
+            be_arm = max(0.0, float(getattr(params, "be_arm_pts", 0.0) or 0.0))
+        except (TypeError, ValueError):
+            be_arm = 0.0
     if trail_from_fill and gap > 0:
         trail_armed = True
         if side == "UP":
@@ -2059,11 +2141,16 @@ def _run_overnight_days(
                 else:
                     resume_streak = 0
 
+                level_px = ema_val
+                if params.pullback_ref == "fib":
+                    level_px = trade_fib_px(
+                        asia_high, asia_low, side, params.pullback_fib
+                    )
                 ema_touched = False
                 ema_fill: Optional[_Fill] = None
-                if ema_val is not None:
+                if level_px is not None:
                     ema_touched, ema_fill, bar_closest = feed.ema_scan(
-                        wc.open_time, wc.close_time, side, ema_val, ps
+                        wc.open_time, wc.close_time, side, level_px, ps
                     )
                     if bar_closest is not None and (
                         closest_ema_pts is None or bar_closest < closest_ema_pts
@@ -2096,10 +2183,12 @@ def _run_overnight_days(
                 if ema_touched and ema_fill is not None and not late_block:
                     entry_ts = ema_fill.ts
                     entry_px = ema_fill.px
-                    entry_reason = "ema_touch"
+                    entry_reason = (
+                        "fib_touch" if params.pullback_ref == "fib" else "ema_touch"
+                    )
                     entry_idx = ema_fill.index
                     wait_i = wi
-                    ema_at = ema_val
+                    ema_at = level_px if params.pullback_ref == "fib" else ema_val
                     prev_at = prev_close
                     sig_close = wc.close
                     found = True
@@ -2216,6 +2305,8 @@ def _run_overnight_days(
             best_resume_pts=best_resume_pts,
             use_higher_close=_resume_enabled(params),
             resume_closes=_resume_need(params),
+            pullback_ref=params.pullback_ref,
+            pullback_fib=float(params.pullback_fib),
         )
         note = bias_snap.decision_note() if bias_snap is not None else regime_lbl
         if note:
@@ -2341,6 +2432,120 @@ def _run_overnight_days(
                 news_title=day_kw.get("news_title"),
             )
         )
+        if (
+            params.reentry_enabled
+            and reason == "sl"
+            and exit_ts is not None
+            and float(params.reentry_sl_pts) > 0
+            and float(params.reentry_tp_pts) > 0
+        ):
+            signal = reentry_signal_candle(
+                day_candles,
+                after=exit_ts,
+                side=side,
+                entry=entry_px,
+                need=params.reentry_closes,
+                tz=tz,
+                flatten_local=flatten_local,
+            )
+            fill2 = (
+                feed.at_close(signal.close_time, px=signal.close)
+                if signal is not None
+                else None
+            )
+            if fill2 is not None and _local(fill2.ts, tz) < flatten_local:
+                sl2_pts = float(params.reentry_sl_pts)
+                tp2_pts = float(params.reentry_tp_pts)
+                if side == "UP":
+                    sl2 = fill2.px - sl2_pts * ps
+                    tp2 = fill2.px + tp2_pts * ps
+                else:
+                    sl2 = fill2.px + sl2_pts * ps
+                    tp2 = fill2.px - tp2_pts * ps
+                (
+                    reason2,
+                    exit_ts2,
+                    exit_px2,
+                    pts2,
+                    trail2,
+                    _f2,
+                    _a2,
+                    _b2,
+                    _w2,
+                    be2,
+                ) = feed.simulate(
+                    fill2.index,
+                    side=side,
+                    entry=fill2.px,
+                    sl=sl2,
+                    tp=tp2,
+                    params=params,
+                    ps=ps,
+                    tz=tz,
+                    flatten_local=flatten_local,
+                    trail_arm_pts=0.0,
+                    trail_dist_pts=0.0,
+                    trail_from_fill=False,
+                    be_arm_override=0.0,
+                )
+                fav2, adv2, best2, worst2 = feed.excursion(
+                    fill2.index,
+                    side=side,
+                    entry=fill2.px,
+                    ps=ps,
+                    tz=tz,
+                    flatten_local=flatten_local,
+                )
+                trades.append(
+                    OvernightTrade(
+                        local_date=day.isoformat(),
+                        side=side,
+                        asia_high=round(asia_high, 5),
+                        asia_low=round(asia_low, 5),
+                        asia_range_pts=round(asia_range_pts, 1),
+                        break_ts=break_candle.close_time.isoformat(),
+                        break_price=round(break_candle.close, 5),
+                        break_candle_open=round(break_candle.open, 5),
+                        break_candle_close=round(break_candle.close, 5),
+                        entry_ts=fill2.ts.isoformat(),
+                        entry=round(fill2.px, 5),
+                        entry_reason="reentry",
+                        entry_label=entry_label("reentry"),
+                        wait_i=int(params.reentry_closes),
+                        wait_n=int(params.reentry_closes),
+                        signal_close=round(signal.close, 5) if signal else None,
+                        break_pts=_round_or_none(break_pts, 1),
+                        decision=(
+                            f"Second trade · {int(params.reentry_closes)} close"
+                            f"{'' if int(params.reentry_closes) == 1 else 's'} back through "
+                            f"{_fmt_px(entry_px)} · SL {sl2_pts:.0f} · TP {tp2_pts:.0f}"
+                        ),
+                        sl=round(sl2, 5),
+                        tp=round(tp2, 5),
+                        sl_pts=round(sl2_pts, 1),
+                        tp_pts=round(tp2_pts, 1),
+                        exit_ts=exit_ts2.isoformat() if exit_ts2 else None,
+                        exit=round(exit_px2, 5),
+                        exit_reason=reason2,
+                        pts=round(pts2, 1),
+                        trail_arm_used=0.0,
+                        trail_armed=bool(trail2),
+                        be_armed=bool(be2),
+                        max_fav_pts=round(fav2, 1),
+                        max_adv_pts=round(adv2, 1),
+                        max_fav_price=round(best2, 5),
+                        max_adv_price=round(worst2, 5),
+                        seasonal_regime=bias_kw.get("seasonal_regime"),
+                        seasonal_label=bias_kw.get("seasonal_label"),
+                        trend_state=bias_kw.get("trend_state"),
+                        trend_side=bias_kw.get("trend_side"),
+                        trend_move_pts=bias_kw.get("trend_move_pts"),
+                        bias_conflict=bool(bias_kw.get("bias_conflict")),
+                        bias_side=bias_kw.get("bias_side"),
+                        news_kind=day_kw.get("news_kind"),
+                        news_title=day_kw.get("news_title"),
+                    )
+                )
         traded_days.add(day)
 
     return summarize_overnight(
@@ -2364,7 +2569,9 @@ def _pct(a: int, b: int) -> Optional[float]:
     return round(100.0 * a / b, 1)
 
 
-def _trade_stats(trades: Sequence[OvernightTrade]) -> Dict[str, Any]:
+def _trade_stats(
+    trades: Sequence[OvernightTrade], *, with_reentry: bool = True
+) -> Dict[str, Any]:
     n = len(trades)
     wins = sum(1 for t in trades if t.pts > 1e-9)
     losses = sum(1 for t in trades if t.pts < -1e-9)
@@ -2388,7 +2595,7 @@ def _trade_stats(trades: Sequence[OvernightTrade]) -> Dict[str, Any]:
     pf = round(gp / gl, 2) if gl > 1e-9 else None
     trail_n = sum(1 for t in trades if t.trail_armed)
     be_n = sum(1 for t in trades if t.be_armed)
-    return {
+    out = {
         "trades": n,
         "wins": wins,
         "losses": losses,
@@ -2406,6 +2613,10 @@ def _trade_stats(trades: Sequence[OvernightTrade]) -> Dict[str, Any]:
         "profit_factor": pf,
         "sum_pts": round(sum(t.pts for t in trades), 1),
     }
+    if with_reentry:
+        second = [t for t in trades if t.entry_reason == "reentry"]
+        out["reentry"] = _trade_stats(second, with_reentry=False)
+    return out
 
 
 def _streak_kind(pts: float) -> Optional[str]:

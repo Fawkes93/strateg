@@ -13,13 +13,14 @@ import itertools
 import json
 import os
 import queue
+import signal
 import threading
 import time
 import traceback
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from multiprocessing import Manager
+from multiprocessing import Manager, get_context
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -133,6 +134,11 @@ _cancel = threading.Event()
 # Active process pool (if any) so Stop can hard-kill workers mid-replay
 _active_pool: Optional[ProcessPoolExecutor] = None
 _active_pool_lock = threading.Lock()
+# Set inside the sweep child so progress is forwarded to the UI process.
+_progress_q = None
+# The sweep child and its process group. Stop SIGKILLs this group.
+_sweep_proc = None
+_sweep_pgid: Optional[int] = None
 
 
 def get_batch_state() -> Dict[str, Any]:
@@ -152,10 +158,70 @@ def is_batch_running() -> bool:
 
 
 def _set_prog(**kwargs: Any) -> None:
+    q = _progress_q
+    if q is not None:
+        try:
+            q.put_nowait(("progress", kwargs))
+        except Exception:
+            pass
+        return
     with _lock:
         for k, v in kwargs.items():
             if hasattr(_state.progress, k):
                 setattr(_state.progress, k, v)
+
+
+def _kill_sweep_process(proc, pgid: Optional[int]) -> None:
+    """SIGKILL the sweep process group. Never the web server's own group."""
+    if pgid and pgid != os.getpgrp():
+        try:
+            os.killpg(int(pgid), signal.SIGKILL)
+            return
+        except ProcessLookupError:
+            pass
+        except Exception:
+            pass
+    if proc is not None:
+        try:
+            if proc.is_alive():
+                proc.kill()
+        except Exception:
+            pass
+
+
+def _hold_process_group(seconds: float) -> None:
+    """Test helper: become its own process group and sleep."""
+    try:
+        os.setsid()
+    except OSError:
+        pass
+    time.sleep(seconds)
+
+
+def _batch_child(cfg: Dict[str, Any], items: List[Dict[str, Any]], q) -> None:
+    """Run the sweep in its own session so Stop can kill it and its workers."""
+    global _progress_q
+    _progress_q = q
+    try:
+        os.setsid()
+    except OSError:
+        pass
+    try:
+        q.put(("ready", os.getpgrp()))
+    except Exception:
+        pass
+    try:
+        report = _pipeline_batch(cfg, items)
+        saved = report.get("saved_to") if isinstance(report, dict) else None
+        try:
+            q.put(("done", saved))
+        except Exception:
+            pass
+    except Exception:
+        try:
+            q.put(("error", traceback.format_exc()))
+        except Exception:
+            pass
 
 
 def _force_kill_pool() -> int:
@@ -206,23 +272,30 @@ def _force_kill_pool() -> int:
 
 def stop_batch() -> Dict[str, Any]:
     """
-    Stop the sweep now: set cancel flag and hard-kill worker processes
-    so RAM is freed (not just 'stop requested' while workers keep replaying).
+    Stop the sweep now by killing its process group.
+    The replay, tick load, and worker processes die with it. The web server stays up.
     """
+    global _sweep_proc, _sweep_pgid
     with _lock:
         if not _state.running:
             return {"ok": False, "error": "No batch running"}
         _cancel.set()
-        _set_prog(
-            phase="cancelling",
-            message="Stopping… killing workers to free RAM",
-        )
-    n = _force_kill_pool()
-    return {
-        "ok": True,
-        "message": f"Stop sent · terminated {n} worker process(es)",
-        "workers_killed": n,
-    }
+        proc = _sweep_proc
+        pgid = _sweep_pgid
+        _state.progress.phase = "cancelling"
+        _state.progress.message = "Stopping… killing the sweep process"
+    _kill_sweep_process(proc, pgid)
+    _force_kill_pool()
+    if _thread is not None and _thread is not threading.current_thread():
+        _thread.join(timeout=2.0)
+    with _lock:
+        _state.running = False
+        _sweep_proc = None
+        _sweep_pgid = None
+        _state.progress.phase = "cancelled"
+        _state.progress.message = "Stopped"
+        _state.progress.finished_at = datetime.now(timezone.utc).isoformat()
+    return {"ok": True, "message": "Stopped · sweep process killed"}
 
 
 def load_report(report: Dict[str, Any]) -> Dict[str, Any]:
@@ -627,30 +700,80 @@ class BatchCancelled(Exception):
 
 
 def _run_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> None:
+    """UI thread: pump progress from the sweep child. Stop kills that child."""
+    global _sweep_proc, _sweep_pgid
+    proc = None
     try:
-        report = _pipeline_batch(cfg, items)
+        ctx = get_context("spawn")
+        q = ctx.Queue(maxsize=200)
+        proc = ctx.Process(
+            target=_batch_child,
+            args=(cfg, items, q),
+            name="batch-sweep-proc",
+        )
+        proc.start()
         with _lock:
-            # Keep full variant summary rows for Sweep UI; ticks already released in finally.
-            _state.report = report
-        cancelled = bool(report.get("cancelled")) or _cancel.is_set()
-        done_n = int(report.get("run_count") or 0)
-        total_n = int(report.get("run_total") or len(items))
-        _set_prog(
-            phase="done" if not cancelled else "cancelled",
-            message=(
-                f"Stopped · {done_n}/{total_n} runs completed"
-                if cancelled
-                else f"Batch done · {total_n} runs"
-            ),
-            pct=100.0 if not cancelled else round(100.0 * done_n / max(total_n, 1), 1),
-            finished_at=datetime.now(timezone.utc).isoformat(),
-        )
-    except BatchCancelled:
-        _set_prog(
-            phase="cancelled",
-            message="Sweep stopped",
-            finished_at=datetime.now(timezone.utc).isoformat(),
-        )
+            _sweep_proc = proc
+        while True:
+            if _cancel.is_set():
+                _kill_sweep_process(proc, _sweep_pgid)
+                _set_prog(
+                    phase="cancelled",
+                    message="Stopped",
+                    finished_at=datetime.now(timezone.utc).isoformat(),
+                )
+                break
+            try:
+                msg = q.get(timeout=0.2)
+            except queue.Empty:
+                if not proc.is_alive():
+                    _set_prog(
+                        phase="error",
+                        message="Sweep process exited before finishing",
+                        finished_at=datetime.now(timezone.utc).isoformat(),
+                    )
+                    break
+                continue
+            kind = msg[0] if msg else ""
+            if kind == "ready":
+                with _lock:
+                    _sweep_pgid = int(msg[1])
+                continue
+            if kind == "progress":
+                _set_prog(**(msg[1] or {}))
+                continue
+            if kind == "done":
+                saved = msg[1]
+                report = None
+                if saved:
+                    try:
+                        report = json.loads(Path(saved).read_text())
+                    except Exception:
+                        report = None
+                with _lock:
+                    _state.report = report
+                cancelled = bool((report or {}).get("cancelled")) or _cancel.is_set()
+                done_n = int((report or {}).get("run_count") or 0)
+                total_n = int((report or {}).get("run_total") or len(items))
+                _set_prog(
+                    phase="done" if not cancelled else "cancelled",
+                    message=(
+                        f"Stopped · {done_n}/{total_n} runs completed"
+                        if cancelled
+                        else f"Batch done · {total_n} runs"
+                    ),
+                    pct=100.0 if not cancelled else round(100.0 * done_n / max(total_n, 1), 1),
+                    finished_at=datetime.now(timezone.utc).isoformat(),
+                )
+                break
+            if kind == "error":
+                _set_prog(
+                    phase="error",
+                    message="Sweep failed",
+                    error=str(msg[1])[:4000],
+                    finished_at=datetime.now(timezone.utc).isoformat(),
+                )
+                break
     except Exception as e:
         _set_prog(
             phase="error",
@@ -659,6 +782,7 @@ def _run_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> None:
             finished_at=datetime.now(timezone.utc).isoformat(),
         )
     finally:
+        _kill_sweep_process(proc, _sweep_pgid)
         _force_kill_pool()
         _cancel.clear()
         try:
@@ -666,6 +790,8 @@ def _run_batch(cfg: Dict[str, Any], items: List[Dict[str, Any]]) -> None:
         except Exception:
             pass
         with _lock:
+            _sweep_proc = None
+            _sweep_pgid = None
             _state.running = False
 
 
