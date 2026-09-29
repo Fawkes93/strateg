@@ -49,7 +49,7 @@ Older hour-only note: May–Sep 2025 (589 trades, T=100) suggested `{4,15,17,19,
 
 Engine `backtest/asia_box.py`. Form `web/asia_box.js` (injected tab). Saved runs `results/asia_box.sqlite`. Catalog http://127.0.0.1:8765/asia-box/results — click a trade for the chart.
 
-Every hour below is **Europe/Chisinau**. Gold: 1 point = $0.01, so a 3000-point minimum box is $30. EURUSD and USDJPY use 0.1 pip per point; the form divides min range and shallow-near by 10 the first time you switch off gold.
+Every hour below is **Europe/Chisinau**. Gold and bitcoin: 1 point = $0.01, so a 3000-point minimum box is $30. FX majors (EURUSD, GBPUSD, USDJPY, AUDUSD, NZDUSD, USDCAD, USDCHF) use 0.1 pip per point; the form divides min range and shallow-near by 10 the first time you switch from gold or bitcoin onto one of them.
 
 **Day**
 
@@ -97,7 +97,7 @@ On the result, `freezes[]` is every skipped signal (`local_date`, `until`, `setu
 PYTHONPATH=. .venv/bin/python -m pytest tests/test_asia_box_rules.py -q
 ```
 
-**Min range.** Default is a fixed point floor (`min_range_pts`, 3000). Switch `min_range_mode` to `pct_price` and the floor is `min_range_bps` times the box midpoint. `0.014` means 1.4%: at a $2500 mid that is 3500 points, at a $2000 mid it is 2800. The percent is not scaled when you switch to EURUSD or USDJPY. The fixed point floor is.
+**Min range.** Default is a fixed point floor (`min_range_pts`, 3000). Switch `min_range_mode` to `pct_price` and the floor is `min_range_bps` times the box midpoint. `0.014` means 1.4%: at a $2500 mid that is 3500 points, at a $2000 mid it is 2800. The percent stays as entered when the symbol changes. The fixed point floor is scaled.
 
 `tests/test_asia_box.py` turns the three session gates off in its helper so the older tests stay about setup geometry.
 
@@ -106,7 +106,7 @@ PYTHONPATH=. .venv/bin/python -m pytest tests/test_asia_box_rules.py -q
 
 Injected tab (`web/asia_liquidity.js`) for the **Dual-Mode Asia Liquidity Engine** — not the Asia box fib tab above, and not Overnight break.
 
-Overnight break is Bucharest-local Asia + EMA/higher-close pullback, pts, no partials. Finished runs with at least one trade are saved in `results/overnight.sqlite`. Open http://127.0.0.1:8765/overnight/results and click a trade: the new tab is the 15m chart of that morning (Asia high and low, stop, target, break, entry, exit). The JSON file under `results/` is still written too.  
+Overnight break is Bucharest-local Asia + a moving-average or fib pullback (EMA, KAMA, HMA, or ZLEMA), pts, no partials. Finished runs with at least one trade are saved in `results/overnight.sqlite`. Open http://127.0.0.1:8765/overnight/results and click a trade: the new tab is the 15m chart of that morning (Asia high and low, stop, target, break, entry, exit). The JSON file under `results/` is still written too.  
 This tab locks a session box and then takes **one** of two plays:
 
 - **Mode A** — continuation: 15m close through the box with body/range quality and 4H EMA50.
@@ -152,7 +152,7 @@ python live_signal.py --symbol XAUUSD --timezone Europe/Chisinau candles.json
 
 ## Impulse fork tab
 
-Injected tab (`web/impulse_fork.js`) — **not** an Asia box. Classify a 3s gold blast: snapback → fade; hold then 50% retrace → join; three one-way blasts → stand aside. News days allowed. Optional skip 07:00–10:00 UTC so live Asia owns London morning.
+Injected tab (`web/impulse_fork.js`) — **not** an Asia box. Classify a 3s blast: snapback → fade; hold then 50% retrace → join; three one-way blasts → stand aside. News days allowed. Optional skip 07:00–10:00 UTC so live Asia owns London morning. Symbols match the other session tabs (gold, FX majors, bitcoin). On an FX major, 1 point is 0.1 pip and the point fields stay as entered, so the gold blast defaults are large there. Gold and bitcoin use $0.01 per point.
 
 Judge PF / avg R / max DD and the Fade vs Join split. Kill Join if its PF &lt; 1. Kill the book if combined PF &lt; 1.2.
 

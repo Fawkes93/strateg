@@ -353,13 +353,19 @@
       }
       setMeasureMode(measureOn);
       legend.innerHTML = "";
-      [
+      const legendItems = [
         ["#e6b450", "Asia high"],
         ["#8b9aab", "Asia low"],
         ["#f07178", "Stop"],
         ["#3ecf8e", "Target"],
-        ["#3d9cf0", "EMA " + (data.ema_period || "")],
-      ].forEach(function (item) {
+        ["#3d9cf0", data.ma_label || ("EMA " + (data.ema_period || ""))],
+      ];
+      (data.lines || []).forEach(function (ln) {
+        if (ln && ln.title && String(ln.title).indexOf("Fib") === 0) {
+          legendItems.push([ln.color || "#c084fc", ln.title]);
+        }
+      });
+      legendItems.forEach(function (item) {
         const li = document.createElement("li");
         li.innerHTML =
           '<span class="swatch" style="background:' + item[0] + '"></span>' + item[1];

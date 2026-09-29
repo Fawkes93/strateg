@@ -32,11 +32,18 @@ except ImportError:  # pragma: no cover
 DEFAULT_DOWNLOAD_WORKERS = 16
 
 # Dukascopy symbol → (reaktor-style symbol, price_scale)
-# price_scale is the integer divisor in the .bi5 feed (USDJPY is 3 digits).
+# price_scale is the integer divisor in the .bi5 feed.
+# 5-digit FX (EURUSD and the other majors here) is 100000.
+# USDJPY is 3 digits (1000), gold is 3 digits (1000), bitcoin is 10.
 INSTRUMENTS: Dict[str, Tuple[str, float]] = {
     "XAUUSD": ("XAU/USD", 1000.0),
     "EURUSD": ("EUR/USD", 100000.0),
+    "GBPUSD": ("GBP/USD", 100000.0),
     "USDJPY": ("USD/JPY", 1000.0),
+    "AUDUSD": ("AUD/USD", 100000.0),
+    "NZDUSD": ("NZD/USD", 100000.0),
+    "USDCAD": ("USD/CAD", 100000.0),
+    "USDCHF": ("USD/CHF", 100000.0),
     "BTCUSD": ("BTC/USD", 10.0),
 }
 

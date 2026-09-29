@@ -75,9 +75,16 @@ class OvernightJobParams:
     break_on_wick: bool = False
     # Pullback
     pullback_mode: str = "required"  # off | required | preferred
-    pullback_ref: str = "ema"  # ema | fib
+    pullback_ref: str = "ema"  # ema | fib | both
     pullback_fib: float = 0.5
+    fib_anchor: str = "asia"  # asia | roll
+    ma_type: str = "ema"  # ema | kama | hma | zlema
     ema_period: int = 21
+    kama_er: int = 10
+    kama_fast: int = 2
+    kama_slow: int = 30
+    hma_period: int = 21
+    zlema_period: int = 21
     max_wait_candles: int = 8
     wait_from_break: bool = False
     timeout_action: str = "skip"  # skip | market
@@ -101,6 +108,7 @@ class OvernightJobParams:
     tp_mode: str = "range_mult"
     tp_fixed_pts: float = 1000.0
     tp_range_mult: float = 1.5
+    tp_sl_mult: Optional[float] = None
     tp_r_mult: float = 2.0
     trail_arm_mode: str = "fixed"  # fixed | asia
     trail_arm_pts: float = 400.0
@@ -110,10 +118,6 @@ class OvernightJobParams:
     max_hold_hours: float = 10.0
     flatten_hour: int = 18
     one_trade_per_day: bool = True
-    reentry_enabled: bool = False
-    reentry_closes: int = 1
-    reentry_sl_pts: float = 1000.0
-    reentry_tp_pts: float = 3000.0
     side_filter: str = "both"
     seasonal_mode: str = "off"  # off | tag | filter
     seasonal_join: bool = False
@@ -723,7 +727,14 @@ def _run(params: OvernightJobParams) -> None:
             pullback_mode=str(params.pullback_mode or "required"),
             pullback_ref=str(getattr(params, "pullback_ref", "ema") or "ema"),
             pullback_fib=float(getattr(params, "pullback_fib", 0.5) if getattr(params, "pullback_fib", None) is not None else 0.5),
+            fib_anchor=str(getattr(params, "fib_anchor", "asia") or "asia"),
+            ma_type=str(getattr(params, "ma_type", "ema") or "ema"),
             ema_period=int(params.ema_period),
+            kama_er=int(getattr(params, "kama_er", 10) or 10),
+            kama_fast=int(getattr(params, "kama_fast", 2) or 2),
+            kama_slow=int(getattr(params, "kama_slow", 30) or 30),
+            hma_period=int(getattr(params, "hma_period", 21) or 21),
+            zlema_period=int(getattr(params, "zlema_period", 21) or 21),
             max_wait_candles=int(params.max_wait_candles),
             wait_from_break=bool(params.wait_from_break),
             timeout_action=str(params.timeout_action or "skip"),
@@ -746,7 +757,12 @@ def _run(params: OvernightJobParams) -> None:
             tp_mode=str(params.tp_mode or "range_mult"),
             tp_fixed_pts=float(params.tp_fixed_pts),
             tp_range_mult=float(params.tp_range_mult),
-            tp_r_mult=float(params.tp_r_mult),
+            tp_sl_mult=(
+                None
+                if getattr(params, "tp_sl_mult", None) is None
+                else float(params.tp_sl_mult)
+            ),
+            tp_r_mult=float(getattr(params, "tp_r_mult", 2.0) or 2.0),
             trail_arm_mode=str(params.trail_arm_mode or "fixed"),
             trail_arm_pts=float(params.trail_arm_pts),
             trail_arm_cap_pts=float(params.trail_arm_cap_pts),
@@ -755,10 +771,6 @@ def _run(params: OvernightJobParams) -> None:
             max_hold_hours=float(params.max_hold_hours),
             flatten_hour=int(params.flatten_hour),
             one_trade_per_day=bool(params.one_trade_per_day),
-            reentry_enabled=bool(getattr(params, "reentry_enabled", False)),
-            reentry_closes=max(1, int(getattr(params, "reentry_closes", 1) or 1)),
-            reentry_sl_pts=float(getattr(params, "reentry_sl_pts", 1000.0) or 0.0),
-            reentry_tp_pts=float(getattr(params, "reentry_tp_pts", 3000.0) or 0.0),
             side_filter=str(params.side_filter or "both"),
             seasonal_mode=str(params.seasonal_mode or "off"),
             seasonal_join=bool(params.seasonal_join),

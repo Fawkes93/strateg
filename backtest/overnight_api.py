@@ -12,7 +12,9 @@ from zoneinfo import ZoneInfo
 
 from backtest.candle_packs import load_candles_range
 from backtest.candles import Candle, aggregate_tf, to_utc
-from backtest.overnight_break import entry_label
+from types import SimpleNamespace
+
+from backtest.overnight_break import entry_label, ma_series_values
 from backtest.overnight_store import delete_run, get_run, get_trade, list_runs, list_trades
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +36,56 @@ def _ema_points(closes: List[float], times: List[int], period: int) -> List[Dict
         if i + 1 >= period:
             out.append({"time": times[i], "value": e})
     return out
+
+
+def _ma_legend(params: Dict[str, Any]) -> str:
+    kind = str(params.get("ma_type") or "ema").strip().lower()
+    if kind == "kama":
+        return (
+            "KAMA "
+            + str(int(params.get("kama_er") or 10))
+            + "/"
+            + str(int(params.get("kama_fast") or 2))
+            + "/"
+            + str(int(params.get("kama_slow") or 30))
+        )
+    if kind == "hma":
+        return "HMA " + str(int(params.get("hma_period") or 21))
+    if kind == "zlema":
+        return "ZLEMA " + str(int(params.get("zlema_period") or 21))
+    return "EMA " + str(int(params.get("ema_period") or 21))
+
+
+def _ma_points(
+    closes: List[float], times: List[int], params: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """EMA keeps the chart's full-window recurrence. Other averages use the engine series."""
+    kind = str(params.get("ma_type") or "ema").strip().lower()
+    if kind not in ("kama", "hma", "zlema"):
+        return _ema_points(closes, times, int(params.get("ema_period") or 21))
+    spec = SimpleNamespace(
+        kama_er=int(params.get("kama_er") or 10),
+        kama_fast=int(params.get("kama_fast") or 2),
+        kama_slow=int(params.get("kama_slow") or 30),
+        hma_period=int(params.get("hma_period") or 21),
+        zlema_period=int(params.get("zlema_period") or 21),
+    )
+    series = ma_series_values(closes, kind, spec)
+    out: List[Dict[str, Any]] = []
+    for i, value in enumerate(series):
+        if value is None:
+            continue
+        out.append({"time": times[i], "value": value})
+    return out
+
+
+def _price_differs(a: Any, b: Any) -> bool:
+    if a is None or b is None:
+        return True
+    try:
+        return abs(float(a) - float(b)) > 1e-6
+    except (TypeError, ValueError):
+        return True
 
 
 def _snap(opens: List[int], iso: Optional[str]) -> Optional[int]:
@@ -132,12 +184,14 @@ def overnight_chart_data(trade_id: int = Query(...)):
             {"time": ot, "open": c.open, "high": c.high, "low": c.low, "close": c.close}
         )
     period = int(params.get("ema_period") or 21)
+    ma_kind = str(params.get("ma_type") or "ema")
     extras = trade.get("extras") or {}
     markers = []
     break_at = _snap(opens, trade.get("break_ts"))
     entry_at = _snap(opens, trade.get("entry_ts"))
     exit_at = _snap(opens, trade.get("exit_ts"))
     side = str(trade.get("side") or "")
+    reason_label = entry_label(str(trade.get("entry_reason") or ""), ma_kind)
     if break_at is not None and break_at == entry_at:
         markers.append(
             {
@@ -145,7 +199,7 @@ def overnight_chart_data(trade_id: int = Query(...)):
                 "position": "belowBar" if side == "UP" else "aboveBar",
                 "color": "#3d9cf0",
                 "shape": "arrowUp" if side == "UP" else "arrowDown",
-                "text": "Break · " + entry_label(str(trade.get("entry_reason") or "")),
+                "text": "Break · " + reason_label,
             }
         )
     else:
@@ -166,7 +220,7 @@ def overnight_chart_data(trade_id: int = Query(...)):
                     "position": "belowBar" if side == "UP" else "aboveBar",
                     "color": "#3d9cf0",
                     "shape": "arrowUp" if side == "UP" else "arrowDown",
-                    "text": entry_label(str(trade.get("entry_reason") or "")),
+                    "text": reason_label,
                 }
             )
     if exit_at is not None:
@@ -179,6 +233,23 @@ def overnight_chart_data(trade_id: int = Query(...)):
                 "text": str(trade.get("exit_reason") or "exit"),
             }
         )
+    lines: List[Dict[str, Any]] = [
+        {"price": trade.get("asia_high"), "color": "#e6b450", "title": "Asia high"},
+        {"price": trade.get("asia_low"), "color": "#8b9aab", "title": "Asia low"},
+        {"price": trade.get("sl"), "color": "#f07178", "title": "SL", "dashed": True},
+        {"price": trade.get("tp"), "color": "#3ecf8e", "title": "TP", "dashed": True},
+    ]
+    fib_high = extras.get("fib_high")
+    fib_low = extras.get("fib_low")
+    fib_level = extras.get("fib_level")
+    if fib_high is not None and _price_differs(fib_high, trade.get("asia_high")):
+        lines.append({"price": fib_high, "color": "#d98a3a", "title": "Fib high"})
+    if fib_low is not None and _price_differs(fib_low, trade.get("asia_low")):
+        lines.append({"price": fib_low, "color": "#6f8fdb", "title": "Fib low"})
+    if fib_level is not None:
+        lines.append(
+            {"price": fib_level, "color": "#c084fc", "title": "Fib level", "dashed": True}
+        )
     return {
         "trade": trade,
         "run": {
@@ -189,16 +260,12 @@ def overnight_chart_data(trade_id: int = Query(...)):
         },
         "timezone": tz_name,
         "candles": candles_out,
-        "ema": _ema_points(closes, opens, period),
+        "ema": _ma_points(closes, opens, params),
         "ema_period": period,
+        "ma_label": _ma_legend(params),
         "tf_min": tf,
         "markers": markers,
-        "lines": [
-            {"price": trade.get("asia_high"), "color": "#e6b450", "title": "Asia high"},
-            {"price": trade.get("asia_low"), "color": "#8b9aab", "title": "Asia low"},
-            {"price": trade.get("sl"), "color": "#f07178", "title": "SL", "dashed": True},
-            {"price": trade.get("tp"), "color": "#3ecf8e", "title": "TP", "dashed": True},
-        ],
+        "lines": lines,
         "decision": extras.get("decision") or "",
         "asia": {
             "start_hour": int(params.get("asia_start_hour") or 0),

@@ -1,6 +1,8 @@
-"""EURUSD and USDJPY point size for Asia box and overnight break."""
+"""Point size and Dukascopy price scale for the session-tab symbols."""
 
 from datetime import datetime, timedelta, timezone
+
+import pytest
 
 from backtest.candles import Candle
 from backtest.config import point_size
@@ -19,9 +21,30 @@ def test_symbol_maps_and_point_size():
     assert point_size("USD/JPY") == 0.001
     assert point_size("USDJPY") == 0.001
     assert point_size("XAU/USD") == 0.01
+    assert point_size("BTC/USD") == 0.01
     assert _fmt_px(1.08543) == "1.08543"
     assert _fmt_px(149.123) == "149.123"
     assert _fmt_px(3312.4) == "3312.40"
+
+
+@pytest.mark.parametrize(
+    "duka,reaktor,scale,pts",
+    [
+        ("GBPUSD", "GBP/USD", 100000.0, 0.00001),
+        ("AUDUSD", "AUD/USD", 100000.0, 0.00001),
+        ("NZDUSD", "NZD/USD", 100000.0, 0.00001),
+        ("USDCAD", "USD/CAD", 100000.0, 0.00001),
+        ("USDCHF", "USD/CHF", 100000.0, 0.00001),
+        ("GBP/USD", "GBP/USD", 100000.0, 0.00001),
+        ("BTCUSD", "BTC/USD", 10.0, 0.01),
+        ("BTC/USD", "BTC/USD", 10.0, 0.01),
+    ],
+)
+def test_major_and_bitcoin_maps(duka, reaktor, scale, pts):
+    assert reaktor_symbol(duka) == reaktor
+    assert price_scale(duka) == scale
+    assert point_size(duka) == pts
+    assert point_size(reaktor) == pts
 
 
 def _c5(open_time, o, h, l, c):
@@ -40,7 +63,12 @@ def _c5(open_time, o, h, l, c):
 def _day(symbol):
     """Gold session shifted so one gold point is one point on this symbol."""
     ps = point_size(reaktor_symbol(symbol))
-    anchor = {"EURUSD": 1.10000, "USDJPY": 150.000}[symbol]
+    anchor = {
+        "EURUSD": 1.10000,
+        "GBPUSD": 1.25000,
+        "USDJPY": 150.000,
+        "BTCUSD": 60000.0,
+    }[symbol]
 
     def px(gold):
         return anchor + (gold - 3300.0) * (ps / 0.01)
@@ -83,7 +111,12 @@ def test_overnight_break_points_follow_symbol():
         tp_mode="fixed",
         tp_fixed_pts=100000.0,
     )
-    expect_entry = {"EURUSD": 1.10000, "USDJPY": 150.000}
+    expect_entry = {
+        "EURUSD": 1.10000,
+        "GBPUSD": 1.25000,
+        "USDJPY": 150.000,
+        "BTCUSD": 60000.0,
+    }
     for symbol, entry in expect_entry.items():
         out = run_overnight_on_candles(_day(symbol), symbol=symbol, params=params)
         assert out["trades"] == 1, (symbol, out.get("skip_counts"))

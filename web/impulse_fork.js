@@ -109,13 +109,14 @@
     <section class="card pipeline">
       <h2>Impulse fork</h2>
       <ol>
-        <li>Detect a 3s gold blast (≥ min pts).</li>
+        <li>Detect a 3s blast (≥ min pts).</li>
         <li>If it <strong>snaps back</strong> ≥ snap pts in 10s → <em>Fade</em> the extreme.</li>
         <li>If it holds, then retraces ~50% without taking the origin → <em>Join</em> the blast.</li>
         <li>Three one-way blasts → stand aside until a snapback. Never fade and join the same blast.</li>
       </ol>
       <p class="hint">
         Not an Asia box. News days are allowed. Optional skip 07:00–10:00 UTC so the live Asia bot owns London morning.
+        Point distances stay as entered. On an FX major, 1 point is 0.1 pip, so the gold blast defaults are large there. Gold and bitcoin use $0.01 per point.
         Judge PF / avg R / max DD, and Fade vs Join split. Kill Join if its PF &lt; 1.
       </p>
     </section>
@@ -123,7 +124,7 @@
       <h2>Parameters</h2>
       <div class="grid">
         <label>Symbol
-          <select id="if-symbol"><option value="XAUUSD" selected>XAUUSD (gold)</option></select>
+          <select id="if-symbol" title="FX majors: 1 point = 0.1 pip. Gold and bitcoin: 1 point = $0.01. Point fields stay as entered.">${window.strategSymbols.optionsHtml()}</select>
         </label>
         <label>From <input type="date" id="if-from" value="2026-06-01" /></label>
         <label>To (exclusive) <input type="date" id="if-to" value="2026-07-01" /></label>

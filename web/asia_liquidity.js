@@ -131,9 +131,7 @@
       <div class="grid">
         <label>Symbol
           <select id="al-symbol">
-            <option value="XAUUSD" selected>XAUUSD (gold)</option>
-            <option value="BTCUSD">BTCUSD</option>
-            <option value="EURUSD">EURUSD</option>
+            ${window.strategSymbols.optionsHtml()}
           </select>
         </label>
         <label>From

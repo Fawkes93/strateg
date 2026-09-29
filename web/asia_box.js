@@ -68,18 +68,11 @@
   let symbolSwitching = false;
 
   function formSymbol(symbol) {
-    const s = String(symbol || "")
-      .toUpperCase()
-      .replace(/[^A-Z]/g, "");
-    if (s === "EURUSD") return "EURUSD";
-    if (s === "USDJPY") return "USDJPY";
-    return "XAUUSD";
+    return window.strategSymbols.formSymbol(symbol);
   }
 
   function pointScale(symbol) {
-    const s = formSymbol(symbol);
-    if (s === "EURUSD" || s === "USDJPY") return 0.1;
-    return 1;
+    return window.strategSymbols.pointScale(symbol);
   }
 
   function readCfg() {
@@ -320,7 +313,7 @@
         <li>EMA retest auto-stop is already those same 2 steps. The SL box showing 0.382 is used only when Auto is off. Steps = 3 puts a through-Fib-0 stop at .382.</li>
         <li>One open trade. A fill that exits before 06:00 can open a second, larger box. The sentences on the Session rules card are the exact rules of the next run.</li>
       </ol>
-      <p class="hint">5m candles by default; ticks only change fill / SL / TP precision. Results live in SQLite — open the catalog to filter by setup and click a trade for the chart. EURUSD and USDJPY: 1 point = 0.1 pip. The first time you pick one, min range and shallow-near scale from the gold values (÷10). Fib levels stay the same.</p>
+      <p class="hint">5m candles by default; ticks only change fill / SL / TP precision. Results live in SQLite — open the catalog to filter by setup and click a trade for the chart. FX majors use 0.1 pip per point. Moving from gold or bitcoin onto an FX major divides min range and shallow-near by 10, and moving back multiplies them by 10. Bitcoin uses $0.01 per point, the same as gold. Fib levels stay the same.</p>
     </section>
     <section class="card ab-rules">
       <h2>Session rules</h2>
@@ -368,12 +361,10 @@
       <h2>Parameters</h2>
       <div class="grid">
         <label>Symbol
-          <select id="ab-symbol" title="EURUSD and USDJPY: 1 point = 0.1 pip. First switch from gold scales min range and shallow-near ÷10.">
-            <option value="XAUUSD" selected>XAUUSD (gold)</option>
-            <option value="EURUSD">EURUSD</option>
-            <option value="USDJPY">USDJPY</option>
+          <select id="ab-symbol" title="FX majors: 1 point = 0.1 pip. Moving from gold or bitcoin onto an FX major divides min range and shallow-near by 10.">
+            ${window.strategSymbols.optionsHtml()}
           </select>
-          <span class="field-help">Gold uses $0.01 per point. The first switch to EURUSD or USDJPY divides min range and shallow-near by 10.</span>
+          <span class="field-help">Gold and bitcoin use $0.01 per point. Switching from either one onto an FX major divides min range and shallow-near by 10.</span>
         </label>
         <label>From (local date)
           <input type="date" id="ab-from" value="2025-05-01" />
@@ -400,7 +391,7 @@
         </label>
         <label>Min range (%)
           <input type="number" id="ab-min-pct" value="1.4" min="0" step="0.1" />
-          <span class="field-help">Used when the mode is percent of midpoint. 1.4 means 1.4% of (high + low) / 2. At a $2500 mid that is 3500 points; at $2000 it is 2800. Ignored in fixed mode. Not rescaled for EURUSD or USDJPY.</span>
+          <span class="field-help">Used when the mode is percent of midpoint. 1.4 means 1.4% of (high + low) / 2. At a $2500 mid that is 3500 points; at $2000 it is 2800. Ignored in fixed mode. The percent stays as entered when the symbol changes.</span>
         </label>
         <label>EMA period (5m)
           <input type="number" id="ab-ema" value="32" min="1" />

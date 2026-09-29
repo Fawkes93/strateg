@@ -83,16 +83,14 @@
         <li>The fill waits for a later bar in that window to tag the pullback EMA.</li>
         <li>Stop and target are fixed distances in points. Open trades flatten at the local hour below.</li>
       </ol>
-      <p class="hint">One position at a time. If the pullback never tags the EMA before the window ends, that cross is dropped. Same-bar stop and target counts as a stop. On EURUSD and USDJPY, 1 point is 0.1 pip.</p>
+      <p class="hint">One position at a time. If the pullback never tags the EMA before the window ends, that cross is dropped. Same-bar stop and target counts as a stop. On an FX major, 1 point is 0.1 pip. Gold and bitcoin use $0.01 per point. Stop and target stay as entered.</p>
     </section>
     <section class="card dawn-box">
       <h2>Parameters</h2>
       <div class="grid">
         <label>Symbol
-          <select id="dx-symbol">
-            <option value="XAUUSD" selected>XAUUSD (gold)</option>
-            <option value="EURUSD">EURUSD</option>
-            <option value="USDJPY">USDJPY</option>
+          <select id="dx-symbol" title="FX majors: 1 point = 0.1 pip. Gold and bitcoin: 1 point = $0.01.">
+            ${window.strategSymbols.optionsHtml()}
           </select>
         </label>
         <label>From

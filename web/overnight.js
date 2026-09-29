@@ -25,7 +25,14 @@
     "ob-pullback-mode",
     "ob-pullback-ref",
     "ob-pullback-fib",
+    "ob-fib-anchor",
+    "ob-ma-type",
     "ob-ema",
+    "ob-kama-er",
+    "ob-kama-fast",
+    "ob-kama-slow",
+    "ob-hma",
+    "ob-zlema",
     "ob-max-wait",
     "ob-wait-from-break",
     "ob-timeout",
@@ -56,7 +63,7 @@
     "ob-tp-mode",
     "ob-tp-fixed",
     "ob-tp-range-mult",
-    "ob-tp-r-mult",
+    "ob-tp-sl-mult",
     "ob-trail-arm-mode",
     "ob-trail-arm",
     "ob-trail-arm-cap",
@@ -64,18 +71,15 @@
     "ob-be-arm",
     "ob-max-hold",
     "ob-flatten",
-    "ob-reentry",
-    "ob-reentry-closes",
-    "ob-reentry-sl",
-    "ob-reentry-tp",
     "ob-one-per-day",
     "ob-workers",
     "ob-data",
     "ob-force",
   ];
 
-  // Absolute point inputs. EURUSD and USDJPY are 0.1 pip per point, so the
-  // first switch off gold scales these by 10. Multipliers and hour fields stay.
+  // Absolute point inputs. FX majors are 0.1 pip per point, so the first
+  // switch between gold or bitcoin and an FX major scales these by 10.
+  // Multipliers and hour fields stay.
   const POINT_FIELDS = [
     "ob-min-asia",
     "ob-break-up",
@@ -98,18 +102,11 @@
   let symbolSwitching = false;
 
   function formSymbol(symbol) {
-    const s = String(symbol || "")
-      .toUpperCase()
-      .replace(/[^A-Z]/g, "");
-    if (s === "EURUSD") return "EURUSD";
-    if (s === "USDJPY") return "USDJPY";
-    return "XAUUSD";
+    return window.strategSymbols.formSymbol(symbol);
   }
 
   function pointScale(symbol) {
-    const s = formSymbol(symbol);
-    if (s === "EURUSD" || s === "USDJPY") return 0.1;
-    return 1;
+    return window.strategSymbols.pointScale(symbol);
   }
 
   function readCfg() {
@@ -213,6 +210,16 @@
     if ($("ob-timeout") && $("ob-timeout").value === "worst") {
       $("ob-timeout").value = "market";
     }
+    if ($("ob-tp-mode") && $("ob-tp-mode").value === "r_mult") {
+      $("ob-tp-mode").value = "sl_mult";
+    }
+    if (
+      $("ob-tp-sl-mult") &&
+      (cfg["ob-tp-sl-mult"] == null || cfg["ob-tp-sl-mult"] === "") &&
+      cfg["ob-tp-r-mult"] != null
+    ) {
+      $("ob-tp-sl-mult").value = cfg["ob-tp-r-mult"];
+    }
     // Legacy 2-week checkbox → off/tag/filter select.
     if ($("ob-sl-mode") && $("ob-sl-mode").value === "range_width") {
       $("ob-sl-mode").value = "range";
@@ -274,13 +281,16 @@
     if (timeoutBreak) timeoutBreak.disabled = timeoutOff;
     if (timeoutPullback) timeoutPullback.disabled = timeoutOff;
     const fib = $("ob-pullback-fib");
+    const anchor = $("ob-fib-anchor");
     const ref = $("ob-pullback-ref") && $("ob-pullback-ref").value;
-    if (fib) fib.disabled = mode === "off" || ref !== "fib";
-    const reOn = $("ob-reentry") && $("ob-reentry").checked;
-    ["ob-reentry-closes", "ob-reentry-sl", "ob-reentry-tp"].forEach(function (id) {
-      const el = $(id);
-      if (el) el.disabled = !reOn;
-    });
+    const usesFib = ref === "fib" || ref === "both";
+    const fibWrap = $("ob-fib-level-wrap");
+    const anchorWrap = $("ob-fib-anchor-wrap");
+    if (fibWrap) fibWrap.hidden = !usesFib;
+    if (anchorWrap) anchorWrap.hidden = !usesFib;
+    if (fib) fib.disabled = mode === "off" || !usesFib;
+    if (anchor) anchor.disabled = mode === "off" || !usesFib;
+    syncMaFields();
     const nearOff = mode !== "required";
     ["ob-near-bars", "ob-near-pts", "ob-near-trend"].forEach(function (id) {
       const el = $(id);
@@ -324,11 +334,26 @@
     }
   }
 
+  function syncMaFields() {
+    const kind = ($("ob-ma-type") && $("ob-ma-type").value) || "ema";
+    [
+      ["ob-ema-wrap", kind === "ema"],
+      ["ob-kama-er-wrap", kind === "kama"],
+      ["ob-kama-fast-wrap", kind === "kama"],
+      ["ob-kama-slow-wrap", kind === "kama"],
+      ["ob-hma-wrap", kind === "hma"],
+      ["ob-zlema-wrap", kind === "zlema"],
+    ].forEach(function (pair) {
+      const el = $(pair[0]);
+      if (el) el.hidden = !pair[1];
+    });
+  }
+
   function syncTpControls() {
     const mode = $("ob-tp-mode") && $("ob-tp-mode").value;
     const fixed = $("ob-tp-fixed");
     const rangeMult = $("ob-tp-range-mult");
-    const rMult = $("ob-tp-r-mult");
+    const rMult = $("ob-tp-sl-mult");
     if (fixed) {
       fixed.disabled = mode !== "fixed";
       fixed.title =
@@ -344,11 +369,11 @@
           : "Used when TP mode is range × mult.";
     }
     if (rMult) {
-      rMult.disabled = mode !== "r_mult";
+      rMult.disabled = mode !== "sl_mult";
       rMult.title =
-        mode === "r_mult"
-          ? "TP distance = SL pts × this."
-          : "Used when TP mode is R multiple.";
+        mode === "sl_mult"
+          ? "Target distance = stop distance × this. 2 means the target is twice the stop."
+          : "Used when TP mode is SL multiple.";
     }
   }
 
@@ -412,13 +437,13 @@
       <ol>
         <li>Lock the Asia high/low in <strong>Europe/Bucharest</strong> (default 00:00–07:00).</li>
         <li>First completed 15m bar that clears Asia by min break pts = break signal (close only, or wick if the toggle is on).</li>
-        <li>Entry = first of: <em>EMA touch</em> or <em>higher/lower close resume</em> during the wait window (resume closes = consecutive directional closes; uncheck resume for EMA-only; break close if pullback = off). Preferred timeout <em>market</em> waits the full window then fills the last wait-bar close. <em>Wait from break</em> counts max wait from the break bar instead of leftover Asia-break bars.</li>
+        <li>Entry = first of: the selected moving average (EMA, KAMA, HMA, or ZLEMA), a fib of the Asia box, or both — whichever price tags first — or a <em>higher/lower close resume</em>. Pullback off enters on the break close. Preferred timeout <em>market</em> waits the full window then fills the last wait-bar close. <em>Wait from break</em> counts max wait from the break bar. A rolling fib waits from the bar that locks the window.</li>
         <li>No partial TP. Optional BE moves SL to entry after a profit threshold. Trail arms after a profit threshold (fixed pts, or Asia range with a cap), then trails. Flatten at local hour.</li>
       </ol>
       <p class="hint">
         Mid fill. One trade per day by default. Skips days with no valid break / no pullback (required mode).
         Seasonal month (optional): Jan/Aug long, May/Jun short. Filter skips the against-side break.
-        EURUSD and USDJPY: 1 point = 0.1 pip. The first time you pick one, point fields scale from the gold values (÷10). News days are the gold calendar.
+        FX majors use 0.1 pip per point. Moving from gold or bitcoin onto an FX major divides point fields by 10, and moving back multiplies them by 10. Bitcoin uses $0.01 per point, the same as gold. News days are the gold calendar.
         Join inside box takes the combined bias side when price never left the Asia range.
         2-week trend (optional, works without the month table): last close vs daily EMA, skip two-way paths (low efficiency). Filter skips the against-side. If month and 2-week both filter and disagree, neither side is skipped.
       </p>
@@ -428,10 +453,8 @@
       <h2>Parameters</h2>
       <div class="grid">
         <label>Symbol
-          <select id="ob-symbol" title="EURUSD and USDJPY: 1 point = 0.1 pip. First switch from gold scales point fields ÷10.">
-            <option value="XAUUSD" selected>XAUUSD (gold)</option>
-            <option value="EURUSD">EURUSD</option>
-            <option value="USDJPY">USDJPY</option>
+          <select id="ob-symbol" title="FX majors: 1 point = 0.1 pip. Moving from gold or bitcoin onto an FX major divides point fields by 10.">
+            ${window.strategSymbols.optionsHtml()}
           </select>
         </label>
         <label>From (local date)
@@ -440,86 +463,159 @@
         <label>To (exclusive)
           <input type="date" id="ob-to" value="2025-08-01" />
         </label>
-        <label>Asia start hour
-          <input type="number" id="ob-asia-start" value="0" min="0" max="23" />
+        <label>Workers
+          <input type="number" id="ob-workers" value="3" min="1" max="6" step="1"
+            title="Parallel months (separate processes). Each worker holds one month of ticks or 5m candles." />
         </label>
-        <label>Asia end hour
-          <input type="number" id="ob-asia-end" value="7" min="1" max="23" />
-        </label>
-        <label>Min Asia range (pts)
-          <input type="number" id="ob-min-asia" value="300" min="0" step="50" />
-        </label>
-        <label>Min break above (pts)
-          <input type="number" id="ob-break-up" value="200" min="0" step="50" />
-        </label>
-        <label>Min break below (pts)
-          <input type="number" id="ob-break-dn" value="200" min="0" step="50" />
-        </label>
-        <label class="chk">Count wicks (not only close)
-          <input type="checkbox" id="ob-break-wick"
-            title="Off = 15m close must clear Asia by min break pts. On = a wick (high/low) of that size is enough even if the bar closes back inside." />
-        </label>
-        <label>Max break candles after Asia
-          <input type="number" id="ob-max-break-candles" value="8" min="1" max="20" />
-        </label>
-        <label>Pullback mode
-          <select id="ob-pullback-mode">
-            <option value="required" selected>required (level or higher-close)</option>
-            <option value="preferred">preferred (timeout action)</option>
-            <option value="off">off (enter on break close)</option>
-          </select>
-          <span class="field-help">Required waits for the level or a higher/lower close. Preferred can still fill at the timeout. Off enters on the break close.</span>
-        </label>
-        <label>Pullback level
-          <select id="ob-pullback-ref">
-            <option value="ema" selected>EMA</option>
-            <option value="fib">Fib of the Asia box</option>
-          </select>
-          <span class="field-help">Fib uses the Asia start-to-end high and low. Fib 0 is the edge in the trade direction (the high on a long, the low on a short). Fib 1 is the other edge. A long that touches 0.5 has pulled back halfway through the box.</span>
-        </label>
-        <label>Fib level
-          <input type="number" id="ob-pullback-fib" value="0.5" min="0" max="1" step="0.001" />
-          <span class="field-help">0.5 is the midpoint. 0.618 is a deeper pullback, closer to the far side of the box. Higher/lower close and preferred timeout still run beside this.</span>
-        </label>
-        <label>EMA period (15m)
-          <input type="number" id="ob-ema" value="21" min="5" max="100" />
-        </label>
-        <label>Max wait candles
-          <input type="number" id="ob-max-wait" value="8" min="1" max="20" />
-        </label>
-        <label class="chk">Wait from break
-          <input type="checkbox" id="ob-wait-from-break"
-            title="Off = wait only inside leftover max-break-after-Asia bars. On = count max wait candles from the actual break bar (not clipped by a late break)." />
-        </label>
-        <label>Timeout action (preferred)
-          <select id="ob-timeout"
-            title="After max wait with no EMA/resume: skip, or market at the last wait-bar close (live chase).">
-            <option value="skip" selected>skip</option>
-            <option value="market">market</option>
+        <label>Data
+          <select id="ob-data"
+            title="5m candles are built from ticks once and cached in data/candles/5m/. Signals stay 15m. Fills/exits are conservative vs ticks (level fill at the level; same-bar SL beats TP).">
+            <option value="candles_5m" selected>5m candles (cached)</option>
+            <option value="ticks">Tick data (precise)</option>
           </select>
         </label>
-        <label>Timeout max EMA dist (pts)
-          <input type="number" id="ob-timeout-ema-dist" value="0" min="0" step="50"
-            title="Preferred timeout only: skip if wait never got this close to EMA. 0 = off. Missing EMA scan also skips." />
-        </label>
-        <label>Timeout min break (pts)
-          <input type="number" id="ob-timeout-min-break" value="0" min="0" step="50"
-            title="Preferred timeout only: extra break size vs Asia. EMA-touch ignores this. 0 = no extra." />
-        </label>
-        <label>Timeout min pullback (pts)
-          <input type="number" id="ob-timeout-min-pullback" value="0" min="0" step="50"
-            title="Preferred timeout only: last wait candle close must be this many pts back from the break close (long: below, short: above). 0 = off. EMA/resume fills ignore this." />
-        </label>
+
+        <div class="ob-group">
+          <div class="ob-group-title">Asia box</div>
+          <div class="ob-group-fields">
+            <label>Asia start hour
+              <input type="number" id="ob-asia-start" value="0" min="0" max="23" />
+            </label>
+            <label>Asia end hour
+              <input type="number" id="ob-asia-end" value="7" min="1" max="23" />
+            </label>
+            <label>Min Asia range (pts)
+              <input type="number" id="ob-min-asia" value="300" min="0" step="50" />
+            </label>
+            <label>Min break above (pts)
+              <input type="number" id="ob-break-up" value="200" min="0" step="50" />
+            </label>
+            <label>Min break below (pts)
+              <input type="number" id="ob-break-dn" value="200" min="0" step="50" />
+            </label>
+            <label class="chk">Count wicks (not only close)
+              <input type="checkbox" id="ob-break-wick"
+                title="Off = 15m close must clear Asia by min break pts. On = a wick (high/low) of that size is enough even if the bar closes back inside." />
+            </label>
+            <label>Max break candles after Asia
+              <input type="number" id="ob-max-break-candles" value="8" min="1" max="20" />
+            </label>
+          </div>
+        </div>
+
+        <div class="ob-group">
+          <div class="ob-group-title">Pullback</div>
+          <div class="ob-group-fields">
+            <label>Pullback mode
+              <select id="ob-pullback-mode">
+                <option value="required" selected>required (level or higher-close)</option>
+                <option value="preferred">preferred (timeout action)</option>
+                <option value="off">off (enter on break close)</option>
+              </select>
+              <span class="field-help">Required waits for the level or a higher/lower close. Preferred can still fill at the timeout. Off enters on the break close.</span>
+            </label>
+            <label>Pullback level
+              <select id="ob-pullback-ref">
+                <option value="ema" selected>Moving average</option>
+                <option value="fib">Fib of the Asia box</option>
+                <option value="both">Both, whichever comes first</option>
+              </select>
+              <span class="field-help">Moving average uses whichever MA you pick below: EMA, KAMA, HMA, or ZLEMA. Both enters on the first tag of that MA or the fib. Higher/lower close still runs beside this.</span>
+            </label>
+            <label id="ob-fib-level-wrap" hidden>Fib level
+              <input type="number" id="ob-pullback-fib" value="0.5" min="0" max="1" step="0.001" />
+              <span class="field-help">0 is the edge in the trade direction. 0.5 is the midpoint. 0.618 is a deeper pullback, closer to the far side of the box.</span>
+            </label>
+            <label id="ob-fib-anchor-wrap" hidden>Fib window
+              <select id="ob-fib-anchor">
+                <option value="asia" selected>Asia session</option>
+                <option value="roll">Roll while expanding</option>
+              </select>
+              <span class="field-help">Asia session uses the start-to-end high and low. Roll keeps that length and slides both edges forward 15 minutes while price makes a new extreme, up to Max break candles. The first bar that stops extending locks the fib and arms the level.</span>
+            </label>
+            <label>Moving average
+              <select id="ob-ma-type">
+                <option value="ema" selected>EMA</option>
+                <option value="kama">KAMA</option>
+                <option value="hma">HMA</option>
+                <option value="zlema">ZLEMA</option>
+              </select>
+              <span class="field-help">Only this average's settings are shown. Both and the moving-average pullback use this one, not a fixed EMA.</span>
+            </label>
+            <label id="ob-ema-wrap">EMA period (15m)
+              <input type="number" id="ob-ema" value="21" min="1" max="200" />
+            </label>
+            <label id="ob-kama-er-wrap" hidden>KAMA ER length
+              <input type="number" id="ob-kama-er" value="10" min="1" max="100" />
+              <span class="field-help">Efficiency-ratio window. Kaufman default is 10.</span>
+            </label>
+            <label id="ob-kama-fast-wrap" hidden>KAMA fast
+              <input type="number" id="ob-kama-fast" value="2" min="1" max="50" />
+            </label>
+            <label id="ob-kama-slow-wrap" hidden>KAMA slow
+              <input type="number" id="ob-kama-slow" value="30" min="1" max="200" />
+            </label>
+            <label id="ob-hma-wrap" hidden>HMA period
+              <input type="number" id="ob-hma" value="21" min="2" max="200" />
+            </label>
+            <label id="ob-zlema-wrap" hidden>ZLEMA period
+              <input type="number" id="ob-zlema" value="21" min="1" max="200" />
+            </label>
+            <label>Max wait candles
+              <input type="number" id="ob-max-wait" value="8" min="1" max="20" />
+            </label>
+            <label class="chk">Wait from break
+              <input type="checkbox" id="ob-wait-from-break"
+                title="Off = wait only inside leftover max-break-after-Asia bars. On = count max wait candles from the actual break bar (not clipped by a late break). A rolling fib always waits from the lock bar." />
+            </label>
+            <label class="chk">Higher/lower close resume
+              <input type="checkbox" id="ob-higher-close" checked />
+            </label>
+            <label>Resume closes
+              <input type="number" id="ob-resume-closes" value="1" min="1" max="8" step="1" />
+            </label>
+            <label>Resume max from break (pts)
+              <input type="number" id="ob-resume-max-break" value="0" min="0" step="50"
+                title="Higher/lower close resume only: wait-bar close may not extend more than this many pts past the break close (long: above, short: below). 0 = off. Pullback side of the break always allowed. The level touch ignores this." />
+            </label>
+          </div>
+        </div>
+
+        <div class="ob-group">
+          <div class="ob-group-title">Timeout</div>
+          <div class="ob-group-fields">
+            <label>Timeout action (preferred)
+              <select id="ob-timeout"
+                title="After max wait with no level or resume: skip, or market at the last wait-bar close (live chase). A rolling fib that never tags its level uses this same ending.">
+                <option value="skip" selected>skip</option>
+                <option value="market">market</option>
+              </select>
+            </label>
+            <label>Timeout max level dist (pts)
+              <input type="number" id="ob-timeout-ema-dist" value="0" min="0" step="50"
+                title="Preferred timeout only: skip if the wait never got this close to the active level (the selected MA, the fib, or the closer of the two). 0 = off. A missing level also skips." />
+            </label>
+            <label>Timeout min break (pts)
+              <input type="number" id="ob-timeout-min-break" value="0" min="0" step="50"
+                title="Preferred timeout only: extra break size vs Asia. A level touch ignores this. 0 = no extra." />
+            </label>
+            <label>Timeout min pullback (pts)
+              <input type="number" id="ob-timeout-min-pullback" value="0" min="0" step="50"
+                title="Preferred timeout only: last wait candle close must be this many pts back from the break close (long: below, short: above). 0 = off. Level and resume fills ignore this." />
+            </label>
+          </div>
+        </div>
+
         <div class="ob-near-box">
           <div class="ob-near-box-title">Near box</div>
           <div class="ob-near-box-fields">
             <label>Bars
               <input type="number" id="ob-near-bars" value="0" min="0" max="20" step="1"
-                title="Required pullback only. 0 = off. If the wait ends with no EMA or close-resume, fill when the last N wait closes all sit within Near-box dist of the broken Asia edge." />
+                title="Required pullback only. 0 = off. If the wait ends with no level or close-resume, fill when the last N wait closes all sit within Near-box dist of the broken Asia edge." />
             </label>
             <label>Distance (pts)
               <input type="number" id="ob-near-pts" value="500" min="0" step="50"
-                title="Max distance from Asia high (long) or Asia low (short) for each of the last N wait closes. 1 pt = 0.1 pip on EURUSD and USDJPY." />
+                title="Max distance from Asia high (long) or Asia low (short) for each of the last N wait closes. 1 pt = 0.1 pip on an FX major." />
             </label>
             <label>Trend
               <select id="ob-near-trend" title="Extra gate after the distance check. Outside = last close still beyond Asia by the min break. Breakout = that, and the last close extended further than the first of the N.">
@@ -532,177 +628,159 @@
             </label>
           </div>
         </div>
-        <label class="chk">Higher/lower close resume
-          <input type="checkbox" id="ob-higher-close" checked />
-        </label>
-        <label>Resume closes
-          <input type="number" id="ob-resume-closes" value="1" min="1" max="8" step="1" />
-        </label>
-        <label>Resume max from break (pts)
-          <input type="number" id="ob-resume-max-break" value="0" min="0" step="50"
-            title="Higher/lower close resume only: wait-bar close may not extend more than this many pts past the break close (long: above, short: below). 0 = off. Pullback side of the break always allowed. EMA ignores this." />
-        </label>
-        <label>Skip late short wait ≥
-          <input type="number" id="ob-late-short-wait" value="7" min="0" max="20" step="1"
-            title="Skip DOWN entries from this wait bar onward. 0 = off." />
-        </label>
-        <label>Skip late short if Asia &lt; (pts)
-          <input type="number" id="ob-late-short-asia" value="3000" min="0" step="100"
-            title="Only skip late shorts when Asia range is below this. 0 = any Asia size." />
-        </label>
-        <div class="ob-near-box" id="ob-reentry-box">
-          <div class="ob-near-box-title">Second trade</div>
-          <p class="field-help">Only after the first trade exits at its stop. The loss stays. Then this many signal candles in a row must close back through that original fill. The last of those closes is the new entry, with its own fixed stop and target. No trail. 1 candle is the first close back through.</p>
-          <div class="ob-near-box-fields">
-            <label class="chk"><input type="checkbox" id="ob-reentry" /> On</label>
-            <label>Closes through fill
-              <input type="number" id="ob-reentry-closes" value="1" min="1" max="8" step="1" />
+
+        <div class="ob-group">
+          <div class="ob-group-title">Filters</div>
+          <div class="ob-group-fields">
+            <label>Skip late short wait ≥
+              <input type="number" id="ob-late-short-wait" value="7" min="0" max="20" step="1"
+                title="Skip DOWN entries from this wait bar onward. 0 = off." />
             </label>
-            <label>SL (pts)
-              <input type="number" id="ob-reentry-sl" value="1000" min="0" step="50" />
+            <label>Skip late short if Asia &lt; (pts)
+              <input type="number" id="ob-late-short-asia" value="3000" min="0" step="100"
+                title="Only skip late shorts when Asia range is below this. 0 = any Asia size." />
             </label>
-            <label>TP (pts)
-              <input type="number" id="ob-reentry-tp" value="3000" min="0" step="50" />
+            <label>Side filter
+              <select id="ob-side">
+                <option value="both" selected>both</option>
+                <option value="long">long only</option>
+                <option value="short">short only</option>
+              </select>
+            </label>
+            <label>Seasonal month
+              <select id="ob-seasonal-mode"
+                title="Bucharest month: Jan/Aug long bias, May/Jun short. Off = ignore. Tag = stamp only. Filter = skip the against-side Asia break.">
+                <option value="off" selected>off</option>
+                <option value="tag">tag only</option>
+                <option value="filter">filter against-side</option>
+              </select>
+            </label>
+            <label class="chk">Join inside box
+              <input type="checkbox" id="ob-seasonal-join"
+                title="If the combined bias has a side and Asia never printed a valid break, enter with that side instead of skipping no_break. Off when month and 2-week disagree." />
+            </label>
+            <label>2-week trend
+              <select id="ob-week2-mode"
+                title="Last close vs ~10-session EMA of daily closes, plus path efficiency. Off = ignore. Tag = stamp only. Filter = skip the against-side Asia break even if Seasonal month is off. If both filter and they disagree, no skip.">
+                <option value="off" selected>off</option>
+                <option value="tag">tag only</option>
+                <option value="filter">filter against-side</option>
+              </select>
+            </label>
+            <label>Trend flat (pts)
+              <input type="number" id="ob-trend-flat" value="1500" min="0" step="100"
+                title="2-week net close-to-close below this is flat (too small to care). Gold default 1500 pts = $15." />
+            </label>
+            <label>Trend efficiency min
+              <input type="number" id="ob-trend-eff" value="0.35" min="0" max="1" step="0.05"
+                title="|net| / sum of |daily changes| over the 2-week window. Below this = two-way chop, no side. 0 = off." />
+            </label>
+            <label>News days
+              <select id="ob-news-mode"
+                title="Days in backtest/xau_news_days.json (2023–2026). Off = ignore. Tag = stamp FOMC/CPI/NFP on the row. Filter = skip the whole local day.">
+                <option value="off" selected>off</option>
+                <option value="tag">tag only</option>
+                <option value="filter">filter out</option>
+              </select>
+            </label>
+            <label>News set
+              <select id="ob-news-set"
+                title="scheduled = FOMC + CPI + NFP + Jackson Hole. all = those plus unscheduled shocks (SVB, wars, tariffs, …).">
+                <option value="scheduled" selected>scheduled (FOMC/CPI/NFP/JH)</option>
+                <option value="all">all (incl. shocks)</option>
+              </select>
             </label>
           </div>
         </div>
-        <label>Side filter
-          <select id="ob-side">
-            <option value="both" selected>both</option>
-            <option value="long">long only</option>
-            <option value="short">short only</option>
-          </select>
-        </label>
-        <label>Seasonal month
-          <select id="ob-seasonal-mode"
-            title="Bucharest month: Jan/Aug long bias, May/Jun short. Off = ignore. Tag = stamp only. Filter = skip the against-side Asia break.">
-            <option value="off" selected>off</option>
-            <option value="tag">tag only</option>
-            <option value="filter">filter against-side</option>
-          </select>
-        </label>
-        <label class="chk">Join inside box
-          <input type="checkbox" id="ob-seasonal-join"
-            title="If the combined bias has a side and Asia never printed a valid break, enter with that side instead of skipping no_break. Off when month and 2-week disagree." />
-        </label>
-        <label>2-week trend
-          <select id="ob-week2-mode"
-            title="Last close vs ~10-session EMA of daily closes, plus path efficiency. Off = ignore. Tag = stamp only. Filter = skip the against-side Asia break even if Seasonal month is off. If both filter and they disagree, no skip.">
-            <option value="off" selected>off</option>
-            <option value="tag">tag only</option>
-            <option value="filter">filter against-side</option>
-          </select>
-        </label>
-        <label>Trend flat (pts)
-          <input type="number" id="ob-trend-flat" value="1500" min="0" step="100"
-            title="2-week net close-to-close below this is flat (too small to care). Gold default 1500 pts = $15." />
-        </label>
-        <label>Trend efficiency min
-          <input type="number" id="ob-trend-eff" value="0.35" min="0" max="1" step="0.05"
-            title="|net| / sum of |daily changes| over the 2-week window. Below this = two-way chop, no side. 0 = off." />
-        </label>
-        <label>News days
-          <select id="ob-news-mode"
-            title="Days in backtest/xau_news_days.json (2023–2026). Off = ignore. Tag = stamp FOMC/CPI/NFP on the row. Filter = skip the whole local day.">
-            <option value="off" selected>off</option>
-            <option value="tag">tag only</option>
-            <option value="filter">filter out</option>
-          </select>
-        </label>
-        <label>News set
-          <select id="ob-news-set"
-            title="scheduled = FOMC + CPI + NFP + Jackson Hole. all = those plus unscheduled shocks (SVB, wars, tariffs, …).">
-            <option value="scheduled" selected>scheduled (FOMC/CPI/NFP/JH)</option>
-            <option value="all">all (incl. shocks)</option>
-          </select>
-        </label>
-        <label>SL mode
-          <select id="ob-sl-mode">
-            <option value="asia_opposite" selected>asia opposite</option>
-            <option value="range">Asia range</option>
-            <option value="fixed">fixed pts</option>
-            <option value="m12_frac">12m avg × frac</option>
-          </select>
-        </label>
-        <label>SL fixed (pts)
-          <input type="number" id="ob-sl-fixed" value="500" min="50" step="50" />
-        </label>
-        <label>SL range mult
-          <input type="number" id="ob-sl-range-mult" value="1" min="0.1" step="0.1"
-            title="Asia range mode: SL distance = Asia width × this. 1 = the range itself." />
-        </label>
-        <label>SL 12m frac
-          <select id="ob-sl-m12-frac"
-            title="Stop = this fraction of the last-12-month average daily-close range, rounded up to 50 pts.">
-            <option value="0.25">1/4</option>
-            <option value="0.333333" selected>1/3</option>
-            <option value="0.5">1/2</option>
-          </select>
-        </label>
-        <label>SL cap (pts)
-          <input type="number" id="ob-sl-cap" value="0" min="0" step="50"
-            title="Max SL distance for asia opposite, Asia range, and 12m frac. 0 = off. If the raw SL is farther, it is pulled in to this many pts." />
-        </label>
-        <label>TP mode
-          <select id="ob-tp-mode">
-            <option value="range_mult" selected>range × mult</option>
-            <option value="fixed">fixed pts</option>
-            <option value="r_mult">R multiple</option>
-            <option value="m12">12m avg (daily closes)</option>
-          </select>
-        </label>
-        <label>TP fixed (pts)
-          <input type="number" id="ob-tp-fixed" value="1000" min="50" step="50" />
-        </label>
-        <label>TP range mult
-          <input type="number" id="ob-tp-range-mult" value="1.5" min="0.1" step="0.1" />
-        </label>
-        <label>TP R mult
-          <input type="number" id="ob-tp-r-mult" value="2" min="0.5" step="0.1" />
-        </label>
-        <label>Trail arm mode
-          <select id="ob-trail-arm-mode">
-            <option value="off">off (no trail)</option>
-            <option value="fixed" selected>fixed pts</option>
-            <option value="asia">Asia range (capped)</option>
-            <option value="from_fill">from fill (walk SL with price)</option>
-          </select>
-        </label>
-        <label>Trail arm (pts profit)
-          <input type="number" id="ob-trail-arm" value="400" min="0" step="50" />
-        </label>
-        <label>Trail arm cap (pts)
-          <input type="number" id="ob-trail-arm-cap" value="2000" min="0" step="50"
-            title="Max trail-arm when mode is Asia range. 0 = no cap." />
-        </label>
-        <label>Trail distance (pts)
-          <input type="number" id="ob-trail" value="250" min="0" step="50"
-            title="Gap behind the best price once the trail is on. From-fill + 0 = use the initial SL (up 100 pts → remaining risk 1900 if SL was 2000)." />
-        </label>
-        <label>BE arm (pts)
-          <input type="number" id="ob-be-arm" value="0" min="0" step="50"
-            title="Move SL to entry once profit reaches this many pts. 0 = off. Trail still tightens independently." />
-        </label>
-        <label>Max hold (hours)
-          <input type="number" id="ob-max-hold" value="10" min="1" max="24" step="0.5" />
-        </label>
-        <label>Flatten hour (Bucharest)
-          <input type="number" id="ob-flatten" value="18" min="8" max="23" />
-        </label>
-        <label class="chk">One trade per day
-          <input type="checkbox" id="ob-one-per-day" checked />
-        </label>
-        <label>Workers
-          <input type="number" id="ob-workers" value="3" min="1" max="6" step="1"
-            title="Parallel months (separate processes). Each worker holds one month of ticks or 5m candles." />
-        </label>
-        <label>Data
-          <select id="ob-data"
-            title="5m candles are built from ticks once and cached in data/candles/5m/. Signals stay 15m. Fills/exits are conservative vs ticks (EMA fill at EMA; same-bar SL beats TP).">
-            <option value="candles_5m" selected>5m candles (cached)</option>
-            <option value="ticks">Tick data (precise)</option>
-          </select>
-        </label>
+
+        <div class="ob-group">
+          <div class="ob-group-title">Stop and target</div>
+          <div class="ob-group-fields">
+            <label>SL mode
+              <select id="ob-sl-mode">
+                <option value="asia_opposite" selected>asia opposite</option>
+                <option value="range">Asia range</option>
+                <option value="fixed">fixed pts</option>
+                <option value="m12_frac">12m avg × frac</option>
+              </select>
+            </label>
+            <label>SL fixed (pts)
+              <input type="number" id="ob-sl-fixed" value="500" min="50" step="50" />
+            </label>
+            <label>SL range mult
+              <input type="number" id="ob-sl-range-mult" value="1" min="0.1" step="0.1"
+                title="Asia range mode: SL distance = Asia width × this. 1 = the range itself." />
+            </label>
+            <label>SL 12m frac
+              <select id="ob-sl-m12-frac"
+                title="Stop = this fraction of the last-12-month average daily-close range, rounded up to 50 pts.">
+                <option value="0.25">1/4</option>
+                <option value="0.333333" selected>1/3</option>
+                <option value="0.5">1/2</option>
+              </select>
+            </label>
+            <label>SL cap (pts)
+              <input type="number" id="ob-sl-cap" value="0" min="0" step="50"
+                title="Max SL distance for asia opposite, Asia range, and 12m frac. 0 = off. If the raw SL is farther, it is pulled in to this many pts." />
+            </label>
+            <label>TP mode
+              <select id="ob-tp-mode">
+                <option value="range_mult" selected>range × mult</option>
+                <option value="fixed">fixed pts</option>
+                <option value="sl_mult">SL multiple</option>
+                <option value="m12">12m avg (daily closes)</option>
+              </select>
+            </label>
+            <label>TP fixed (pts)
+              <input type="number" id="ob-tp-fixed" value="1000" min="50" step="50" />
+            </label>
+            <label>TP range mult
+              <input type="number" id="ob-tp-range-mult" value="1.5" min="0.1" step="0.1" />
+            </label>
+            <label>SL mult
+              <input type="number" id="ob-tp-sl-mult" value="2" min="0.5" step="0.1" />
+              <span class="field-help">Target distance = stop distance × this. 2 means the target is twice the stop.</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="ob-group">
+          <div class="ob-group-title">Trail and time stop</div>
+          <div class="ob-group-fields">
+            <label>Trail arm mode
+              <select id="ob-trail-arm-mode">
+                <option value="off">off (no trail)</option>
+                <option value="fixed" selected>fixed pts</option>
+                <option value="asia">Asia range (capped)</option>
+                <option value="from_fill">from fill (walk SL with price)</option>
+              </select>
+            </label>
+            <label>Trail arm (pts profit)
+              <input type="number" id="ob-trail-arm" value="400" min="0" step="50" />
+            </label>
+            <label>Trail arm cap (pts)
+              <input type="number" id="ob-trail-arm-cap" value="2000" min="0" step="50"
+                title="Max trail-arm when mode is Asia range. 0 = no cap." />
+            </label>
+            <label>Trail distance (pts)
+              <input type="number" id="ob-trail" value="250" min="0" step="50"
+                title="Gap behind the best price once the trail is on. From-fill + 0 = use the initial SL (up 100 pts → remaining risk 1900 if SL was 2000)." />
+            </label>
+            <label>BE arm (pts)
+              <input type="number" id="ob-be-arm" value="0" min="0" step="50"
+                title="Move SL to entry once profit reaches this many pts. 0 = off. Trail still tightens independently." />
+            </label>
+            <label>Max hold (hours)
+              <input type="number" id="ob-max-hold" value="10" min="1" max="24" step="0.5" />
+            </label>
+            <label>Flatten hour (Bucharest)
+              <input type="number" id="ob-flatten" value="18" min="8" max="23" />
+            </label>
+            <label class="chk">One trade per day
+              <input type="checkbox" id="ob-one-per-day" checked />
+            </label>
+          </div>
+        </div>
       </div>
       <div class="actions">
         <button type="button" class="primary" id="ob-run">Run overnight break</button>
@@ -737,9 +815,6 @@
       </div>
       <p class="muted" id="ob-meta">No run yet.</p>
       <div class="hero-grid" id="ob-hero"></div>
-      <h3>Second trade</h3>
-      <p class="table-note" id="ob-reentry-note">Turn the second trade on to see only those extra entries here. They are also included in the totals above.</p>
-      <div class="hero-grid" id="ob-reentry-hero"></div>
       <div class="ob-params" id="ob-run-params" hidden></div>
       <p class="table-note" id="ob-skip-breakdown"></p>
       <h3>Streaks</h3>
@@ -783,9 +858,9 @@
       </div>
       <h3>Trades</h3>
       <p class="table-note">
-        Entry = EMA touch, higher/lower close resume, or break close.
+        Entry = the selected moving average, a fib level, higher/lower close resume, or break close.
         Click a row to open the 15m chart in a new tab once the run is in the catalog.
-        Hover <strong>Decision</strong> for the full wait / EMA / close-vs-prev line.
+        Hover <strong>Decision</strong> for the full wait / level / close-vs-prev line.
         Max fav / max adv = best and worst mid vs fill (break close on skips) until flatten hour, even if the trade already exited.
         Adv/SL = max adv vs SL pts (can exceed 100% when price kept going after the stop).
       </p>
@@ -799,8 +874,8 @@
               <th>Break pts</th>
               <th>Entry</th>
               <th>Wait</th>
-              <th>EMA</th>
-              <th>Closest EMA</th>
+              <th>Level</th>
+              <th>Closest</th>
               <th>Decision</th>
               <th>Fill</th>
               <th>SL</th>
@@ -822,7 +897,7 @@
       <h3>Skipped / failed days</h3>
       <p class="table-note">
         Every day that did not produce a trade, with the same decision factors
-        (wait / EMA closest / best close vs prev). Max fav / max adv after a break
+        (wait / closest level / best close vs prev). Max fav / max adv after a break
         are from the break close until flatten hour.
       </p>
       <div class="table-wrap">
@@ -835,8 +910,8 @@
               <th>Asia range</th>
               <th>Break</th>
               <th>Wait</th>
-              <th>EMA</th>
-              <th>Closest EMA</th>
+              <th>Level</th>
+              <th>Closest</th>
               <th>Best resume</th>
               <th>Decision</th>
               <th>Opp peak</th>
@@ -860,7 +935,7 @@
 
     // extend footer hint
     if (foot && foot.textContent.indexOf("Overnight") < 0) {
-      foot.textContent += " Overnight break = Asia range + EMA/higher-close.";
+      foot.textContent += " Overnight break = Asia range, then the selected moving average, a fib of the Asia session or a rolling window, or whichever tags first.";
     }
   }
 
@@ -903,7 +978,7 @@
     no_break: "No close outside Asia",
     side_filter: "Side filtered",
     no_entry_tick: "No tick at entry",
-    no_pullback: "No EMA / close resume in wait",
+    no_pullback: "No level / close resume in wait",
     no_pullback_timeout: "Pullback timeout (skip)",
     late_short: "Late short on small/medium Asia",
     no_entry: "No entry",
@@ -937,11 +1012,18 @@
     ["pullback_mode", "Pullback"],
     ["pullback_ref", "Pullback level"],
     ["pullback_fib", "Fib level"],
+    ["fib_anchor", "Fib window"],
+    ["ma_type", "Moving average"],
     ["ema_period", "EMA"],
+    ["kama_er", "KAMA ER"],
+    ["kama_fast", "KAMA fast"],
+    ["kama_slow", "KAMA slow"],
+    ["hma_period", "HMA"],
+    ["zlema_period", "ZLEMA"],
     ["max_wait_candles", "Max wait"],
     ["wait_from_break", "Wait from break"],
     ["timeout_action", "Timeout action"],
-    ["timeout_max_ema_dist_pts", "Timeout max EMA dist"],
+    ["timeout_max_ema_dist_pts", "Timeout max level dist"],
     ["timeout_min_break_pts", "Timeout min break"],
     ["timeout_min_pullback_pts", "Timeout min pullback"],
     ["near_box_bars", "Near-box bars"],
@@ -969,7 +1051,7 @@
     ["tp_mode", "TP mode"],
     ["tp_fixed_pts", "TP fixed"],
     ["tp_range_mult", "TP range ×"],
-    ["tp_r_mult", "TP R ×"],
+    ["tp_sl_mult", "SL multiple"],
     ["trail_arm_mode", "Trail arm mode"],
     ["trail_arm_pts", "Trail arm pts"],
     ["trail_arm_cap_pts", "Trail arm cap"],
@@ -978,10 +1060,6 @@
     ["max_hold_hours", "Max hold h"],
     ["flatten_hour", "Flatten hour"],
     ["one_trade_per_day", "One per day"],
-    ["reentry_enabled", "Second trade"],
-    ["reentry_closes", "Second-trade closes"],
-    ["reentry_sl_pts", "Second-trade SL"],
-    ["reentry_tp_pts", "Second-trade TP"],
   ];
 
   const PARAM_FORM_IDS = {
@@ -995,7 +1073,14 @@
     pullback_mode: "ob-pullback-mode",
     pullback_ref: "ob-pullback-ref",
     pullback_fib: "ob-pullback-fib",
+    fib_anchor: "ob-fib-anchor",
+    ma_type: "ob-ma-type",
     ema_period: "ob-ema",
+    kama_er: "ob-kama-er",
+    kama_fast: "ob-kama-fast",
+    kama_slow: "ob-kama-slow",
+    hma_period: "ob-hma",
+    zlema_period: "ob-zlema",
     max_wait_candles: "ob-max-wait",
     wait_from_break: "ob-wait-from-break",
     timeout_action: "ob-timeout",
@@ -1026,7 +1111,7 @@
     tp_mode: "ob-tp-mode",
     tp_fixed_pts: "ob-tp-fixed",
     tp_range_mult: "ob-tp-range-mult",
-    tp_r_mult: "ob-tp-r-mult",
+    tp_sl_mult: "ob-tp-sl-mult",
     trail_arm_mode: "ob-trail-arm-mode",
     trail_arm_pts: "ob-trail-arm",
     trail_arm_cap_pts: "ob-trail-arm-cap",
@@ -1035,10 +1120,6 @@
     max_hold_hours: "ob-max-hold",
     flatten_hour: "ob-flatten",
     one_trade_per_day: "ob-one-per-day",
-    reentry_enabled: "ob-reentry",
-    reentry_closes: "ob-reentry-closes",
-    reentry_sl_pts: "ob-reentry-sl",
-    reentry_tp_pts: "ob-reentry-tp",
   };
 
   function fmtParam(key, raw) {
@@ -1052,7 +1133,13 @@
       return "1/3";
     }
     if (key === "tp_mode" && raw === "m12") return "12m avg";
+    if (key === "tp_mode" && (raw === "sl_mult" || raw === "r_mult")) return "SL multiple";
     if (key === "sl_mode" && raw === "m12_frac") return "12m × frac";
+    if (key === "pullback_ref" && raw === "ema") return "moving average";
+    if (key === "pullback_ref" && raw === "both") return "both";
+    if (key === "ma_type") return String(raw).toUpperCase();
+    if (key === "fib_anchor" && raw === "roll") return "roll while expanding";
+    if (key === "fib_anchor") return "Asia session";
     return String(raw);
   }
 
@@ -1067,6 +1154,14 @@
     if (p.sl_mode === "range_width" || p.sl_mode === "asia_range") {
       p.sl_mode = "range";
     }
+    if (p.tp_mode === "r_mult" || p.tp_mode === "r" || p.tp_mode === "sl") {
+      p.tp_mode = "sl_mult";
+    }
+    if (p.tp_sl_mult == null && p.tp_r_mult != null) {
+      p.tp_sl_mult = p.tp_r_mult;
+    }
+    if (p.ma_type == null) p.ma_type = "ema";
+    if (p.fib_anchor == null) p.fib_anchor = "asia";
     return p;
   }
 
@@ -1525,26 +1620,6 @@
         heroItem("Avg loss", result.avg_loss_pts) +
         heroItem("Skipped", result.skipped);
     }
-    const reHero = $("ob-reentry-hero");
-    const reNote = $("ob-reentry-note");
-    const re = result.reentry || {};
-    if (reHero) {
-      const n = Number(re.trades) || 0;
-      reHero.innerHTML = n
-        ? heroItem("Trades", n) +
-          heroItem("Win %", re.win_pct != null ? re.win_pct + "%" : "—") +
-          heroItem("Sum pts", re.sum_pts) +
-          heroItem("Avg pts", re.avg_pts) +
-          heroItem("PF", re.profit_factor != null ? re.profit_factor : "—") +
-          heroItem("Avg win", re.avg_win_pts) +
-          heroItem("Avg loss", re.avg_loss_pts)
-        : "";
-    }
-    if (reNote) {
-      reNote.textContent = (Number(re.trades) || 0)
-        ? "These numbers are only the second entries, the ones taken after a stop. They are already inside the totals above."
-        : "No second trades in this run. Turn the section on and set how many closes must come back through the fill.";
-    }
     renderRunParams(result);
     renderStreaks(result, streakHero, stb);
     if (breakdown) {
@@ -1823,7 +1898,14 @@
         break_on_wick: $("ob-break-wick") && $("ob-break-wick").checked,
         max_break_candles_after: Number($("ob-max-break-candles").value),
         pullback_mode: $("ob-pullback-mode").value,
+        fib_anchor: ($("ob-fib-anchor") && $("ob-fib-anchor").value) || "asia",
+        ma_type: ($("ob-ma-type") && $("ob-ma-type").value) || "ema",
         ema_period: Number($("ob-ema").value),
+        kama_er: Math.max(1, Number(($("ob-kama-er") && $("ob-kama-er").value) || 10)),
+        kama_fast: Math.max(1, Number(($("ob-kama-fast") && $("ob-kama-fast").value) || 2)),
+        kama_slow: Math.max(1, Number(($("ob-kama-slow") && $("ob-kama-slow").value) || 30)),
+        hma_period: Math.max(2, Number(($("ob-hma") && $("ob-hma").value) || 21)),
+        zlema_period: Math.max(1, Number(($("ob-zlema") && $("ob-zlema").value) || 21)),
         max_wait_candles: Number($("ob-max-wait").value),
         wait_from_break: $("ob-wait-from-break") && $("ob-wait-from-break").checked,
         timeout_action: ($("ob-timeout").value === "worst") ? "market" : $("ob-timeout").value,
@@ -1848,7 +1930,7 @@
         tp_mode: $("ob-tp-mode").value,
         tp_fixed_pts: Number($("ob-tp-fixed").value),
         tp_range_mult: Number($("ob-tp-range-mult").value),
-        tp_r_mult: Number($("ob-tp-r-mult").value),
+        tp_sl_mult: Number($("ob-tp-sl-mult").value),
         trail_arm_mode: ($("ob-trail-arm-mode") && $("ob-trail-arm-mode").value) || "fixed",
         trail_arm_pts: Number($("ob-trail-arm").value),
         trail_arm_cap_pts: Number(($("ob-trail-arm-cap") && $("ob-trail-arm-cap").value) || 0),
@@ -1857,10 +1939,6 @@
         max_hold_hours: Number($("ob-max-hold").value),
         flatten_hour: Number($("ob-flatten").value),
         one_trade_per_day: $("ob-one-per-day") && $("ob-one-per-day").checked,
-        reentry_enabled: $("ob-reentry") && $("ob-reentry").checked,
-        reentry_closes: Math.max(1, Number($("ob-reentry-closes") && $("ob-reentry-closes").value) || 1),
-        reentry_sl_pts: Number(($("ob-reentry-sl") && $("ob-reentry-sl").value) || 0),
-        reentry_tp_pts: Number(($("ob-reentry-tp") && $("ob-reentry-tp").value) || 0),
         side_filter: $("ob-side").value,
         seasonal_mode: ($("ob-seasonal-mode") && $("ob-seasonal-mode").value) || "off",
         seasonal_join: $("ob-seasonal-join") && $("ob-seasonal-join").checked,
@@ -1913,8 +1991,8 @@
   if (modeEl) modeEl.addEventListener("change", syncPullbackControls);
   const refEl = $("ob-pullback-ref");
   if (refEl) refEl.addEventListener("change", syncPullbackControls);
-  const reEl = $("ob-reentry");
-  if (reEl) reEl.addEventListener("change", syncPullbackControls);
+  const maEl = $("ob-ma-type");
+  if (maEl) maEl.addEventListener("change", syncMaFields);
   const resumeEl = $("ob-higher-close");
   if (resumeEl) resumeEl.addEventListener("change", syncPullbackControls);
   const trailModeEl = $("ob-trail-arm-mode");
