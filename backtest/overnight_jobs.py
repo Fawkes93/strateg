@@ -1112,6 +1112,8 @@ def _run(params: OvernightJobParams) -> None:
             phase="error",
             message=str(e),
             error=traceback.format_exc(),
+            pct=100.0,
+            lanes=[],
             finished_at=datetime.now(timezone.utc).isoformat(),
         )
     finally:

@@ -1489,12 +1489,40 @@
     return String(ln.month).slice(0, 7);
   }
 
+  function lanePct(ln) {
+    return Math.max(0, Math.min(100, Number(ln && ln.pct) || 0));
+  }
+
+  function laneSignature(lanes) {
+    return lanes
+      .map(function (ln, i) {
+        const slot = ln.slot != null ? ln.slot : i;
+        const phase = ln.phase || "idle";
+        const detail = ln.detail || (phase === "idle" ? "waiting" : "");
+        const trades = ln.trades && phase !== "idle" ? String(ln.trades) : "";
+        return [slot, phase, monthLabel(ln), detail, trades].join("\u0001");
+      })
+      .join("\u0002");
+  }
+
+  function paintLaneMeters(el, lanes) {
+    const bars = el.querySelectorAll(".sf-lane-bar");
+    const pcts = el.querySelectorAll(".sf-lane-pct");
+    lanes.forEach(function (ln, i) {
+      const pct = lanePct(ln);
+      if (bars[i]) bars[i].style.width = pct + "%";
+      if (pcts[i]) pcts[i].textContent = pct.toFixed(0) + "%";
+    });
+  }
+
   function renderLanes(st) {
     const el = $("ob-lanes");
     if (!el) return;
     const p = st.progress || {};
     let lanes = p.lanes || [];
-    if (st.running && !lanes.length) {
+    const running = !!st.running;
+    el.classList.toggle("is-live", running);
+    if (running && !lanes.length) {
       const n = Number(st.params && st.params.workers) || 3;
       lanes = [];
       for (let i = 0; i < n; i++) {
@@ -1503,16 +1531,23 @@
     }
     if (!lanes.length) {
       el.innerHTML = "";
+      el.dataset.sig = "";
       el.hidden = true;
       return;
     }
     el.hidden = false;
+    const sig = laneSignature(lanes);
+    if (el.dataset.sig === sig && el.children.length === lanes.length) {
+      paintLaneMeters(el, lanes);
+      return;
+    }
+    el.dataset.sig = sig;
     el.innerHTML = lanes
       .map(function (ln, i) {
         const slot = ln.slot != null ? ln.slot : i;
         const hue = LANE_HUES[slot % LANE_HUES.length];
         const phase = ln.phase || "idle";
-        const pct = Math.max(0, Math.min(100, Number(ln.pct) || 0));
+        const pct = lanePct(ln);
         const month = monthLabel(ln);
         const detail = ln.detail || (phase === "idle" ? "waiting" : "");
         const trades =
@@ -1537,7 +1572,7 @@
           '<span class="sf-lane-phase">' +
           pill +
           "</span>" +
-          "<span>" +
+          '<span class="sf-lane-pct">' +
           pct.toFixed(0) +
           "%</span>" +
           (detail ? "<span>" + detail + "</span>" : "") +

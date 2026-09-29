@@ -1045,6 +1045,9 @@ td.ob-decision[data-full] { color: var(--text); }
 .sf-lane.is-scan .sf-lane-bar {
   animation: sf-lane-sheen 2.4s linear infinite;
 }
+#ob-lanes:not(.is-live) .sf-lane-bar {
+  animation: none;
+}
 .sf-lane.is-idle .sf-lane-bar {
   background: var(--border);
   animation: none;
