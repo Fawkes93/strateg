@@ -253,23 +253,101 @@ class CandleBuilder:
         return self.completed_candles[-count:]
 
 
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def epoch_ms(timestamp: datetime) -> int:
+    """UTC unix milliseconds. Naive timestamps are treated as UTC."""
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    elif timestamp.tzinfo is not timezone.utc:
+        timestamp = timestamp.astimezone(timezone.utc)
+    delta = timestamp - _EPOCH
+    return delta.days * 86_400_000 + delta.seconds * 1000 + delta.microseconds // 1000
+
+
+def _from_ms(ms: int) -> datetime:
+    return _EPOCH + timedelta(milliseconds=int(ms))
+
+
+class BarFold:
+    """OHLC fold that matches CandleBuilder bucket rules without a Tick per quote.
+
+    Buckets are UTC minute-of-hour floors (a 5-minute bar opens at :00, :05, …).
+    The bar that is still open after the last quote is dropped, same as build_candles.
+    """
+
+    def __init__(self, timeframe_minutes: int = 5, skip_ignored: bool = False):
+        self.tf_min = max(1, int(timeframe_minutes))
+        self.step_ms = self.tf_min * 60_000
+        self.skip_ignored = bool(skip_ignored)
+        self.out: List[Candle] = []
+        self.last_ms: Optional[int] = None
+        self._open_ms: Optional[int] = None
+        self._close_ms = 0
+        self._o = self._h = self._l = self._c = 0.0
+        self._n = 0
+
+    def _bucket_ms(self, ms: int) -> int:
+        hour_ms = ms - (ms % 3_600_000)
+        minute = ((ms // 1000) % 3600) // 60
+        bucket_minute = (minute // self.tf_min) * self.tf_min
+        return hour_ms + bucket_minute * 60_000
+
+    def add_ms(self, ms: int, mid: float) -> None:
+        ms = int(ms)
+        self.last_ms = ms
+        if self._open_ms is not None and ms >= self._close_ms:
+            self._emit()
+            self._open_ms = None
+        if self._open_ms is None:
+            bucket = self._bucket_ms(ms)
+            if self.skip_ignored and is_candle_ignored(_from_ms(bucket)):
+                return
+            self._open_ms = bucket
+            self._close_ms = bucket + self.step_ms
+            self._o = self._h = self._l = self._c = float(mid)
+            self._n = 1
+            return
+        price = float(mid)
+        if price > self._h:
+            self._h = price
+        elif price < self._l:
+            self._l = price
+        self._c = price
+        self._n += 1
+
+    def _emit(self) -> None:
+        if self._open_ms is None or self._n <= 0:
+            return
+        self.out.append(
+            Candle(
+                open_time=_from_ms(self._open_ms),
+                close_time=_from_ms(self._close_ms),
+                open=self._o,
+                high=self._h,
+                low=self._l,
+                close=self._c,
+                is_closed=True,
+                tick_count=self._n,
+            )
+        )
+
+    def finish(self) -> List[Candle]:
+        return self.out
+
+
 def build_candles(
     ticks: Sequence,
     timeframe_minutes: int = 5,
     skip_ignored: bool = False,
 ) -> List[Candle]:
     """Completed OHLC bars from mids. Drops the in-progress last bar."""
-    builder = CandleBuilder(
-        timeframe_minutes=int(timeframe_minutes),
-        max_completed=10**12,
-        skip_ignored=skip_ignored,
-    )
-    out: List[Candle] = []
+    fold = BarFold(timeframe_minutes, skip_ignored=skip_ignored)
+    add = fold.add_ms
     for t in ticks:
-        closed = builder.add_price(float(t.mid), t.ts)
-        if closed is not None:
-            out.append(closed)
-    return out
+        add(epoch_ms(t.ts), (float(t.bid) + float(t.ask)) * 0.5)
+    return fold.finish()
 
 
 def aggregate_tf(candles: Sequence[Candle], tf_min: int) -> List[Candle]:

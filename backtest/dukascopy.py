@@ -13,7 +13,6 @@ Record (20 bytes, big-endian after LZMA):
 from __future__ import annotations
 
 import lzma
-import random
 import struct
 import threading
 import time
@@ -30,6 +29,14 @@ except ImportError:  # pragma: no cover
 
 # Parallel net downloads (Dukascopy public feed). Lower if you hit 429s.
 DEFAULT_DOWNLOAD_WORKERS = 16
+# A finished hour from this feed took 15–25s here. A 10s cap timed out every try.
+HTTP_TIMEOUT_SEC = 60.0
+HTTP_CONNECT_SEC = 30.0
+# Pause between tries. The request itself uses HTTP_TIMEOUT_SEC.
+HTTP_BACKOFF_SEC = 10.0
+HTTP_RETRIES = 16
+# Outer passes over the hours that still failed after HTTP_RETRIES.
+HOUR_ATTEMPTS = 8
 
 # Dukascopy symbol → (reaktor-style symbol, price_scale)
 # price_scale is the integer divisor in the .bi5 feed.
@@ -120,6 +127,40 @@ def _cache_path(cache_dir: Path, symbol: str, when: datetime) -> Path:
     )
 
 
+def fold_bi5(
+    raw: bytes,
+    hour_start: datetime,
+    scale: float,
+    add_ms,
+) -> int:
+    """Feed one hour's .bi5 quotes to add_ms(unix_ms, mid). No Tick objects.
+
+    Same filter as decode_bi5: non-positive bid or ask is skipped. Returns
+    how many quotes were passed through.
+    """
+    if not raw or scale <= 0:
+        return 0
+    try:
+        data = lzma.decompress(raw)
+    except lzma.LZMAError:
+        return 0
+    if hour_start.tzinfo is None:
+        hour_start = hour_start.replace(tzinfo=timezone.utc)
+    else:
+        hour_start = hour_start.astimezone(timezone.utc)
+    base_ms = int(hour_start.timestamp()) * 1000
+    n = 0
+    usable = data[: (len(data) // RECORD_SIZE) * RECORD_SIZE]
+    for ms, ask_i, bid_i, _ask_v, _bid_v in TICK_STRUCT.iter_unpack(usable):
+        bid = bid_i / scale
+        ask = ask_i / scale
+        if bid <= 0 or ask <= 0:
+            continue
+        add_ms(base_ms + int(ms), (bid + ask) * 0.5)
+        n += 1
+    return n
+
+
 def decode_bi5(raw: bytes, hour_start: datetime, scale: float) -> List[Tick]:
     if not raw:
         return []
@@ -155,13 +196,29 @@ _HEADERS = {
 }
 
 
+def _pause(seconds: float, note: Optional[Callable[[str], None]], message: str) -> None:
+    """Sleep, ticking the status line so a long backoff does not look frozen."""
+    if seconds <= 0:
+        return
+    if note is None:
+        time.sleep(seconds)
+        return
+    left = float(seconds)
+    while left > 0:
+        note(message.format(left=max(1, int(round(left)))))
+        step = min(5.0, left)
+        time.sleep(step)
+        left -= step
+
+
 def _http_get(
     url: str,
-    timeout: float = 90.0,
+    timeout: float = HTTP_TIMEOUT_SEC,
     *,
     client: Optional["httpx.Client"] = None,
-    retries: int = 8,
+    retries: int = HTTP_RETRIES,
     backoff: float = 2.0,
+    note: Optional[Callable[[str], None]] = None,
 ) -> Tuple[int, bytes]:
     if httpx is None:
         raise RuntimeError("httpx is required: pip install httpx")
@@ -176,17 +233,22 @@ def _http_get(
                 r = client.get(url)
                 # Retry rate limits / temporary failures
                 if r.status_code in (429, 500, 502, 503, 504):
-                    wait = backoff * (2**attempt)
-                    if r.status_code in (429, 503):
-                        wait = max(wait, 8.0)
-                    wait = min(wait, 90.0) + random.uniform(0.0, 2.0)
-                    time.sleep(wait)
+                    wait = min(backoff * (2**attempt), HTTP_BACKOFF_SEC)
+                    _pause(
+                        wait,
+                        note,
+                        f"HTTP {r.status_code} · try {attempt + 1}/{retries} · {{left}}s",
+                    )
                     continue
                 return r.status_code, r.content
             except Exception as e:
                 last_err = e
-                wait = backoff * (2**attempt)
-                time.sleep(min(wait, 60.0))
+                wait = min(backoff * (2**attempt), HTTP_BACKOFF_SEC)
+                _pause(
+                    wait,
+                    note,
+                    f"{type(e).__name__} · try {attempt + 1}/{retries} · {{left}}s",
+                )
     finally:
         if owns:
             client.close()
@@ -202,6 +264,7 @@ def fetch_hour(
     force: bool = False,
     sleep_sec: float = 0.0,
     client: Optional["httpx.Client"] = None,
+    note: Optional[Callable[[str], None]] = None,
 ) -> List[Tick]:
     """
     Load one hour of ticks. Disk cache hit is free; net fetch has no default
@@ -225,7 +288,7 @@ def fetch_hour(
 
     path.parent.mkdir(parents=True, exist_ok=True)
     url = _hour_url(base_url, symbol, hour)
-    status, content = _http_get(url, client=client)
+    status, content = _http_get(url, client=client, note=note)
     if sleep_sec > 0:
         time.sleep(sleep_sec)
 
@@ -248,6 +311,7 @@ def cache_hour(
     base_url: str = DEFAULT_BASE,
     force: bool = False,
     client: Optional["httpx.Client"] = None,
+    note: Optional[Callable[[str], None]] = None,
 ) -> str:
     """
     Ensure one hour's .bi5 is on disk. Does **not** decode ticks (safe for
@@ -266,7 +330,7 @@ def cache_hour(
 
     path.parent.mkdir(parents=True, exist_ok=True)
     url = _hour_url(base_url, symbol, hour)
-    status, content = _http_get(url, client=client)
+    status, content = _http_get(url, client=client, note=note)
 
     if status == 404 or not content:
         path.write_bytes(b"")
@@ -332,10 +396,23 @@ def fetch_hours_parallel(
                 ticks=tt,
                 from_cache=nc,
                 from_net=nn,
+                pct=round(100.0 * d / max(n, 1), 1),
                 message=(
                     f"Hour {d}/{n} · cache {nc} · net {nn} · {tt:,} ticks"
                 ),
             )
+
+    def _note(h: datetime, msg: str) -> None:
+        if not progress:
+            return
+        with lock:
+            d = done
+        progress(
+            hours_done=d,
+            hours_total=n,
+            pct=round(100.0 * d / max(n, 1), 1),
+            message=f"Hour {d}/{n} · {h.strftime('%Y-%m-%d %H')}:00 · {msg}",
+        )
 
     def _load_one(h: datetime, client: Optional["httpx.Client"], from_cache: bool) -> None:
         ticks = fetch_hour(
@@ -346,6 +423,7 @@ def fetch_hours_parallel(
             force=force and not from_cache,
             sleep_sec=0.0,
             client=client,
+            note=None if from_cache else (lambda msg, h=h: _note(h, msg)),
         )
         _bump(from_cache, h, ticks)
 
@@ -363,6 +441,25 @@ def fetch_hours_parallel(
     while pending:
         attempt += 1
         w = workers if attempt == 1 else max(2, workers // 2)
+        if progress:
+            with lock:
+                d, nc, nn, tt = done, n_cache, n_net, tick_total
+            progress(
+                hours_done=d,
+                hours_total=n,
+                ticks=tt,
+                from_cache=nc,
+                from_net=nn,
+                pct=round(100.0 * d / max(n, 1), 1),
+                message=(
+                    f"Hour {d}/{n} · cache {nc} · net {nn} · {tt:,} ticks"
+                    + (
+                        f" · retry {attempt} · {len(pending)} left · {w} workers"
+                        if attempt > 1
+                        else f" · fetching {len(pending)}"
+                    )
+                ),
+            )
         if httpx is None:
             raise RuntimeError("httpx is required: pip install httpx")
         limits = httpx.Limits(
@@ -371,7 +468,7 @@ def fetch_hours_parallel(
         )
         failed: List[Tuple[datetime, str]] = []
         with httpx.Client(
-            timeout=httpx.Timeout(60.0, connect=20.0),
+            timeout=httpx.Timeout(HTTP_TIMEOUT_SEC, connect=HTTP_CONNECT_SEC),
             follow_redirects=True,
             headers=_HEADERS,
             limits=limits,
@@ -388,19 +485,29 @@ def fetch_hours_parallel(
                         failed.append((h, str(e)))
         if not failed:
             break
-        if attempt >= 4:
+        if attempt >= HOUR_ATTEMPTS:
             sample = "; ".join(f"{h.isoformat()}: {err[:80]}" for h, err in failed[:3])
             raise RuntimeError(
                 f"Dukascopy still failing {len(failed)} hour(s) after {attempt} attempts. "
                 f"Examples: {sample}"
             )
         # brief pause then retry only missing hours
-        time.sleep(min(2.0 * attempt, 8.0))
+        next_w = max(2, workers // 2)
         pending = [h for h, _ in failed]
         if progress:
+            with lock:
+                d = done
             progress(
-                message=f"Retry {attempt}: {len(pending)} hours failed, reducing workers to {w}",
+                hours_done=d,
+                hours_total=n,
+                pct=round(100.0 * d / max(n, 1), 1),
+                message=(
+                    f"Hour {d}/{n} · retry {attempt}: "
+                    f"{len(pending)} {'hour' if len(pending) == 1 else 'hours'} failed"
+                    f" · next pass {next_w} workers"
+                ),
             )
+        time.sleep(min(2.0 * attempt, 8.0))
 
     # Preserve chronological hour order
     all_ticks: List[Tick] = []
@@ -471,8 +578,22 @@ def cache_hours(
                 hours_total=n,
                 from_cache=n_cache,
                 from_net=nn,
+                pct=round(100.0 * d / max(n, 1), 1),
                 message=f"Hour {d}/{n} · cache {n_cache} · net {nn} · empty {ne}",
             )
+
+    def _note(h: datetime, msg: str) -> None:
+        if not progress:
+            return
+        with lock:
+            d = done
+        progress(
+            hours_done=d,
+            hours_total=n,
+            from_cache=n_cache,
+            pct=round(100.0 * d / max(n, 1), 1),
+            message=f"Hour {d}/{n} · {h.strftime('%Y-%m-%d %H')}:00 · {msg}",
+        )
 
     def _one(h: datetime, client: "httpx.Client") -> None:
         kind = cache_hour(
@@ -482,6 +603,7 @@ def cache_hours(
             base_url=base_url,
             force=force,
             client=client,
+            note=lambda msg, h=h: _note(h, msg),
         )
         _bump(kind if kind in ("net", "empty") else "net")
 
@@ -490,6 +612,24 @@ def cache_hours(
     while pending:
         attempt += 1
         w = workers if attempt == 1 else max(2, workers // 2)
+        if progress:
+            with lock:
+                d, nn, ne = done, n_net, n_empty
+            progress(
+                hours_done=d,
+                hours_total=n,
+                from_cache=n_cache,
+                from_net=nn,
+                pct=round(100.0 * d / max(n, 1), 1),
+                message=(
+                    f"Hour {d}/{n} · cache {n_cache} · net {nn} · empty {ne}"
+                    + (
+                        f" · retry {attempt} · {len(pending)} left · {w} workers"
+                        if attempt > 1
+                        else f" · fetching {len(pending)}"
+                    )
+                ),
+            )
         if httpx is None:
             raise RuntimeError("httpx is required: pip install httpx")
         limits = httpx.Limits(
@@ -498,7 +638,7 @@ def cache_hours(
         )
         failed: List[Tuple[datetime, str]] = []
         with httpx.Client(
-            timeout=httpx.Timeout(60.0, connect=20.0),
+            timeout=httpx.Timeout(HTTP_TIMEOUT_SEC, connect=HTTP_CONNECT_SEC),
             follow_redirects=True,
             headers=_HEADERS,
             limits=limits,
@@ -513,18 +653,28 @@ def cache_hours(
                         failed.append((h, str(e)))
         if not failed:
             break
-        if attempt >= 4:
+        if attempt >= HOUR_ATTEMPTS:
             sample = "; ".join(f"{h.isoformat()}: {err[:80]}" for h, err in failed[:3])
             raise RuntimeError(
                 f"Dukascopy still failing {len(failed)} hour(s) after {attempt} attempts. "
                 f"Examples: {sample}"
             )
-        time.sleep(min(2.0 * attempt, 8.0))
+        next_w = max(2, workers // 2)
         pending = [h for h, _ in failed]
         if progress:
+            with lock:
+                d = done
             progress(
-                message=f"Retry {attempt}: {len(pending)} hours failed, reducing workers to {w}",
+                hours_done=d,
+                hours_total=n,
+                pct=round(100.0 * d / max(n, 1), 1),
+                message=(
+                    f"Hour {d}/{n} · retry {attempt}: "
+                    f"{len(pending)} {'hour' if len(pending) == 1 else 'hours'} failed"
+                    f" · next pass {next_w} workers"
+                ),
             )
+        time.sleep(min(2.0 * attempt, 8.0))
 
     counts["net"] = n_net
     counts["empty"] = n_empty
@@ -698,6 +848,64 @@ def save_tick_pack(path: Path, ticks: List[Tick]) -> None:
                 )
             )
     tmp.replace(path)
+
+
+def tick_pack_last_ts(path: Path) -> Optional[datetime]:
+    """Timestamp of the last record, or None if the file is empty or unreadable."""
+    path = Path(path)
+    try:
+        size = path.stat().st_size
+    except OSError:
+        return None
+    rec = TICK_PACK_STRUCT.size
+    if size < 12 + rec:
+        return None
+    with path.open("rb") as f:
+        ver = struct.unpack("<I", f.read(4))[0]
+        if ver != TICK_PACK_VERSION:
+            return None
+        n = struct.unpack("<Q", f.read(8))[0]
+        if n <= 0:
+            return None
+        f.seek(12 + (int(n) - 1) * rec)
+        blob = f.read(rec)
+    if len(blob) < rec:
+        return None
+    ts, _bid, _ask = TICK_PACK_STRUCT.unpack(blob)
+    return datetime.fromtimestamp(float(ts), tz=timezone.utc)
+
+
+def fold_tick_pack(path: Path, add_ms, *, progress: Optional[Callable[..., None]] = None) -> int:
+    """Stream a .tickpack into add_ms(unix_ms, mid). Does not build Tick objects."""
+    path = Path(path)
+    with path.open("rb") as f:
+        ver = struct.unpack("<I", f.read(4))[0]
+        if ver != TICK_PACK_VERSION:
+            raise ValueError(f"unsupported tick pack version {ver}")
+        n = struct.unpack("<Q", f.read(8))[0]
+        rec = TICK_PACK_STRUCT.size
+        unpack = TICK_PACK_STRUCT.unpack
+        read = f.read
+        count = 0
+        for i in range(int(n)):
+            blob = read(rec)
+            if len(blob) < rec:
+                break
+            ts, bid, ask = unpack(blob)
+            if bid <= 0 or ask <= 0:
+                continue
+            ms = int(float(ts) * 1000.0 + 0.5)
+            add_ms(ms, (float(bid) + float(ask)) * 0.5)
+            count += 1
+            if count % 200_000 == 0:
+                time.sleep(0.002)  # release GIL so the UI can poll
+                if progress:
+                    progress(
+                        phase="candles",
+                        message=f"Fold pack {count:,}/{int(n):,}",
+                        ticks=count,
+                    )
+        return count
 
 
 def load_tick_pack(

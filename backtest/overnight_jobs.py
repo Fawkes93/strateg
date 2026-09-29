@@ -583,12 +583,20 @@ def _run_month_job(payload: Dict[str, Any]) -> Dict[str, Any]:
             pass
 
     def load_prog(**kw: Any) -> None:
+        hours_done = kw.get("hours_done")
+        hours_total = kw.get("hours_total")
+        pct = kw.get("pct")
+        if pct is None and hours_total:
+            pct = round(
+                100.0 * float(hours_done or 0) / max(float(hours_total), 1.0),
+                1,
+            )
         emit(
             "load",
             message=str(kw.get("message") or "load pack"),
-            ticks_done=int(kw.get("ticks") or 0),
-            ticks_total=0,
-            pct=kw.get("pct"),
+            ticks_done=int(kw.get("ticks") or hours_done or 0),
+            ticks_total=int(hours_total or 0),
+            pct=pct,
         )
 
     def walk_prog(**kw: Any) -> None:
