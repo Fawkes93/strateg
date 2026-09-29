@@ -1,9 +1,10 @@
-"""Dawn Cross — 5m EMA cross in the Moldova dawn window, then a pullback fill.
+"""Dawn Cross — 5m average cross in the Moldova dawn window, then a pullback fill.
 
-Watch 02:00–06:00 Europe/Chisinau. A fast EMA cross of the slow EMA on a
-closed 5m bar arms the side: up is a buy, down is a sell. The fill waits for
-a later bar in that same window whose range tags the pullback EMA. Stop and
-target are fixed point distances. One position at a time.
+Watch 02:00–06:00 Europe/Chisinau. A fast average cross of the slow average on
+a closed 5m bar arms the side: up is a buy, down is a sell. Each line is an
+EMA, KAMA, HMA, or ZLEMA. The fill waits for a later bar in that same window
+whose range tags the pullback average. Stop and target are fixed point
+distances. One position at a time.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from zoneinfo import ZoneInfo
 from backtest.candles import Candle, to_utc
 from backtest.config import point_size
 from backtest.dukascopy import reaktor_symbol
+from backtest.overnight_break import _hma_series, _kama_series, _zlema_series
 
 
 @dataclass
@@ -26,9 +28,18 @@ class DawnCrossParams:
     window_start_minute: int = 0
     window_end_hour: int = 6
     window_end_minute: int = 0
+    fast_ma: str = "ema"  # ema | kama | hma | zlema
     fast_ema: int = 9
+    fast_kama_fast: int = 2
+    fast_kama_slow: int = 30
+    slow_ma: str = "ema"
     slow_ema: int = 20
+    slow_kama_fast: int = 2
+    slow_kama_slow: int = 30
+    pull_ma: str = "ema"
     pullback_ema: int = 9
+    pull_kama_fast: int = 2
+    pull_kama_slow: int = 30
     sl_pts: float = 400.0
     tp_pts: float = 800.0
     flatten_hour: int = 12  # local hour; 0 = hold for SL/TP only
@@ -57,6 +68,9 @@ class DawnCrossTrade:
     pts: float = 0.0
 
 
+MA_KINDS = ("ema", "kama", "hma", "zlema")
+
+
 def ema_series(values: Sequence[float], period: int) -> List[Optional[float]]:
     """SMA-seeded EMA. Index period-1 is the first valid value."""
     n = len(values)
@@ -72,6 +86,67 @@ def ema_series(values: Sequence[float], period: int) -> List[Optional[float]]:
         ema = float(values[i]) * k + ema * (1.0 - k)
         out[i] = ema
     return out
+
+
+def ma_line_spec(
+    kind: str,
+    period: int,
+    kama_fast: int = 2,
+    kama_slow: int = 30,
+) -> Tuple[str, int, int, int]:
+    """Normalize one Dawn Cross line. HMA length is at least 2. KAMA length is the ER window."""
+    name = str(kind or "ema").strip().lower()
+    if name not in MA_KINDS:
+        name = "ema"
+    length = int(period or (2 if name == "hma" else 1))
+    length = max(2, length) if name == "hma" else max(1, length)
+    return (
+        name,
+        length,
+        max(1, int(kama_fast or 2)),
+        max(1, int(kama_slow or 30)),
+    )
+
+
+def same_average(
+    left: Tuple[str, int, int, int], right: Tuple[str, int, int, int]
+) -> bool:
+    """True when two lines would plot the same series. KAMA fast/slow matter only for KAMA."""
+    if left[0] != right[0] or left[1] != right[1]:
+        return False
+    if left[0] == "kama":
+        return left[2] == right[2] and left[3] == right[3]
+    return True
+
+
+def ma_line_series(
+    closes: Sequence[float], spec: Tuple[str, int, int, int]
+) -> List[Optional[float]]:
+    """EMA, KAMA, HMA, or ZLEMA over the full close series. Same KAMA/HMA/ZLEMA math as overnight."""
+    kind, period, kama_fast, kama_slow = spec
+    if kind == "kama":
+        return _kama_series(closes, period, kama_fast, kama_slow)
+    if kind == "hma":
+        return _hma_series(closes, period)
+    if kind == "zlema":
+        return _zlema_series(closes, period)
+    return ema_series(closes, period)
+
+
+def _apply_lines(params: DawnCrossParams):
+    fast = ma_line_spec(
+        params.fast_ma, params.fast_ema, params.fast_kama_fast, params.fast_kama_slow
+    )
+    slow = ma_line_spec(
+        params.slow_ma, params.slow_ema, params.slow_kama_fast, params.slow_kama_slow
+    )
+    pull = ma_line_spec(
+        params.pull_ma, params.pullback_ema, params.pull_kama_fast, params.pull_kama_slow
+    )
+    params.fast_ma, params.fast_ema, params.fast_kama_fast, params.fast_kama_slow = fast
+    params.slow_ma, params.slow_ema, params.slow_kama_fast, params.slow_kama_slow = slow
+    params.pull_ma, params.pullback_ema, params.pull_kama_fast, params.pull_kama_slow = pull
+    return fast, slow, pull
 
 
 def _zone(name: str) -> ZoneInfo:
@@ -164,12 +239,15 @@ def run_dawn_cross(
     ps = point_size(sym)
     zone = _zone(params.timezone)
     closes = [float(c.close) for c in candles]
-    fast_p = max(1, int(params.fast_ema))
-    slow_p = max(1, int(params.slow_ema))
-    pull_p = max(1, int(params.pullback_ema))
-    fast = ema_series(closes, fast_p)
-    slow = ema_series(closes, slow_p)
-    pull = fast if pull_p == fast_p else ema_series(closes, pull_p)
+    fast_spec, slow_spec, pull_spec = _apply_lines(params)
+    fast = ma_line_series(closes, fast_spec)
+    slow = ma_line_series(closes, slow_spec)
+    if same_average(pull_spec, fast_spec):
+        pull = fast
+    elif same_average(pull_spec, slow_spec):
+        pull = slow
+    else:
+        pull = ma_line_series(closes, pull_spec)
 
     trades: List[DawnCrossTrade] = []
     traded_days: set[str] = set()

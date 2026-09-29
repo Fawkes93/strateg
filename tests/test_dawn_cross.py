@@ -10,7 +10,10 @@ from backtest.dawn_cross import (
     _summary,
     ema_series,
     in_window,
+    ma_line_series,
+    ma_line_spec,
     run_dawn_cross,
+    same_average,
 )
 
 
@@ -380,3 +383,83 @@ def test_streaks_and_months():
     assert months["2026-02"]["trades"] == 2
     assert months["2026-02"]["sum_pts"] == 5
     assert months["2026-02"]["avg_pts"] == 2.5
+
+
+def test_same_average_matches_overnight_line_rules():
+    ema = ma_line_spec("ema", 9, 2, 99)
+    assert same_average(ema, ma_line_spec("EMA", 9, 5, 40))
+    assert not same_average(ema, ma_line_spec("hma", 9))
+    assert ma_line_spec("hma", 1) == ("hma", 2, 2, 30)
+    assert not same_average(
+        ma_line_spec("kama", 10, 2, 30),
+        ma_line_spec("kama", 10, 2, 40),
+    )
+    assert same_average(
+        ma_line_spec("kama", 10, 2, 30),
+        ma_line_spec("kama", 10, 2, 30),
+    )
+    assert ma_line_spec("nope", 4)[0] == "ema"
+
+
+def test_pullback_fill_uses_kama_hma_or_zlema():
+    start = datetime(2026, 9, 15, 0, 0, tzinfo=ZONE)
+    closes = [100.0] * 30
+    closes.extend(100 + i * 2.0 for i in range(1, 16))
+    bars = _series(start, closes)
+    fast = ema_series(closes, 9)
+    slow = ema_series(closes, 20)
+    cross_i = next(
+        i
+        for i in range(1, len(bars))
+        if fast[i] is not None
+        and slow[i] is not None
+        and fast[i - 1] is not None
+        and slow[i - 1] is not None
+        and fast[i - 1] <= slow[i - 1]
+        and fast[i] > slow[i]
+        and in_window(bars[i].open_time, ZONE, 2, 6)
+    )
+    after = closes[cross_i]
+    tail_start = start + timedelta(minutes=5 * (cross_i + 1))
+    pre = bars[: cross_i + 1] + _series(tail_start, [after] * 4)
+    base = [b.close for b in pre] + [after]
+    ema_level = float(ema_series(base, 9)[-1])
+    for kind in ("kama", "hma", "zlema"):
+        spec = ma_line_spec(kind, 9, 2, 30)
+        level = ma_line_series(base, spec)[-1]
+        assert level is not None, kind
+        level = float(level)
+        assert abs(level - ema_level) > 1e-6, kind
+        stab = _bar(
+            tail_start + timedelta(minutes=20),
+            after,
+            low=min(level, after) - 0.25,
+            high=max(level, after) + 0.25,
+        )
+        rally = []
+        px = after
+        t = stab.open_time + timedelta(minutes=5)
+        for _ in range(12):
+            px += 3.0
+            rally.append(_bar(t, px, low=px - 0.2, high=px + 0.2))
+            t += timedelta(minutes=5)
+        out = run_dawn_cross(
+            pre + [stab] + rally,
+            symbol="XAUUSD",
+            params=DawnCrossParams(
+                pull_ma=kind,
+                pullback_ema=9,
+                pull_kama_fast=2,
+                pull_kama_slow=30,
+                sl_pts=5000,
+                tp_pts=200,
+                flatten_hour=0,
+            ),
+        )
+        assert out["trades"] == 1, (kind, out)
+        row = out["rows"][0]
+        assert row["side"] == "UP"
+        assert abs(row["entry"] - level) < 1e-6
+        assert abs(row["pullback_ema"] - level) < 1e-6
+        assert out["params"]["pull_ma"] == kind
+        assert out["params"]["fast_ma"] == "ema"

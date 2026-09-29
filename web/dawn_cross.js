@@ -14,9 +14,18 @@
     "dx-start-min",
     "dx-end",
     "dx-end-min",
+    "dx-fast-ma",
     "dx-fast",
+    "dx-fast-kama-fast",
+    "dx-fast-kama-slow",
+    "dx-slow-ma",
     "dx-slow",
+    "dx-slow-kama-fast",
+    "dx-slow-kama-slow",
+    "dx-pull-ma",
     "dx-pull",
+    "dx-pull-kama-fast",
+    "dx-pull-kama-slow",
     "dx-sl",
     "dx-tp",
     "dx-flat",
@@ -79,11 +88,11 @@
       <h2>Dawn Cross</h2>
       <ol>
         <li>Watch the local window below (default <strong>02:00–06:00 Europe/Chisinau</strong>) on 5-minute candles.</li>
-        <li>Fast EMA crossing above the slow EMA arms a buy. A downward cross arms a sell.</li>
-        <li>The fill waits for a later bar in that window to tag the pullback EMA.</li>
+        <li>The fast average crossing above the slow average arms a buy. A downward cross arms a sell. Each line is an EMA, KAMA, HMA, or ZLEMA.</li>
+        <li>The fill waits for a later bar in that window to tag the pullback average.</li>
         <li>Stop and target are fixed distances in points. Open trades flatten at the local hour below.</li>
       </ol>
-      <p class="hint">One position at a time. If the pullback never tags the EMA before the window ends, that cross is dropped. Same-bar stop and target counts as a stop. On an FX major, 1 point is 0.1 pip. Gold and bitcoin use $0.01 per point. Stop and target stay as entered.</p>
+      <p class="hint">One position at a time. If the pullback never tags that average before the window ends, that cross is dropped. Same-bar stop and target counts as a stop. On an FX major, 1 point is 0.1 pip. Gold and bitcoin use $0.01 per point. Stop and target stay as entered.</p>
     </section>
     <section class="card dawn-box">
       <h2>Parameters</h2>
@@ -116,15 +125,57 @@
             <input type="number" id="dx-end-min" value="0" min="0" max="59" step="1" title="Minute. 06:00 means the 06:00 bar is outside the window." />
           </span>
         </label>
-        <label>Fast EMA
+        <label>Fast average
+          <select id="dx-fast-ma">
+            <option value="ema" selected>EMA</option>
+            <option value="kama">KAMA</option>
+            <option value="hma">HMA</option>
+            <option value="zlema">ZLEMA</option>
+          </select>
+        </label>
+        <label id="dx-fast-wrap"><span id="dx-fast-name">Fast EMA period</span>
           <input type="number" id="dx-fast" value="9" min="1" max="200" />
         </label>
-        <label>Slow EMA
+        <label id="dx-fast-kama-fast-wrap" hidden>Fast KAMA fast
+          <input type="number" id="dx-fast-kama-fast" value="2" min="1" max="50" />
+        </label>
+        <label id="dx-fast-kama-slow-wrap" hidden>Fast KAMA slow
+          <input type="number" id="dx-fast-kama-slow" value="30" min="1" max="200" />
+        </label>
+        <label>Slow average
+          <select id="dx-slow-ma">
+            <option value="ema" selected>EMA</option>
+            <option value="kama">KAMA</option>
+            <option value="hma">HMA</option>
+            <option value="zlema">ZLEMA</option>
+          </select>
+        </label>
+        <label id="dx-slow-wrap"><span id="dx-slow-name">Slow EMA period</span>
           <input type="number" id="dx-slow" value="20" min="1" max="200" />
         </label>
-        <label>Pullback EMA
+        <label id="dx-slow-kama-fast-wrap" hidden>Slow KAMA fast
+          <input type="number" id="dx-slow-kama-fast" value="2" min="1" max="50" />
+        </label>
+        <label id="dx-slow-kama-slow-wrap" hidden>Slow KAMA slow
+          <input type="number" id="dx-slow-kama-slow" value="30" min="1" max="200" />
+        </label>
+        <label>Pullback average
+          <select id="dx-pull-ma" title="Fill when a later 5m bar in the window trades this average.">
+            <option value="ema" selected>EMA</option>
+            <option value="kama">KAMA</option>
+            <option value="hma">HMA</option>
+            <option value="zlema">ZLEMA</option>
+          </select>
+        </label>
+        <label id="dx-pull-wrap"><span id="dx-pull-name">Pullback EMA period</span>
           <input type="number" id="dx-pull" value="9" min="1" max="200"
-            title="Fill when a later 5m bar in the window trades this EMA. Default is the fast EMA." />
+            title="Length of the pullback average. For KAMA this is the efficiency-ratio window. Default length matches the fast line." />
+        </label>
+        <label id="dx-pull-kama-fast-wrap" hidden>Pullback KAMA fast
+          <input type="number" id="dx-pull-kama-fast" value="2" min="1" max="50" />
+        </label>
+        <label id="dx-pull-kama-slow-wrap" hidden>Pullback KAMA slow
+          <input type="number" id="dx-pull-kama-slow" value="30" min="1" max="200" />
         </label>
         <label>Stop (pts)
           <input type="number" id="dx-sl" value="400" min="1" step="10" />
@@ -212,7 +263,7 @@
     if (foot && foot.parentNode) foot.parentNode.insertBefore(panel, foot);
     else document.body.appendChild(panel);
     if (foot && foot.textContent.indexOf("Dawn Cross") < 0) {
-      foot.textContent += " Dawn Cross = 2–6am Moldova EMA cross, pullback fill.";
+      foot.textContent += " Dawn Cross = 2–6am Moldova average cross, pullback fill.";
     }
   }
 
@@ -280,6 +331,20 @@
     const p = params || {};
     if (p.window_start_hour == null && p.window_end_hour == null) return "";
     return clock(p.window_start_hour, p.window_start_minute) + "–" + clock(p.window_end_hour, p.window_end_minute);
+  }
+
+  function maTag(params, role) {
+    const p = params || {};
+    const kind = String(p[role + "_ma"] || "ema").toLowerCase();
+    const label = { ema: "EMA", kama: "KAMA", hma: "HMA", zlema: "ZLEMA" }[kind] || "EMA";
+    const period = p[role === "pull" ? "pullback_ema" : role + "_ema"];
+    let text = label + (period == null ? "" : " " + period);
+    if (kind === "kama") {
+      const fast = p[role + "_kama_fast"];
+      const slow = p[role + "_kama_slow"];
+      text += " (" + (fast == null ? 2 : fast) + "/" + (slow == null ? 30 : slow) + ")";
+    }
+    return text;
   }
 
   function formatLocal(iso, tz) {
@@ -560,6 +625,12 @@
         " → " +
         (result.date_to || "") +
         (span ? " · " + span : "") +
+        " · " +
+        maTag(result.params, "fast") +
+        " / " +
+        maTag(result.params, "slow") +
+        " · pull " +
+        maTag(result.params, "pull") +
         (result.params && result.params.one_trade_per_day ? " · one/day" : "") +
         " · " +
         (result.bars || 0) +
@@ -661,12 +732,50 @@
     return Number.isFinite(n) ? n : fallback;
   }
 
+  const MA_PERIOD_LABEL = {
+    ema: "EMA period",
+    kama: "KAMA ER",
+    hma: "HMA period",
+    zlema: "ZLEMA period",
+  };
+
+  function syncLine(prefix, id) {
+    const kind = ($(id + "-ma") && $(id + "-ma").value) || "ema";
+    const name = $(id + "-name");
+    if (name) name.textContent = prefix + " " + (MA_PERIOD_LABEL[kind] || "EMA period");
+    const period = $(id);
+    if (period) period.min = kind === "hma" ? "2" : "1";
+    ["kama-fast", "kama-slow"].forEach(function (suffix) {
+      const wrap = $(id + "-" + suffix + "-wrap");
+      if (wrap) wrap.hidden = kind !== "kama";
+    });
+  }
+
+  function syncMaFields() {
+    syncLine("Fast", "dx-fast");
+    syncLine("Slow", "dx-slow");
+    syncLine("Pullback", "dx-pull");
+  }
+
+  function maKind(id) {
+    return ($(id) && $(id).value) || "ema";
+  }
+
+  function lineLength(id, fallback) {
+    const kind = maKind(id + "-ma");
+    return Math.max(kind === "hma" ? 2 : 1, Math.round(num(id, fallback)));
+  }
+
   ensureTab();
   loadForm();
+  syncMaFields();
   FORM_IDS.forEach(function (id) {
     const el = $(id);
     if (!el) return;
-    el.addEventListener("change", scheduleSave);
+    el.addEventListener("change", function () {
+      scheduleSave();
+      syncMaFields();
+    });
     el.addEventListener("input", scheduleSave);
   });
   wireTabs();
@@ -681,9 +790,18 @@
         window_start_minute: num("dx-start-min", 0),
         window_end_hour: num("dx-end", 6),
         window_end_minute: num("dx-end-min", 0),
-        fast_ema: num("dx-fast", 9),
-        slow_ema: num("dx-slow", 20),
-        pullback_ema: num("dx-pull", 9),
+        fast_ma: maKind("dx-fast-ma"),
+        fast_ema: lineLength("dx-fast", 9),
+        fast_kama_fast: Math.max(1, Math.round(num("dx-fast-kama-fast", 2))),
+        fast_kama_slow: Math.max(1, Math.round(num("dx-fast-kama-slow", 30))),
+        slow_ma: maKind("dx-slow-ma"),
+        slow_ema: lineLength("dx-slow", 20),
+        slow_kama_fast: Math.max(1, Math.round(num("dx-slow-kama-fast", 2))),
+        slow_kama_slow: Math.max(1, Math.round(num("dx-slow-kama-slow", 30))),
+        pull_ma: maKind("dx-pull-ma"),
+        pullback_ema: lineLength("dx-pull", 9),
+        pull_kama_fast: Math.max(1, Math.round(num("dx-pull-kama-fast", 2))),
+        pull_kama_slow: Math.max(1, Math.round(num("dx-pull-kama-slow", 30))),
         sl_pts: num("dx-sl", 400),
         tp_pts: num("dx-tp", 800),
         flatten_hour: num("dx-flat", 12),

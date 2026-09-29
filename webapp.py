@@ -80,6 +80,7 @@ from backtest.fvg_jobs import (
     start_fvg_job,
     stop_fvg,
 )
+from backtest.dawn_cross import ma_line_spec, same_average
 from backtest.dawn_cross_jobs import (
     DawnCrossJobParams,
     get_dawn_state,
@@ -917,7 +918,7 @@ def cooloff_stop():
 
 
 # ---------------------------------------------------------------------------
-# Dawn Cross — 02:00–06:00 Moldova, 5m EMA cross, pullback fill
+# Dawn Cross — 02:00–06:00 Moldova, 5m average cross, pullback fill
 # ---------------------------------------------------------------------------
 
 class DawnCrossRunRequest(BaseModel):
@@ -929,9 +930,18 @@ class DawnCrossRunRequest(BaseModel):
     window_start_minute: int = 0
     window_end_hour: int = 6
     window_end_minute: int = 0
+    fast_ma: str = "ema"
     fast_ema: int = 9
+    fast_kama_fast: int = 2
+    fast_kama_slow: int = 30
+    slow_ma: str = "ema"
     slow_ema: int = 20
+    slow_kama_fast: int = 2
+    slow_kama_slow: int = 30
+    pull_ma: str = "ema"
     pullback_ema: int = 9
+    pull_kama_fast: int = 2
+    pull_kama_slow: int = 30
     sl_pts: float = 400.0
     tp_pts: float = 800.0
     flatten_hour: int = 12
@@ -946,10 +956,11 @@ def dawn_status(rows: int = Query(0), limit: int = Query(400)):
 
 @app.post("/api/dawn-cross/run")
 def dawn_run(body: DawnCrossRunRequest):
-    fast = max(1, int(body.fast_ema))
-    slow = max(1, int(body.slow_ema))
-    if fast == slow:
-        raise HTTPException(status_code=422, detail="Fast and slow EMA periods must differ")
+    fast = ma_line_spec(body.fast_ma, body.fast_ema, body.fast_kama_fast, body.fast_kama_slow)
+    slow = ma_line_spec(body.slow_ma, body.slow_ema, body.slow_kama_fast, body.slow_kama_slow)
+    pull = ma_line_spec(body.pull_ma, body.pullback_ema, body.pull_kama_fast, body.pull_kama_slow)
+    if same_average(fast, slow):
+        raise HTTPException(status_code=422, detail="Fast and slow averages must differ")
     start_h = int(body.window_start_hour)
     start_m = int(body.window_start_minute)
     end_h = int(body.window_end_hour)
@@ -974,9 +985,18 @@ def dawn_run(body: DawnCrossRunRequest):
         window_start_minute=start_m,
         window_end_hour=end_h,
         window_end_minute=end_m,
-        fast_ema=fast,
-        slow_ema=slow,
-        pullback_ema=max(1, int(body.pullback_ema)),
+        fast_ma=fast[0],
+        fast_ema=fast[1],
+        fast_kama_fast=fast[2],
+        fast_kama_slow=fast[3],
+        slow_ma=slow[0],
+        slow_ema=slow[1],
+        slow_kama_fast=slow[2],
+        slow_kama_slow=slow[3],
+        pull_ma=pull[0],
+        pullback_ema=pull[1],
+        pull_kama_fast=pull[2],
+        pull_kama_slow=pull[3],
         sl_pts=sl,
         tp_pts=tp,
         flatten_hour=max(0, min(23, int(body.flatten_hour))),

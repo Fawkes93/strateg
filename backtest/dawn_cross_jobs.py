@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 
 from backtest.batch import is_batch_running
 from backtest.candle_packs import load_candles_range
-from backtest.dawn_cross import DawnCrossParams, run_dawn_cross
+from backtest.dawn_cross import DawnCrossParams, ma_line_spec, run_dawn_cross
 from backtest.dukascopy import parse_ymd
 from backtest.job_memory import release_job_memory, retain_result, slim_state_result_inplace
 from backtest.runner import DEFAULT_CACHE, DEFAULT_RESULTS, unique_result_path
@@ -27,9 +27,18 @@ class DawnCrossJobParams:
     window_start_minute: int = 0
     window_end_hour: int = 6
     window_end_minute: int = 0
+    fast_ma: str = "ema"
     fast_ema: int = 9
+    fast_kama_fast: int = 2
+    fast_kama_slow: int = 30
+    slow_ma: str = "ema"
     slow_ema: int = 20
+    slow_kama_fast: int = 2
+    slow_kama_slow: int = 30
+    pull_ma: str = "ema"
     pullback_ema: int = 9
+    pull_kama_fast: int = 2
+    pull_kama_slow: int = 30
     sl_pts: float = 400.0
     tp_pts: float = 800.0
     flatten_hour: int = 12
@@ -225,15 +234,33 @@ def _run(params: DawnCrossJobParams) -> None:
             _set_progress(phase="cancelled", message="Stopped", pct=100.0, finished_at=datetime.now(timezone.utc).isoformat())
             return
         _set_progress(phase="scan", message=f"Scanning {len(candles)} bars…", pct=60.0)
+        fast = ma_line_spec(
+            params.fast_ma, params.fast_ema, params.fast_kama_fast, params.fast_kama_slow
+        )
+        slow = ma_line_spec(
+            params.slow_ma, params.slow_ema, params.slow_kama_fast, params.slow_kama_slow
+        )
+        pull = ma_line_spec(
+            params.pull_ma, params.pullback_ema, params.pull_kama_fast, params.pull_kama_slow
+        )
         engine = DawnCrossParams(
             timezone=params.timezone,
             window_start_hour=int(params.window_start_hour),
             window_start_minute=int(params.window_start_minute),
             window_end_hour=int(params.window_end_hour),
             window_end_minute=int(params.window_end_minute),
-            fast_ema=int(params.fast_ema),
-            slow_ema=int(params.slow_ema),
-            pullback_ema=int(params.pullback_ema),
+            fast_ma=fast[0],
+            fast_ema=fast[1],
+            fast_kama_fast=fast[2],
+            fast_kama_slow=fast[3],
+            slow_ma=slow[0],
+            slow_ema=slow[1],
+            slow_kama_fast=slow[2],
+            slow_kama_slow=slow[3],
+            pull_ma=pull[0],
+            pullback_ema=pull[1],
+            pull_kama_fast=pull[2],
+            pull_kama_slow=pull[3],
             sl_pts=float(params.sl_pts),
             tp_pts=float(params.tp_pts),
             flatten_hour=int(params.flatten_hour),
