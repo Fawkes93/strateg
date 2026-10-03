@@ -70,6 +70,14 @@
     "ob-trail-arm-cap",
     "ob-trail",
     "ob-be-arm",
+    "ob-shock",
+    "ob-shock-window",
+    "ob-shock-move",
+    "ob-shock-arm",
+    "ob-shock-dist",
+    "ob-shock-settle",
+    "ob-shock-settle-pts",
+    "ob-shock-tight",
     "ob-max-hold",
     "ob-flatten",
     "ob-one-per-day",
@@ -100,6 +108,11 @@
     "ob-trail-arm-cap",
     "ob-trail",
     "ob-be-arm",
+    "ob-shock-move",
+    "ob-shock-arm",
+    "ob-shock-dist",
+    "ob-shock-settle-pts",
+    "ob-shock-tight",
   ];
   let symbolSwitching = false;
 
@@ -234,6 +247,7 @@
           : "tag"
         : "off";
     }
+    syncShockControls();
   }
 
   function loadForm() {
@@ -423,6 +437,18 @@
           ? "Gap behind the best price from the fill. 0 = use the initial SL (up 100 → remaining risk 1900 if SL was 2000)."
           : "Gap behind the best price once the trail has armed.";
     }
+  }
+
+  function syncShockControls() {
+    const on = $("ob-shock") && $("ob-shock").checked;
+    const box = $("ob-shock-box");
+    if (box) box.hidden = !on;
+    const help = $("ob-shock-help");
+    if (!help || !on) return;
+    const candles = !$("ob-data") || $("ob-data").value !== "ticks";
+    help.textContent = candles
+      ? "This run is on 5m candles, so the shock trail does nothing and the target stays. Switch Data to ticks. A 2-second move is not visible on a 5-minute bar."
+      : "A favorable move of Move pts inside Window seconds cancels the target and leaves the stop. The trail starts once profit reaches Arm, and sits Distance pts behind the best price. Defaults are the 1 Aug 2025 jobs print. Settle at 0 does not walk the trail in.";
   }
 
   // ----- inject tab button + panel if missing (keeps index.html unchanged) -----
@@ -795,6 +821,44 @@
             <label class="chk">One trade per day
               <input type="checkbox" id="ob-one-per-day" checked />
             </label>
+            <div class="ob-shock-wrap">
+              <label class="chk">Shock trail
+                <input type="checkbox" id="ob-shock" />
+              </label>
+              <div class="ob-shock" id="ob-shock-box" hidden>
+                <p class="field-help" id="ob-shock-help"></p>
+                <div class="ob-shock-fields">
+                  <label>Window (sec)
+                    <input type="number" id="ob-shock-window" value="2" min="0.5" step="0.5"
+                      title="Lookback for the impulse. 2 seconds is the burst that started the 1 Aug 2025 jobs print." />
+                  </label>
+                  <label>Move (pts)
+                    <input type="number" id="ob-shock-move" value="300" min="0" step="50"
+                      title="Net favorable move inside the window. 300 pts is above the six quiet hours before that print and below the print itself." />
+                  </label>
+                  <label>Arm (pts profit)
+                    <input type="number" id="ob-shock-arm" value="1500" min="0" step="50"
+                      title="Open profit before this trail starts. 0 starts it on the impulse tick. Until then the target is already cancelled and only the hard stop is working." />
+                  </label>
+                  <label>Distance (pts)
+                    <input type="number" id="ob-shock-dist" value="1000" min="0" step="50"
+                      title="Gap behind the best price. On that print a 1000-pt trail kept the first leg and a 2000-pt trail held to the flatten. 0 cancels the target and does not trail." />
+                  </label>
+                  <label>Settle (min)
+                    <input type="number" id="ob-shock-settle" value="0" min="0" step="1"
+                      title="After the trail is on, each quiet stretch of this many minutes walks Distance one quarter of the way toward Tight. Four quiet stretches finish the walk. 0 leaves the distance alone." />
+                  </label>
+                  <label>Settle range (pts)
+                    <input type="number" id="ob-shock-settle-pts" value="800" min="0" step="50"
+                      title="The stretch is quiet when high minus low stays inside this many points." />
+                  </label>
+                  <label>Tight distance (pts)
+                    <input type="number" id="ob-shock-tight" value="800" min="0" step="50"
+                      title="Floor the walk-in steps toward. 0 does not walk in. The trail never loosens." />
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1074,6 +1138,14 @@
     ["trail_arm_cap_pts", "Trail arm cap"],
     ["trail_pts", "Trail pts"],
     ["be_arm_pts", "BE arm pts"],
+    ["shock_trail", "Shock trail"],
+    ["shock_window_sec", "Shock window s"],
+    ["shock_move_pts", "Shock move pts"],
+    ["shock_arm_pts", "Shock arm pts"],
+    ["shock_trail_pts", "Shock distance"],
+    ["shock_settle_min", "Shock settle min"],
+    ["shock_settle_pts", "Shock settle range"],
+    ["shock_tight_pts", "Shock tight pts"],
     ["max_hold_hours", "Max hold h"],
     ["flatten_hour", "Flatten hour"],
     ["one_trade_per_day", "One per day"],
@@ -1135,6 +1207,14 @@
     trail_arm_cap_pts: "ob-trail-arm-cap",
     trail_pts: "ob-trail",
     be_arm_pts: "ob-be-arm",
+    shock_trail: "ob-shock",
+    shock_window_sec: "ob-shock-window",
+    shock_move_pts: "ob-shock-move",
+    shock_arm_pts: "ob-shock-arm",
+    shock_trail_pts: "ob-shock-dist",
+    shock_settle_min: "ob-shock-settle",
+    shock_settle_pts: "ob-shock-settle-pts",
+    shock_tight_pts: "ob-shock-tight",
     max_hold_hours: "ob-max-hold",
     flatten_hour: "ob-flatten",
     one_trade_per_day: "ob-one-per-day",
@@ -1282,6 +1362,7 @@
     syncTrailArmControls();
     syncSlControls();
     syncTpControls();
+    syncShockControls();
     scheduleSave();
   }
 
@@ -1991,6 +2072,14 @@
         trail_arm_cap_pts: Number(($("ob-trail-arm-cap") && $("ob-trail-arm-cap").value) || 0),
         trail_pts: Number($("ob-trail").value),
         be_arm_pts: Number(($("ob-be-arm") && $("ob-be-arm").value) || 0),
+        shock_trail: !!($("ob-shock") && $("ob-shock").checked),
+        shock_window_sec: Number(($("ob-shock-window") && $("ob-shock-window").value) || 0),
+        shock_move_pts: Number(($("ob-shock-move") && $("ob-shock-move").value) || 0),
+        shock_arm_pts: Number(($("ob-shock-arm") && $("ob-shock-arm").value) || 0),
+        shock_trail_pts: Number(($("ob-shock-dist") && $("ob-shock-dist").value) || 0),
+        shock_settle_min: Number(($("ob-shock-settle") && $("ob-shock-settle").value) || 0),
+        shock_settle_pts: Number(($("ob-shock-settle-pts") && $("ob-shock-settle-pts").value) || 0),
+        shock_tight_pts: Number(($("ob-shock-tight") && $("ob-shock-tight").value) || 0),
         max_hold_hours: Number($("ob-max-hold").value),
         flatten_hour: Number($("ob-flatten").value),
         one_trade_per_day: $("ob-one-per-day") && $("ob-one-per-day").checked,
@@ -2040,6 +2129,7 @@
   bindFormPersist();
   syncPullbackControls();
   syncTrailArmControls();
+  syncShockControls();
   syncSlControls();
   syncTpControls();
   const modeEl = $("ob-pullback-mode");
@@ -2052,6 +2142,10 @@
   if (resumeEl) resumeEl.addEventListener("change", syncPullbackControls);
   const trailModeEl = $("ob-trail-arm-mode");
   if (trailModeEl) trailModeEl.addEventListener("change", syncTrailArmControls);
+  const shockEl = $("ob-shock");
+  if (shockEl) shockEl.addEventListener("change", syncShockControls);
+  const dataEl = $("ob-data");
+  if (dataEl) dataEl.addEventListener("change", syncShockControls);
   const slModeEl = $("ob-sl-mode");
   if (slModeEl) slModeEl.addEventListener("change", syncSlControls);
   const tpModeEl = $("ob-tp-mode");

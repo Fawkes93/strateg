@@ -23,6 +23,14 @@ Trail arm:
 Break-even: be_arm_pts profit moves SL to the fill (0 = off). Exit reason be.
 Trail still tightens independently.
 
+Shock trail (experimental, tick path only): a favorable move of shock_move_pts
+inside shock_window_sec cancels the resting target and leaves the hard stop.
+Once profit reaches shock_arm_pts, a trail of shock_trail_pts follows the best
+price. Exit reason shock. shock_settle_min 0 leaves that distance alone; each
+quiet stretch of that many minutes walks the distance one quarter of the way
+toward shock_tight_pts. Four quiet stretches finish the walk. 5m candles
+cannot see a 2-second move, so candle runs keep the target.
+
 TP m12: mean of the last 12 complete months' daily-close ranges
 (max close − min close that month), rounded up to 50 pts.
 SL m12_frac: that same average × 1/4, 1/3, or 1/2, also rounded up to 50 pts.
@@ -34,7 +42,7 @@ No partial take-profit.
 from __future__ import annotations
 
 from bisect import bisect_left
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from math import ceil, floor
@@ -150,6 +158,15 @@ class OvernightParams:
     trail_arm_cap_pts: float = 2000.0  # max arm when mode=asia (0 = no cap)
     trail_pts: float = 250.0  # gap behind best price. from_fill + 0 = use initial SL
     be_arm_pts: float = 0.0  # profit before SL moves to entry. 0 = off
+    # Experimental. Off keeps the resting target. Tick path only.
+    shock_trail: bool = False
+    shock_window_sec: float = 2.0  # lookback for the impulse
+    shock_move_pts: float = 300.0  # favorable net move inside the window
+    shock_arm_pts: float = 1500.0  # profit before the shock trail starts. 0 = on the impulse
+    shock_trail_pts: float = 1000.0  # gap behind the best price once armed
+    shock_settle_min: float = 0.0  # 0 = do not walk the distance in
+    shock_settle_pts: float = 800.0  # quiet if the window's range is inside this
+    shock_tight_pts: float = 800.0  # floor the walk-in steps toward. 0 = do not walk in
     max_hold_hours: float = 10.0
     flatten_hour: int = 18  # local hour hard flatten
     one_trade_per_day: bool = True
@@ -332,7 +349,173 @@ def _normalize_params(params: OvernightParams) -> OvernightParams:
         params.trail_arm_mode = "off"
     else:
         params.trail_arm_mode = "fixed"
+    params.shock_trail = bool(getattr(params, "shock_trail", False))
+    params.shock_window_sec = _nonneg(getattr(params, "shock_window_sec", 2.0), 2.0)
+    params.shock_move_pts = _nonneg(getattr(params, "shock_move_pts", 300.0), 300.0)
+    params.shock_arm_pts = _nonneg(getattr(params, "shock_arm_pts", 1500.0), 1500.0)
+    params.shock_trail_pts = _nonneg(getattr(params, "shock_trail_pts", 1000.0), 1000.0)
+    params.shock_settle_min = _nonneg(getattr(params, "shock_settle_min", 0.0), 0.0)
+    params.shock_settle_pts = _nonneg(getattr(params, "shock_settle_pts", 800.0), 800.0)
+    params.shock_tight_pts = _nonneg(getattr(params, "shock_tight_pts", 800.0), 800.0)
     return params
+
+
+def _nonneg(raw: Any, default: float) -> float:
+    try:
+        return max(0.0, float(raw))
+    except (TypeError, ValueError):
+        return default
+
+
+def _shock_config(params: OvernightParams) -> Optional[Dict[str, float]]:
+    """Tick-path impulse that cancels the target. None when off or ungated."""
+    if not bool(getattr(params, "shock_trail", False)):
+        return None
+    window = _nonneg(getattr(params, "shock_window_sec", 0.0), 0.0)
+    move = _nonneg(getattr(params, "shock_move_pts", 0.0), 0.0)
+    if window <= 0.0 or move <= 0.0:
+        return None
+    return {
+        "window": window,
+        "move": move,
+        "arm": _nonneg(getattr(params, "shock_arm_pts", 0.0), 0.0),
+        "dist": _nonneg(getattr(params, "shock_trail_pts", 0.0), 0.0),
+        "settle_sec": _nonneg(getattr(params, "shock_settle_min", 0.0), 0.0) * 60.0,
+        "settle_pts": _nonneg(getattr(params, "shock_settle_pts", 0.0), 0.0),
+        "tight": _nonneg(getattr(params, "shock_tight_pts", 0.0), 0.0),
+    }
+
+
+class _ShockTracker:
+    """Cancel the target after a fast favorable move, then trail wide.
+
+    The impulse is the net favorable change versus the oldest price still
+    inside the window, and it cannot fire until that window has elapsed
+    once. The trail starts once open profit reaches
+    the arm (0 = the impulse tick). A quiet stretch walks the distance one
+    quarter of the way toward the tight floor. Four quiet stretches finish
+    it. A wild stretch restarts the clock and does not loosen the trail.
+    """
+
+    _STEPS = 4
+
+    def __init__(self, params: OvernightParams, ps: float) -> None:
+        cfg = _shock_config(params)
+        self.enabled = cfg is not None and ps > 0
+        self.ps = ps
+        self.fired = False
+        self.armed = False
+        self.level: Optional[float] = None
+        self.t0: Optional[datetime] = None
+        self.hist: deque = deque()
+        self.settle: deque = deque()
+        self.settle_t0: Optional[datetime] = None
+        self.dist = 0.0
+        self.wide = 0.0
+        self.tight = 0.0
+        self.steps = 0
+        self.window = timedelta(seconds=cfg["window"]) if cfg else timedelta(0)
+        self.move_pts = cfg["move"] if cfg else 0.0
+        self.arm_pts = cfg["arm"] if cfg else 0.0
+        self.dist_pts = cfg["dist"] if cfg else 0.0
+        self.settle_sec = cfg["settle_sec"] if cfg else 0.0
+        self.settle_pts = cfg["settle_pts"] if cfg else 0.0
+        self.tight_pts = cfg["tight"] if cfg else 0.0
+
+    def update(
+        self,
+        ts: datetime,
+        px: float,
+        side: str,
+        fav: float,
+        best_px: float,
+    ) -> Optional[float]:
+        """Return the shock exit price when this tick trades through it."""
+        if not self.enabled:
+            return None
+        self._impulse(ts, px, side)
+        if self.fired:
+            self._arm(side, fav, best_px)
+            self._tighten(ts, px)
+            self._ratchet(side, best_px)
+        if self.armed and self.level is not None:
+            if side == "UP" and px <= self.level + 1e-12:
+                return self.level
+            if side == "DOWN" and px >= self.level - 1e-12:
+                return self.level
+        return None
+
+    def _impulse(self, ts: datetime, px: float, side: str) -> None:
+        if self.fired:
+            return
+        if self.t0 is None:
+            self.t0 = ts
+        self.hist.append((ts, px))
+        cutoff = ts - self.window
+        while self.hist and self.hist[0][0] < cutoff:
+            self.hist.popleft()
+        if (ts - self.t0).total_seconds() + 1e-9 < self.window.total_seconds():
+            return
+        if not self.hist:
+            return
+        anchor = self.hist[0][1]
+        move = (px - anchor) / self.ps if side == "UP" else (anchor - px) / self.ps
+        if move + 1e-12 >= self.move_pts:
+            self.fired = True
+
+    def _arm(self, side: str, fav: float, best_px: float) -> None:
+        if self.armed or self.dist_pts <= 0:
+            return
+        if self.arm_pts > 0 and fav + 1e-12 < self.arm_pts:
+            return
+        self.armed = True
+        self.wide = self.dist_pts * self.ps
+        self.tight = self.tight_pts * self.ps
+        self.dist = self.wide
+        if side == "UP":
+            self.level = best_px - self.dist
+        else:
+            self.level = best_px + self.dist
+        self.settle.clear()
+        self.settle_t0 = None
+
+    def _ratchet(self, side: str, best_px: float) -> None:
+        if not self.armed:
+            return
+        if side == "UP":
+            new_level = best_px - self.dist
+            if self.level is None or new_level > self.level:
+                self.level = new_level
+        else:
+            new_level = best_px + self.dist
+            if self.level is None or new_level < self.level:
+                self.level = new_level
+
+    def _tighten(self, ts: datetime, px: float) -> None:
+        if not self.armed or self.steps >= self._STEPS:
+            return
+        if self.settle_sec <= 0 or self.tight_pts <= 0 or self.tight + 1e-12 >= self.wide:
+            return
+        if self.settle_t0 is None:
+            self.settle_t0 = ts
+        sec = int(ts.timestamp())
+        if self.settle and self.settle[-1][0] == sec:
+            _sec, hi, lo = self.settle[-1]
+            self.settle[-1] = (sec, max(hi, px), min(lo, px))
+        else:
+            self.settle.append((sec, px, px))
+        if (ts - self.settle_t0).total_seconds() + 1e-9 < self.settle_sec:
+            return
+        hi = max(row[1] for row in self.settle)
+        lo = min(row[2] for row in self.settle)
+        quiet = (hi - lo) / self.ps <= self.settle_pts + 1e-9
+        self.settle.clear()
+        self.settle_t0 = ts
+        if not quiet:
+            return
+        self.steps += 1
+        frac = min(1.0, self.steps / float(self._STEPS))
+        self.dist = self.wide + (self.tight - self.wide) * frac
 
 
 def _use_wick_break(params: OvernightParams) -> bool:
@@ -607,7 +790,7 @@ class OvernightTrade:
     m12_pts: Optional[float] = None  # rounded 12m daily-close-range avg, if used
     exit_ts: Optional[str] = None
     exit: Optional[float] = None
-    exit_reason: Optional[str] = None  # tp | sl | trail | flatten | timeout
+    exit_reason: Optional[str] = None  # tp | sl | trail | shock | flatten | timeout
     pts: float = 0.0
     trail_arm_used: float = 0.0
     trail_armed: bool = False
@@ -642,6 +825,7 @@ class OvernightTrade:
     bias_side: Optional[str] = None
     news_kind: Optional[str] = None
     news_title: Optional[str] = None
+    shock_fired: bool = False
 
 
 @dataclass
@@ -1482,7 +1666,7 @@ def _simulate_from_entry(
 ) -> Tuple[str, datetime, float, float, bool, float, float, float, float]:
     """
     Walk ticks after fill.
-    Returns (reason, exit_ts, exit_px, pts, trail_armed, max_fav, max_adv, best_px, worst_px, be_armed).
+    Returns (reason, exit_ts, exit_px, pts, trail_armed, max_fav, max_adv, best_px, worst_px, be_armed, shock_fired).
     """
     trail_armed = False
     trail_level: Optional[float] = None
@@ -1494,6 +1678,7 @@ def _simulate_from_entry(
     worst_px = entry
     last_ts = ticks[start_index].ts
     last_px = entry
+    shock = _ShockTracker(params, ps)
     hold_deadline = ticks[start_index].ts + timedelta(hours=float(params.max_hold_hours))
     arm_pts = float(params.trail_arm_pts or 0.0) if trail_arm_pts is None else float(trail_arm_pts)
     gap = float(params.trail_pts or 0.0) if trail_dist_pts is None else float(trail_dist_pts)
@@ -1511,6 +1696,21 @@ def _simulate_from_entry(
             trail_level = entry - gap * ps
         else:
             trail_level = entry + gap * ps
+
+    def _done(reason: str, ts: datetime, exit_px: float, pts: float, armed: bool):
+        return (
+            reason,
+            ts,
+            exit_px,
+            pts,
+            armed,
+            max_fav,
+            max_adv,
+            best_px,
+            worst_px,
+            be_armed,
+            shock.fired,
+        )
 
     for i in range(start_index + 1, len(ticks)):
         t = ticks[i]
@@ -1534,7 +1734,7 @@ def _simulate_from_entry(
         # Hard flatten
         if loc >= flatten_local or t.ts >= hold_deadline:
             pts = _fav_pts(side, entry, px, ps)
-            return "flatten", t.ts, px, pts, trail_armed, max_fav, max_adv, best_px, worst_px, be_armed
+            return _done("flatten", t.ts, px, pts, trail_armed)
 
         # Trail arm
         if (not trail_from_fill) and arm_pts > 0 and not trail_armed and fav >= arm_pts and gap > 0:
@@ -1544,34 +1744,67 @@ def _simulate_from_entry(
             else:
                 trail_level = best_px + gap * ps
 
-        # Update trail
+        regular_exit: Optional[float] = None
         if trail_armed and trail_level is not None and gap > 0:
             if side == "UP":
                 new_trail = best_px - gap * ps
                 if new_trail > trail_level:
                     trail_level = new_trail
                 if px <= trail_level + 1e-12:
-                    pts = _fav_pts(side, entry, trail_level, ps)
-                    return "trail", t.ts, trail_level, pts, True, max_fav, max_adv, best_px, worst_px, be_armed
+                    regular_exit = trail_level
             else:
                 new_trail = best_px + gap * ps
                 if new_trail < trail_level:
                     trail_level = new_trail
                 if px >= trail_level - 1e-12:
-                    pts = _fav_pts(side, entry, trail_level, ps)
-                    return "trail", t.ts, trail_level, pts, True, max_fav, max_adv, best_px, worst_px, be_armed
+                    regular_exit = trail_level
 
-        # Fixed SL / TP
+        shock_exit = shock.update(t.ts, px, side, fav, best_px)
+        if shock.armed:
+            trail_armed = True
+        if regular_exit is not None or shock_exit is not None:
+            if regular_exit is None:
+                chosen, why = shock_exit, "shock"
+            elif shock_exit is None:
+                chosen, why = regular_exit, "trail"
+            elif side == "UP":
+                chosen, why = (
+                    (regular_exit, "trail")
+                    if regular_exit >= shock_exit
+                    else (shock_exit, "shock")
+                )
+            else:
+                chosen, why = (
+                    (regular_exit, "trail")
+                    if regular_exit <= shock_exit
+                    else (shock_exit, "shock")
+                )
+            pts = _fav_pts(side, entry, float(chosen), ps)
+            return _done(why, t.ts, float(chosen), pts, True)
+
+        # Fixed SL / TP. A fired shock has already cancelled the target.
         if _hit_level(side, px, sl_now, is_sl=True):
             reason = "be" if be_armed else "sl"
             pts = _fav_pts(side, entry, sl_now, ps)
-            return reason, t.ts, sl_now, pts, trail_armed, max_fav, max_adv, best_px, worst_px, be_armed
-        if _hit_level(side, px, tp, is_sl=False):
+            return _done(reason, t.ts, sl_now, pts, trail_armed)
+        if (not shock.fired) and _hit_level(side, px, tp, is_sl=False):
             pts = _fav_pts(side, entry, tp, ps)
-            return "tp", t.ts, tp, pts, trail_armed, max_fav, max_adv, best_px, worst_px, be_armed
+            return _done("tp", t.ts, tp, pts, trail_armed)
 
     pts = _fav_pts(side, entry, last_px, ps)
-    return "timeout", last_ts, last_px, pts, trail_armed, max_fav, max_adv, best_px, worst_px, be_armed
+    return (
+        "timeout",
+        last_ts,
+        last_px,
+        pts,
+        trail_armed,
+        max_fav,
+        max_adv,
+        best_px,
+        worst_px,
+        be_armed,
+        shock.fired,
+    )
 
 
 def _ohlc_closest_ema_pts(candle: Candle, side: str, ema: float, ps: float) -> float:
@@ -1628,7 +1861,7 @@ def _simulate_from_candles(
     best_px = entry
     worst_px = entry
     if start_index < 0 or start_index >= len(candles):
-        return "timeout", datetime.now(timezone.utc), entry, 0.0, False, 0.0, 0.0, entry, entry, False
+        return "timeout", datetime.now(timezone.utc), entry, 0.0, False, 0.0, 0.0, entry, entry, False, False
     last_ts = candles[start_index].open_time
     last_px = entry
     hold_deadline = to_utc(candles[start_index].open_time) + timedelta(
@@ -1679,6 +1912,7 @@ def _simulate_from_candles(
                 best_px,
                 worst_px,
                 be_armed,
+                False,
             )
 
         fav = fav_px(extreme_fav)
@@ -1730,10 +1964,11 @@ def _simulate_from_candles(
                 best_px,
                 worst_px,
                 be_armed,
+                False,
             )
         if _hit_level(side, extreme_fav, tp, is_sl=False):
             pts = fav_px(tp)
-            return "tp", c.open_time, tp, pts, trail_armed, max_fav, max_adv, best_px, worst_px, be_armed
+            return "tp", c.open_time, tp, pts, trail_armed, max_fav, max_adv, best_px, worst_px, be_armed, False
 
         contains_flat = loc_open < flatten_local <= loc_close
         contains_hold = to_utc(c.open_time) < hold_deadline <= to_utc(c.close_time)
@@ -1750,10 +1985,11 @@ def _simulate_from_candles(
                 best_px,
                 worst_px,
                 be_armed,
+                False,
             )
 
     pts = fav_px(last_px)
-    return "timeout", last_ts, last_px, pts, trail_armed, max_fav, max_adv, best_px, worst_px, be_armed
+    return "timeout", last_ts, last_px, pts, trail_armed, max_fav, max_adv, best_px, worst_px, be_armed, False
 
 
 def _excursion_from_candles(
@@ -2740,6 +2976,7 @@ def _run_overnight_days(
             _sim_best,
             _sim_worst,
             be_armed,
+            shock_fired,
         ) = feed.simulate(
             entry_idx,
             side=side,
@@ -2818,6 +3055,7 @@ def _run_overnight_days(
                 bias_side=bias_kw.get("bias_side"),
                 news_kind=day_kw.get("news_kind"),
                 news_title=day_kw.get("news_title"),
+                shock_fired=bool(shock_fired),
             )
         )
         traded_days.add(day)

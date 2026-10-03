@@ -26,6 +26,7 @@ from backtest.overnight_break import (
     summarize_overnight,
     trail_arm_for_range,
     trail_setup,
+    _normalize_params,
     _simulate_from_entry,
 )
 
@@ -1732,7 +1733,7 @@ def test_simulate_from_entry_be_stop_at_entry():
         flatten_hour=23,
         max_hold_hours=10.0,
     )
-    reason, _ts, px, pts, _armed, _fav, _adv, _best, _worst, be_armed = _simulate_from_entry(
+    reason, _ts, px, pts, _armed, _fav, _adv, _best, _worst, be_armed, *_rest = _simulate_from_entry(
         ticks,
         0,
         side="UP",
@@ -1762,7 +1763,7 @@ def test_simulate_from_candles_be_same_bar_uses_entry_not_original_sl():
         be_arm_pts=400.0,
         max_hold_hours=10.0,
     )
-    reason, ts, px, pts, _armed, _fav, _adv, _best, _worst, be_armed = _simulate_from_candles(
+    reason, ts, px, pts, _armed, _fav, _adv, _best, _worst, be_armed, *_rest = _simulate_from_candles(
         bars,
         0,
         side="UP",
@@ -1818,7 +1819,7 @@ def test_simulate_from_candles_trail_tighter_than_be():
         be_arm_pts=400.0,
         max_hold_hours=10.0,
     )
-    reason, _ts, px, _pts, armed, _fav, _adv, _best, _worst, be_armed = _simulate_from_candles(
+    reason, _ts, px, _pts, armed, _fav, _adv, _best, _worst, be_armed, *_rest = _simulate_from_candles(
         bars,
         0,
         side="UP",
@@ -1962,4 +1963,251 @@ def test_run_month_job_uses_5m_candles_without_tick_packs():
     assert out["error"] is None
     assert len(out["rows"]) == 1
     assert out["rows"][0]["entry_reason"] == "break_close"
+
+
+def _shock_params(**overrides):
+    base = dict(
+        trail_arm_mode="off",
+        flatten_hour=23,
+        max_hold_hours=24.0,
+        shock_trail=True,
+        shock_window_sec=2.0,
+        shock_move_pts=300.0,
+        shock_arm_pts=0.0,
+        shock_trail_pts=1000.0,
+        shock_settle_min=0.0,
+        shock_settle_pts=800.0,
+        shock_tight_pts=800.0,
+    )
+    base.update(overrides)
+    return OvernightParams(**base)
+
+
+def _play(ticks, params, **kw):
+    tz = ZoneInfo("UTC")
+    return _simulate_from_entry(
+        ticks,
+        0,
+        side=kw.get("side", "UP"),
+        entry=kw.get("entry", 3300.0),
+        sl=kw.get("sl", 3200.0),
+        tp=kw.get("tp", 3302.0),
+        params=params,
+        ps=0.01,
+        tz=tz,
+        flatten_local=datetime(2025, 5, 7, 23, 0, tzinfo=tz),
+        trail_arm_pts=kw.get("trail_arm", 0.0),
+        trail_dist_pts=kw.get("trail_dist", 0.0),
+        trail_from_fill=kw.get("from_fill", False),
+    )
+
+
+def test_shock_off_still_takes_the_target():
+    start = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    ticks = [
+        _tick(start, 3300.0),
+        _tick(start + timedelta(seconds=0.1), 3300.0),
+        _tick(start + timedelta(seconds=2.1), 3304.0),
+    ]
+    reason, _ts, px, _pts, _armed, *_rest = _play(ticks, OvernightParams(trail_arm_mode="off"))
+    assert reason == "tp"
+    assert abs(px - 3302.0) < 1e-9
+    assert _rest[-1] is False
+
+
+def test_shock_cancels_target_and_trails_the_extension():
+    start = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    ticks = [
+        _tick(start, 3300.0),
+        _tick(start + timedelta(seconds=0.1), 3300.0),
+        _tick(start + timedelta(seconds=2.1), 3304.0),
+        _tick(start + timedelta(seconds=3.0), 3315.0),
+        _tick(start + timedelta(seconds=4.0), 3304.5),
+    ]
+    reason, _ts, px, pts, armed, *_rest = _play(ticks, _shock_params())
+    assert reason == "shock"
+    assert armed is True
+    assert _rest[-1] is True
+    assert abs(px - 3305.0) < 1e-9
+    assert abs(pts - 500.0) < 1e-6
+
+
+def test_shock_ignores_a_fast_move_against_the_trade():
+    start = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    # The drop is fast. The climb back through the target is slower than
+    # 300 pts in any 2-second window, so the target stays.
+    ticks = [_tick(start, 3300.0), _tick(start + timedelta(seconds=0.1), 3300.0)]
+    px = 3296.0
+    ticks.append(_tick(start + timedelta(seconds=2.1), px))
+    for i, price in enumerate((3297.0, 3298.0, 3299.0, 3300.5, 3301.5, 3303.0)):
+        ticks.append(_tick(start + timedelta(seconds=4.1 + 2 * i), price))
+    reason, _ts, px, *_rest = _play(ticks, _shock_params())
+    assert reason == "tp"
+    assert abs(px - 3302.0) < 1e-9
+
+
+def test_shock_waits_for_a_full_window():
+    start = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    ticks = [
+        _tick(start, 3300.0),
+        _tick(start + timedelta(seconds=0.2), 3304.0),
+    ]
+    reason, _ts, px, *_rest = _play(ticks, _shock_params())
+    assert reason == "tp"
+    assert abs(px - 3302.0) < 1e-9
+
+
+def test_shock_below_threshold_keeps_the_target():
+    start = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    ticks = [
+        _tick(start, 3300.0),
+        _tick(start + timedelta(seconds=0.1), 3300.0),
+        _tick(start + timedelta(seconds=2.1), 3302.5),
+    ]
+    reason, *_rest = _play(ticks, _shock_params())
+    assert reason == "tp"
+
+
+def test_shock_arm_waits_and_the_target_stays_cancelled():
+    start = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    ticks = [
+        _tick(start, 3300.0),
+        _tick(start + timedelta(seconds=0.1), 3300.0),
+        _tick(start + timedelta(seconds=2.1), 3304.0),
+        _tick(start + timedelta(seconds=3.0), 3303.0),
+        _tick(start + timedelta(seconds=4.0), 3309.0),
+        _tick(start + timedelta(seconds=5.0), 3303.5),
+    ]
+    reason, _ts, px, *_rest = _play(
+        ticks,
+        _shock_params(shock_arm_pts=800.0, shock_trail_pts=500.0),
+    )
+    assert reason == "shock"
+    assert abs(px - 3304.0) < 1e-9
+
+
+def test_shock_short_trails_a_fast_drop():
+    start = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    ticks = [
+        _tick(start, 3300.0),
+        _tick(start + timedelta(seconds=0.1), 3300.0),
+        _tick(start + timedelta(seconds=2.1), 3296.0),
+        _tick(start + timedelta(seconds=3.0), 3285.0),
+        _tick(start + timedelta(seconds=4.0), 3296.0),
+    ]
+    reason, _ts, px, pts, *_rest = _play(
+        ticks,
+        _shock_params(),
+        side="DOWN",
+        tp=3298.0,
+        sl=3400.0,
+    )
+    assert reason == "shock"
+    assert abs(px - 3295.0) < 1e-9
+    assert abs(pts - 500.0) < 1e-6
+
+
+def test_shock_settle_walks_the_distance_in():
+    start = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    arm_at = start + timedelta(seconds=2.1)
+    ticks = [
+        _tick(start, 3300.0),
+        _tick(start + timedelta(seconds=0.1), 3300.0),
+        _tick(arm_at, 3304.0),
+    ]
+    t = arm_at
+    end = arm_at + timedelta(seconds=250)
+    while t < end:
+        t += timedelta(seconds=15)
+        if t >= end:
+            break
+        ticks.append(_tick(t, 3304.2))
+    ticks.append(_tick(end, 3300.0))
+    reason, _ts, px, *_rest = _play(
+        ticks,
+        _shock_params(
+            shock_trail_pts=2000.0,
+            shock_settle_min=1.0,
+            shock_settle_pts=100.0,
+            shock_tight_pts=400.0,
+        ),
+    )
+    assert reason == "shock"
+    assert abs(px - 3300.2) < 1e-9
+
+
+def test_shock_wild_stretch_does_not_tighten():
+    start = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    ticks = [
+        _tick(start, 3300.0),
+        _tick(start + timedelta(seconds=0.1), 3300.0),
+        _tick(start + timedelta(seconds=2.1), 3304.0),
+        _tick(start + timedelta(seconds=20), 3307.0),
+        _tick(start + timedelta(seconds=40), 3304.0),
+        _tick(start + timedelta(seconds=70), 3304.0),
+        _tick(start + timedelta(seconds=80), 3290.0),
+    ]
+    reason, _ts, px, *_rest = _play(
+        ticks,
+        _shock_params(
+            shock_trail_pts=2000.0,
+            shock_settle_min=1.0,
+            shock_settle_pts=100.0,
+            shock_tight_pts=400.0,
+        ),
+        tp=3400.0,
+    )
+    assert reason == "timeout"
+    assert abs(px - 3290.0) < 1e-9
+
+
+def test_shock_tighter_regular_trail_wins():
+    start = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    ticks = [
+        _tick(start, 3300.0),
+        _tick(start + timedelta(seconds=0.1), 3300.0),
+        _tick(start + timedelta(seconds=2.1), 3304.0),
+        _tick(start + timedelta(seconds=4.0), 3310.0),
+        _tick(start + timedelta(seconds=5.0), 3299.0),
+    ]
+    reason, _ts, px, *_rest = _play(
+        ticks,
+        _shock_params(trail_arm_mode="from_fill", trail_pts=200.0),
+        trail_dist=200.0,
+        from_fill=True,
+        tp=3400.0,
+    )
+    assert reason == "trail"
+    assert abs(px - 3308.0) < 1e-9
+
+
+def test_candle_path_ignores_shock_and_keeps_the_target():
+    t0 = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    bars = [_c5(t0, 3300.0, 3310.0, 3296.0, 3305.0)]
+    tz = ZoneInfo("UTC")
+    reason, _ts, px, *_rest = _simulate_from_candles(
+        bars,
+        0,
+        side="UP",
+        entry=3300.0,
+        sl=3200.0,
+        tp=3302.0,
+        params=_shock_params(shock_move_pts=50.0, shock_trail_pts=100.0),
+        ps=0.01,
+        tz=tz,
+        flatten_local=datetime(2025, 5, 6, 18, 0, tzinfo=tz),
+        trail_arm_pts=0.0,
+        trail_dist_pts=0.0,
+        trail_from_fill=False,
+    )
+    assert reason == "tp"
+    assert abs(px - 3302.0) < 1e-9
+    assert _rest[-1] is False
+
+
+def test_shock_params_clamp_negatives():
+    p = _normalize_params(OvernightParams(shock_move_pts=-5, shock_window_sec=-1))
+    assert p.shock_trail is False
+    assert p.shock_move_pts == 0.0
+    assert p.shock_window_sec == 0.0
 
