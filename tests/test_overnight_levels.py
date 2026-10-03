@@ -94,6 +94,39 @@ def test_sl_mult_matches_the_old_r_multiple():
     assert tp_pts == 2500.0
 
 
+def test_fixed_cap_keeps_the_ceiling_when_the_stop_is_wide():
+    # Asia range 5000 pts, so the stop is 5000. 2R is 10000, above the ceiling.
+    p = _normalize_params(
+        OvernightParams(
+            tp_mode="fixed_r",
+            tp_fixed_pts=4000.0,
+            tp_sl_mult=2.0,
+            sl_mode="range",
+            sl_range_mult=1.0,
+        )
+    )
+    assert p.tp_mode == "fixed_cap"
+    _sl, tp, sl_pts, tp_pts = _compute_sl_tp("UP", 3300.0, 3350.0, 3300.0, p, 0.01)
+    assert sl_pts == 5000.0
+    assert tp_pts == 4000.0
+    assert tp == 3300.0 + 40.0
+
+
+def test_fixed_cap_shrinks_a_small_stop_to_the_multiple():
+    # Asia range 1000 pts. 2R is 2000, under the 4000 ceiling.
+    p = OvernightParams(
+        tp_mode="fixed_cap",
+        tp_fixed_pts=4000.0,
+        tp_sl_mult=2.0,
+        sl_mode="range",
+        sl_range_mult=1.0,
+    )
+    _sl, tp, sl_pts, tp_pts = _compute_sl_tp("DOWN", 3300.0, 3310.0, 3300.0, p, 0.01)
+    assert sl_pts == 1000.0
+    assert tp_pts == 2000.0
+    assert tp == 3300.0 - 20.0
+
+
 def test_same_timestamp_takes_the_level_reached_first():
     t0 = datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc)
     ma = _Fill(1, t0, 3310.0)

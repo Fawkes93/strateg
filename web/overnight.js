@@ -42,6 +42,7 @@
     "ob-near-bars",
     "ob-near-pts",
     "ob-near-trend",
+    "ob-near-min-range",
     "ob-higher-close",
     "ob-resume-closes",
     "ob-resume-max-break",
@@ -88,6 +89,7 @@
     "ob-timeout-min-break",
     "ob-timeout-min-pullback",
     "ob-near-pts",
+    "ob-near-min-range",
     "ob-resume-max-break",
     "ob-late-short-asia",
     "ob-trend-flat",
@@ -292,7 +294,7 @@
     if (anchor) anchor.disabled = mode === "off" || !usesFib;
     syncMaFields();
     const nearOff = mode !== "required";
-    ["ob-near-bars", "ob-near-pts", "ob-near-trend"].forEach(function (id) {
+    ["ob-near-bars", "ob-near-pts", "ob-near-trend", "ob-near-min-range"].forEach(function (id) {
       const el = $(id);
       if (el) el.disabled = nearOff;
     });
@@ -354,12 +356,14 @@
     const fixed = $("ob-tp-fixed");
     const rangeMult = $("ob-tp-range-mult");
     const rMult = $("ob-tp-sl-mult");
+    const cap = mode === "fixed_cap";
     if (fixed) {
-      fixed.disabled = mode !== "fixed";
-      fixed.title =
-        mode === "fixed"
+      fixed.disabled = mode !== "fixed" && !cap;
+      fixed.title = cap
+        ? "Ceiling. The target is this distance, unless the stop is small enough that this would be more than SL mult R away."
+        : mode === "fixed"
           ? "Take-profit distance in pts."
-          : "Used when TP mode is fixed pts.";
+          : "Used when TP mode is fixed pts or fixed, cap at R.";
     }
     if (rangeMult) {
       rangeMult.disabled = mode !== "range_mult";
@@ -369,11 +373,18 @@
           : "Used when TP mode is range × mult.";
     }
     if (rMult) {
-      rMult.disabled = mode !== "sl_mult";
-      rMult.title =
-        mode === "sl_mult"
+      rMult.disabled = mode !== "sl_mult" && !cap;
+      rMult.title = cap
+        ? "Max R. Target = min(fixed pts, stop × this). 2 with a 4000 ceiling leaves any stop of 2000 or wider at 4000."
+        : mode === "sl_mult"
           ? "Target distance = stop distance × this. 2 means the target is twice the stop."
-          : "Used when TP mode is SL multiple.";
+          : "Used when TP mode is SL multiple or fixed, cap at R.";
+    }
+    const help = $("ob-tp-sl-mult-help");
+    if (help) {
+      help.textContent = cap
+        ? "Quiet stops: target shrinks to stop × this. Wide stops stay at the fixed ceiling."
+        : "Target distance = stop distance × this. 2 means the target is twice the stop.";
     }
   }
 
@@ -626,6 +637,10 @@
                 <option value="breakout">breakout (extend + outside)</option>
               </select>
             </label>
+            <label>Min Asia range (pts)
+              <input type="number" id="ob-near-min-range" value="0" min="0" step="50"
+                title="Near-box fill only when Asia high-low is at least this many points. 0 = off. Level touches and close-resume ignore this." />
+            </label>
           </div>
         </div>
 
@@ -727,6 +742,7 @@
               <select id="ob-tp-mode">
                 <option value="range_mult" selected>range × mult</option>
                 <option value="fixed">fixed pts</option>
+                <option value="fixed_cap">fixed, cap at R</option>
                 <option value="sl_mult">SL multiple</option>
                 <option value="m12">12m avg (daily closes)</option>
               </select>
@@ -739,7 +755,7 @@
             </label>
             <label>SL mult
               <input type="number" id="ob-tp-sl-mult" value="2" min="0.5" step="0.1" />
-              <span class="field-help">Target distance = stop distance × this. 2 means the target is twice the stop.</span>
+              <span class="field-help" id="ob-tp-sl-mult-help">Target distance = stop distance × this. 2 means the target is twice the stop.</span>
             </label>
           </div>
         </div>
@@ -1029,6 +1045,7 @@
     ["near_box_bars", "Near-box bars"],
     ["near_box_pts", "Near-box dist"],
     ["near_box_trend", "Near-box trend"],
+    ["near_box_min_range_pts", "Near-box min Asia"],
     ["use_higher_close", "Close resume"],
     ["resume_closes", "Resume closes"],
     ["resume_max_break_pts", "Resume max from break"],
@@ -1090,6 +1107,7 @@
     near_box_bars: "ob-near-bars",
     near_box_pts: "ob-near-pts",
     near_box_trend: "ob-near-trend",
+    near_box_min_range_pts: "ob-near-min-range",
     use_higher_close: "ob-higher-close",
     resume_closes: "ob-resume-closes",
     resume_max_break_pts: "ob-resume-max-break",
@@ -1134,6 +1152,7 @@
     }
     if (key === "tp_mode" && raw === "m12") return "12m avg";
     if (key === "tp_mode" && (raw === "sl_mult" || raw === "r_mult")) return "SL multiple";
+    if (key === "tp_mode" && (raw === "fixed_cap" || raw === "fixed_r" || raw === "cap")) return "fixed, cap at R";
     if (key === "sl_mode" && raw === "m12_frac") return "12m × frac";
     if (key === "pullback_ref" && raw === "ema") return "moving average";
     if (key === "pullback_ref" && raw === "both") return "both";
@@ -1950,6 +1969,7 @@
         near_box_bars: Math.max(0, Number(($("ob-near-bars") && $("ob-near-bars").value) || 0)),
         near_box_pts: Number(($("ob-near-pts") && $("ob-near-pts").value) || 0),
         near_box_trend: ($("ob-near-trend") && $("ob-near-trend").value) || "off",
+        near_box_min_range_pts: Math.max(0, Number(($("ob-near-min-range") && $("ob-near-min-range").value) || 0)),
         pullback_ref: ($("ob-pullback-ref") && $("ob-pullback-ref").value) || "ema",
         pullback_fib: Number(($("ob-pullback-fib") && $("ob-pullback-fib").value) || 0.5),
         use_higher_close: $("ob-higher-close") && $("ob-higher-close").checked,

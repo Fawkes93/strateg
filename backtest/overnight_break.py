@@ -120,6 +120,9 @@ class OvernightParams:
     #   outside      = last close still outside box by min_break
     #   breakout     = net_ext AND outside (steady push + still broken out)
     near_box_trend: str = "off"
+    # Near-box timeout only when Asia high-low is at least this many pts.
+    # 0 = off (any range that already passed the day filter).
+    near_box_min_range_pts: float = 0.0
     use_higher_close: bool = True  # higher/lower close resume during wait
     resume_closes: int = 1  # consecutive directional closes required (1 = current)
     # Resume close may not extend more than this many pts past the break close.
@@ -135,10 +138,11 @@ class OvernightParams:
     sl_range_mult: float = 1.0
     sl_cap_pts: float = 0.0  # max SL distance (pts). 0 = off. asia_opposite + range.
     sl_m12_frac: float = 1.0 / 3.0  # of 12m avg when sl_mode=m12_frac
-    tp_mode: str = "range_mult"  # fixed | range_mult | sl_mult | m12
+    tp_mode: str = "range_mult"  # fixed | fixed_cap | range_mult | sl_mult | m12
     tp_fixed_pts: float = 1000.0
     tp_range_mult: float = 1.5
-    # Target distance = stop distance × this. None → use legacy tp_r_mult.
+    # SL multiple: target = stop × this. Also the cap for tp_mode=fixed_cap
+    # (target = min(fixed, stop × this)). None → use legacy tp_r_mult.
     tp_sl_mult: Optional[float] = None
     tp_r_mult: float = 2.0
     trail_arm_mode: str = "fixed"  # fixed | asia | from_fill
@@ -258,6 +262,12 @@ def _normalize_params(params: OvernightParams) -> OvernightParams:
         trend = "off"
     params.near_box_trend = trend
     try:
+        params.near_box_min_range_pts = max(
+            0.0, float(params.near_box_min_range_pts or 0.0)
+        )
+    except (TypeError, ValueError):
+        params.near_box_min_range_pts = 0.0
+    try:
         params.resume_max_break_pts = max(
             0.0, float(params.resume_max_break_pts or 0.0)
         )
@@ -292,6 +302,8 @@ def _normalize_params(params: OvernightParams) -> OvernightParams:
         params.tp_mode = "m12"
     elif tm == "fixed":
         params.tp_mode = "fixed"
+    elif tm in ("fixed_cap", "fixed_r", "cap"):
+        params.tp_mode = "fixed_cap"
     elif tm in ("r_mult", "r", "sl_mult", "sl"):
         params.tp_mode = "sl_mult"
     else:
@@ -399,12 +411,17 @@ def near_box_hug(
       net_ext    — last close farther past the edge than the first close of the tail
       outside    — last close still outside the box by min_break
       breakout   — net_ext AND outside (steady extension that never fully failed)
+
+    near_box_min_range_pts > 0 rejects a box smaller than that (Asia high-low).
     """
     n = int(getattr(params, "near_box_bars", 0) or 0)
     d = float(getattr(params, "near_box_pts", 0.0) or 0.0)
     if n <= 0 or d <= 0.0 or not wait_candles or len(wait_candles) < n:
         return False
     if ps <= 0:
+        return False
+    min_rng = float(getattr(params, "near_box_min_range_pts", 0.0) or 0.0)
+    if min_rng > 0.0 and (float(asia_high) - float(asia_low)) / ps + 1e-9 < min_rng:
         return False
     ref = asia_high if side == "UP" else asia_low
     tail = list(wait_candles[-n:])
@@ -1428,6 +1445,13 @@ def _compute_sl_tp(
         tp_dist = round_pts_up(m12_raw) * ps
     elif tp_mode == "fixed":
         tp_dist = params.tp_fixed_pts * ps
+    elif tp_mode in ("fixed_cap", "fixed_r", "cap"):
+        # Ceiling is the fixed distance. A stop small enough that the ceiling
+        # is more than tp_sl_mult R away is pulled in to that multiple.
+        mult = params.tp_sl_mult if params.tp_sl_mult is not None else params.tp_r_mult
+        fixed = params.tp_fixed_pts * ps
+        scaled = sl_pts * float(mult or 0.0) * ps
+        tp_dist = fixed if scaled <= 0 else min(fixed, scaled)
     elif tp_mode in ("r_mult", "r", "sl_mult", "sl"):
         mult = params.tp_sl_mult if params.tp_sl_mult is not None else params.tp_r_mult
         tp_dist = sl_pts * float(mult) * ps

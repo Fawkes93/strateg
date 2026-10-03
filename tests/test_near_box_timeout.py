@@ -86,6 +86,19 @@ def test_near_box_trend_gates():
     assert norm.near_box_trend == "off"
 
 
+def test_near_box_min_range_rejects_a_small_box():
+    # Asia 2000-1000 with ps=1 is a 1000-pt box. Tail hugs the high.
+    tail = [_c(2005, 1995, 2002)] * 3
+    p = OvernightParams(near_box_bars=3, near_box_pts=500, near_box_min_range_pts=2500)
+    assert near_box_hug(p, "UP", tail, 2000.0, 1000.0, 1.0) is False
+    wide = OvernightParams(near_box_bars=3, near_box_pts=500, near_box_min_range_pts=1000)
+    assert near_box_hug(wide, "UP", tail, 2000.0, 1000.0, 1.0) is True
+    off = OvernightParams(near_box_bars=3, near_box_pts=500, near_box_min_range_pts=0)
+    assert near_box_hug(off, "UP", tail, 2000.0, 1000.0, 1.0) is True
+    norm = _normalize_params(OvernightParams(near_box_min_range_pts=-50))
+    assert norm.near_box_min_range_pts == 0.0
+
+
 def _c5(open_time, o, h, l, c):
     return Candle(
         open_time=open_time,

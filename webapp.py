@@ -513,6 +513,7 @@ class OvernightRunRequest(BaseModel):
     near_box_bars: int = 0
     near_box_pts: float = 500.0
     near_box_trend: str = "off"
+    near_box_min_range_pts: float = 0.0
     use_higher_close: bool = True
     resume_closes: int = 1
     resume_max_break_pts: float = 0.0
@@ -589,6 +590,9 @@ def overnight_run(body: OvernightRunRequest):
         near_box_bars=max(0, int(getattr(body, "near_box_bars", 0) or 0)),
         near_box_pts=max(0.0, float(getattr(body, "near_box_pts", 500.0) or 0.0)),
         near_box_trend=str(getattr(body, "near_box_trend", "off") or "off"),
+        near_box_min_range_pts=max(
+            0.0, float(getattr(body, "near_box_min_range_pts", 0.0) or 0.0)
+        ),
         use_higher_close=bool(body.use_higher_close),
         resume_closes=max(1, int(body.resume_closes or 1)),
         resume_max_break_pts=max(0.0, float(body.resume_max_break_pts or 0.0)),

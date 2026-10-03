@@ -94,6 +94,7 @@ class OvernightJobParams:
     near_box_bars: int = 0
     near_box_pts: float = 500.0
     near_box_trend: str = "off"
+    near_box_min_range_pts: float = 0.0
     use_higher_close: bool = True
     resume_closes: int = 1
     resume_max_break_pts: float = 0.0
@@ -752,6 +753,9 @@ def _run(params: OvernightJobParams) -> None:
             near_box_bars=max(0, int(getattr(params, "near_box_bars", 0) or 0)),
             near_box_pts=max(0.0, float(getattr(params, "near_box_pts", 500.0) or 0.0)),
             near_box_trend=str(getattr(params, "near_box_trend", "off") or "off"),
+            near_box_min_range_pts=max(
+                0.0, float(getattr(params, "near_box_min_range_pts", 0.0) or 0.0)
+            ),
             use_higher_close=bool(params.use_higher_close),
             resume_closes=max(1, int(params.resume_closes or 1)),
             resume_max_break_pts=max(0.0, float(params.resume_max_break_pts or 0.0)),
