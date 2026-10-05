@@ -26,7 +26,10 @@ from backtest.overnight_break import (
     summarize_overnight,
     trail_arm_for_range,
     trail_setup,
+    _EntryShock,
+    _entry_shock_on,
     _normalize_params,
+    _shock_level,
     _simulate_from_entry,
 )
 
@@ -2210,4 +2213,371 @@ def test_shock_params_clamp_negatives():
     assert p.shock_trail is False
     assert p.shock_move_pts == 0.0
     assert p.shock_window_sec == 0.0
+
+
+def _entry_shock_params(**overrides):
+    base = dict(
+        entry_shock=True,
+        entry_shock_window_sec=2.0,
+        entry_shock_move_pts=300.0,
+        entry_shock_giveback=0.25,
+        entry_shock_settle_n=2,
+        entry_shock_settle_pts=1500.0,
+        entry_shock_pace_mult=3.0,
+    )
+    base.update(overrides)
+    return _normalize_params(OvernightParams(**base))
+
+
+def _play_entry(side, level, ticks, **overrides):
+    shock = _EntryShock(_entry_shock_params(**overrides), 0.01)
+    shock.side = side
+    shock.kind = "ma"
+    shock.set_level(level)
+    for i, (ts, px) in enumerate(ticks):
+        hit = shock.on_tick(ts, px, i)
+        if hit is not None:
+            return hit
+    return None
+
+
+def _calm_then(start, path):
+    """60s flat at the first path price, then the path as (offset_sec, price)."""
+    px0 = path[0][1]
+    ticks = [(start + timedelta(seconds=s), px0) for s in range(61)]
+    for off, px in path:
+        ticks.append((start + timedelta(seconds=off), px))
+    return ticks
+
+
+def test_entry_shock_level_picks_the_nearer_price():
+    assert _shock_level("UP", 3300.0, 3304.0) == (3304.0, "fib")
+    assert _shock_level("UP", 3306.0, 3301.0) == (3306.0, "ma")
+    assert _shock_level("DOWN", 3300.0, 3296.0) == (3296.0, "fib")
+    assert _shock_level("DOWN", None, 3300.0) == (3300.0, "fib")
+    assert _shock_level("UP", 3300.0, None) == (3300.0, "ma")
+
+
+def test_entry_shock_slow_approach_fills_the_level():
+    start = datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc)
+    ticks = [(start + timedelta(seconds=s), 3324.0) for s in range(5)]
+    px = 3324.0
+    t = 5.0
+    while px > 3299.5:
+        t += 1.0
+        px -= 0.2
+        ticks.append((start + timedelta(seconds=t), px))
+    hit = _play_entry("UP", 3300.0, ticks)
+    assert hit is not None
+    assert hit.shifted is False
+    assert abs(hit.fill.px - 3300.0) < 0.05
+
+
+def test_entry_shock_fast_drop_fills_past_the_level():
+    start = datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc)
+    # 3324 → 3288 is a 3600 pt rush. Giveback 0.25 puts the bid at 3297.
+    ticks = _calm_then(
+        start,
+        [
+            (61.0, 3324.0),
+            (61.5, 3312.0),
+            (62.0, 3300.0),
+            (62.5, 3294.0),
+            (63.0, 3288.0),
+            (65.0, 3297.0),
+            (67.0, 3297.0),
+            (69.0, 3297.0),
+        ],
+    )
+    hit = _play_entry("UP", 3300.0, ticks)
+    assert hit is not None
+    assert hit.shifted is True
+    assert abs(hit.fill.px - 3297.0) < 1e-9
+    assert abs(hit.past_pts - 300.0) < 1e-6
+    assert hit.fill.ts == start + timedelta(seconds=69)
+
+
+def test_entry_shock_one_quiet_window_does_not_fill():
+    start = datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc)
+    ticks = _calm_then(
+        start,
+        [
+            (61.0, 3324.0),
+            (61.5, 3312.0),
+            (62.0, 3300.0),
+            (62.5, 3294.0),
+            (63.0, 3288.0),
+            (65.0, 3297.0),
+            (67.0, 3297.0),
+        ],
+    )
+    assert _play_entry("UP", 3300.0, ticks) is None
+    early = _play_entry("UP", 3300.0, ticks, entry_shock_settle_n=1)
+    assert early is not None
+    assert abs(early.fill.px - 3297.0) < 1e-9
+
+
+def test_entry_shock_hot_stretch_moves_the_entry_and_skips_the_bounce():
+    start = datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc)
+    ticks = _calm_then(
+        start,
+        [
+            (61.0, 3324.0),
+            (61.5, 3312.0),
+            (62.0, 3300.0),
+            (62.5, 3294.0),
+            (63.0, 3288.0),
+            (63.5, 3297.0),  # bounce to the first shifted bid, still inside the rush
+            (64.0, 3280.0),  # shock continues
+            (66.0, 3291.0),
+            (68.0, 3291.0),
+            (70.0, 3291.0),
+        ],
+    )
+    hit = _play_entry("UP", 3300.0, ticks)
+    assert hit is not None
+    assert hit.shifted is True
+    # 4400 pt rush from 3324, giveback 0.25, bid sits 11 dollars off 3280.
+    assert abs(hit.fill.px - 3291.0) < 1e-6
+    assert hit.fill.ts == start + timedelta(seconds=70)
+
+
+def test_entry_shock_given_back_discount_returns_to_the_level():
+    start = datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc)
+    ticks = _calm_then(
+        start,
+        [
+            (61.0, 3324.0),
+            (61.5, 3312.0),
+            (62.0, 3300.0),
+            (63.0, 3288.0),
+            (64.0, 3305.0),
+        ],
+    )
+    px = 3305.0
+    t = 64.0
+    while px > 3300.0:
+        t += 1.0
+        px -= 0.25
+        ticks.append((start + timedelta(seconds=t), round(px, 4)))
+    hit = _play_entry("UP", 3300.0, ticks)
+    assert hit is not None
+    assert hit.shifted is False
+    assert abs(hit.fill.px - 3300.0) < 0.05
+
+
+def test_entry_shock_short_mirrors_the_long():
+    start = datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc)
+    ticks = _calm_then(
+        start,
+        [
+            (61.0, 3276.0),
+            (61.5, 3288.0),
+            (62.0, 3300.0),
+            (62.5, 3306.0),
+            (63.0, 3312.0),
+            (65.0, 3303.0),
+            (67.0, 3303.0),
+            (69.0, 3303.0),
+        ],
+    )
+    hit = _play_entry("DOWN", 3300.0, ticks)
+    assert hit is not None
+    assert hit.shifted is True
+    assert abs(hit.fill.px - 3303.0) < 1e-6
+    assert abs(hit.past_pts - 300.0) < 1e-6
+
+
+def test_entry_shock_params_clamp():
+    p = _normalize_params(
+        OvernightParams(
+            entry_shock=True,
+            entry_shock_move_pts=-5,
+            entry_shock_window_sec=-1,
+            entry_shock_giveback=1.5,
+            entry_shock_settle_n=0,
+            entry_shock_pace_mult=-2,
+        )
+    )
+    assert p.entry_shock is True
+    assert p.entry_shock_move_pts == 0.0
+    assert p.entry_shock_window_sec == 0.0
+    assert _entry_shock_on(p) is False
+    assert p.entry_shock_giveback == 1.0
+    assert p.entry_shock_settle_n == 1
+    assert p.entry_shock_pace_mult == 0.0
+
+
+def _fib_day_params(**overrides):
+    base = dict(
+        timezone="UTC",
+        pullback_mode="required",
+        pullback_ref="fib",
+        pullback_fib=0.5,
+        use_higher_close=False,
+        min_asia_range_pts=300.0,
+        min_break_pts_above=200.0,
+        min_break_pts_below=200.0,
+        max_wait_candles=4,
+        max_break_candles_after=4,
+        flatten_hour=23,
+        sl_mode="fixed",
+        sl_fixed_pts=5000.0,
+        tp_mode="fixed",
+        tp_fixed_pts=5000.0,
+        trail_arm_mode="off",
+    )
+    base.update(overrides)
+    return OvernightParams(**base)
+
+
+def _fib_rush_ticks(extra):
+    """Asia 3280/3320, break close 3324, then caller ticks inside the 07:15 bar."""
+    start = datetime(2025, 5, 6, 0, 0, tzinfo=timezone.utc)
+    ticks = []
+    t = start
+    break_open = datetime(2025, 5, 6, 7, 0, tzinfo=timezone.utc)
+    while t < break_open:
+        if t == datetime(2025, 5, 6, 2, 0, tzinfo=timezone.utc):
+            ohlc = (3310.0, 3312.0, 3280.0, 3308.0)
+        elif t == datetime(2025, 5, 6, 4, 0, tzinfo=timezone.utc):
+            ohlc = (3310.0, 3320.0, 3308.0, 3315.0)
+        else:
+            ohlc = (3310.0, 3312.0, 3308.0, 3310.0)
+        o, h, l, c = ohlc
+        ticks.extend(
+            [
+                _tick(t, o),
+                _tick(t + timedelta(seconds=1), h),
+                _tick(t + timedelta(seconds=2), l),
+                _tick(t + timedelta(minutes=14, seconds=50), c),
+            ]
+        )
+        t += timedelta(minutes=15)
+    ticks.extend(
+        [
+            _tick(break_open, 3316.0),
+            _tick(break_open + timedelta(seconds=1), 3326.0),
+            _tick(break_open + timedelta(seconds=2), 3314.0),
+            _tick(break_open + timedelta(minutes=14, seconds=50), 3324.0),
+        ]
+    )
+    ticks.extend(extra)
+    return ticks
+
+
+def _rush_params(**overrides):
+    base = dict(
+        entry_shock=True,
+        entry_shock_window_sec=2.0,
+        entry_shock_move_pts=300.0,
+        entry_shock_giveback=0.25,
+        entry_shock_settle_n=2,
+        entry_shock_settle_pts=1500.0,
+        entry_shock_pace_mult=3.0,
+    )
+    base.update(overrides)
+    return _fib_day_params(**base)
+
+
+def test_entry_shock_off_fills_the_fib_touch():
+    start = datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc)
+    extra = [_tick(ts, px) for ts, px in _calm_then(
+        start,
+        [(61.5, 3312.0), (62.0, 3300.0), (63.0, 3288.0), (69.0, 3297.0)],
+    )]
+    extra.append(_tick(datetime(2025, 5, 6, 7, 30, tzinfo=timezone.utc), 3297.0))
+    out = run_overnight(_fib_rush_ticks(extra), symbol="XAU/USD", params=_fib_day_params())
+    assert out["trades"] == 1
+    row = out["rows"][0]
+    assert row["entry_reason"] == "fib_touch"
+    assert row["entry_shock"] is False
+    assert abs(row["entry"] - 3300.0) < 1e-6
+
+
+def test_entry_shock_on_buys_the_deeper_fib():
+    start = datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc)
+    extra = [_tick(ts, px) for ts, px in _calm_then(
+        start,
+        [
+            (61.0, 3324.0),
+            (61.5, 3312.0),
+            (62.0, 3300.0),
+            (62.5, 3294.0),
+            (63.0, 3288.0),
+            (65.0, 3297.0),
+            (67.0, 3297.0),
+            (69.0, 3297.0),
+        ],
+    )]
+    extra.append(_tick(datetime(2025, 5, 6, 7, 30, tzinfo=timezone.utc), 3297.0))
+    out = run_overnight(_fib_rush_ticks(extra), symbol="XAU/USD", params=_rush_params())
+    assert out["trades"] == 1, out["skips"]
+    row = out["rows"][0]
+    assert row["entry_reason"] == "fib_touch"
+    assert row["entry_shock"] is True
+    assert abs(row["entry"] - 3297.0) < 1e-6
+    assert "shock entry · +300 pts past the level" in row["decision"]
+
+
+def test_entry_shock_skips_resume_while_the_rush_is_armed():
+    start = datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc)
+    ticks = _calm_then(
+        start,
+        [(61.5, 3312.0), (62.0, 3300.0), (63.0, 3288.0)],
+    )
+    t = start + timedelta(seconds=64)
+    end = datetime(2025, 5, 6, 7, 44, 50, tzinfo=timezone.utc)
+    toggle = False
+    while t < end:
+        # Stay hot and below the 3300 fib so the shifted entry never goes live,
+        # and bar 2 closes above bar 1 so a higher-close resume would otherwise fire.
+        if t < datetime(2025, 5, 6, 7, 29, 50, tzinfo=timezone.utc):
+            px = 3292.0 if toggle else 3288.0
+        else:
+            px = 3294.0 if toggle else 3288.0
+        ticks.append((t, px))
+        toggle = not toggle
+        t += timedelta(seconds=1)
+    ticks.append((datetime(2025, 5, 6, 7, 29, 50, tzinfo=timezone.utc), 3288.0))
+    ticks.append((end, 3294.0))
+    extra = [_tick(ts, px) for ts, px in ticks]
+    extra.append(_tick(datetime(2025, 5, 6, 7, 45, tzinfo=timezone.utc), 3294.0))
+    out = run_overnight(
+        _fib_rush_ticks(extra),
+        symbol="XAU/USD",
+        params=_rush_params(use_higher_close=True, max_wait_candles=2),
+    )
+    assert out["trades"] == 0
+    skips = [s for s in out["skips"] if s.get("side") == "UP"]
+    assert skips and skips[0]["reason"] == "no_pullback"
+
+
+def test_candle_path_ignores_entry_shock():
+    start = datetime(2025, 5, 6, 0, 0, tzinfo=timezone.utc)
+    bars = []
+    t = start
+    end = datetime(2025, 5, 6, 8, 0, tzinfo=timezone.utc)
+    while t < end:
+        if t == datetime(2025, 5, 6, 2, 0, tzinfo=timezone.utc):
+            bars.append(_c5(t, 3310.0, 3312.0, 3280.0, 3308.0))
+        elif t == datetime(2025, 5, 6, 4, 0, tzinfo=timezone.utc):
+            bars.append(_c5(t, 3310.0, 3320.0, 3308.0, 3315.0))
+        elif t == datetime(2025, 5, 6, 7, 10, tzinfo=timezone.utc):
+            bars.append(_c5(t, 3316.0, 3326.0, 3314.0, 3324.0))
+        elif t == datetime(2025, 5, 6, 7, 15, tzinfo=timezone.utc):
+            bars.append(_c5(t, 3324.0, 3326.0, 3288.0, 3310.0))
+        else:
+            bars.append(_c5(t, 3310.0, 3312.0, 3308.0, 3310.0))
+        t += timedelta(minutes=5)
+    out = run_overnight_on_candles(
+        bars,
+        symbol="XAU/USD",
+        params=_rush_params(),
+    )
+    assert out["trades"] == 1, out["skips"]
+    row = out["rows"][0]
+    assert row["entry_reason"] == "fib_touch"
+    assert row["entry_shock"] is False
+    assert abs(row["entry"] - 3300.0) < 1e-6
 

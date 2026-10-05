@@ -124,6 +124,13 @@ class OvernightJobParams:
     shock_settle_min: float = 0.0
     shock_settle_pts: float = 800.0
     shock_tight_pts: float = 800.0
+    entry_shock: bool = False
+    entry_shock_window_sec: float = 10.0
+    entry_shock_move_pts: float = 300.0
+    entry_shock_giveback: float = 0.25
+    entry_shock_settle_n: int = 2
+    entry_shock_settle_pts: float = 1500.0
+    entry_shock_pace_mult: float = 3.0
     max_hold_hours: float = 10.0
     flatten_hour: int = 18
     one_trade_per_day: bool = True
@@ -796,6 +803,13 @@ def _run(params: OvernightJobParams) -> None:
             shock_settle_min=float(getattr(params, "shock_settle_min", 0.0) or 0.0),
             shock_settle_pts=float(getattr(params, "shock_settle_pts", 800.0) or 0.0),
             shock_tight_pts=float(getattr(params, "shock_tight_pts", 800.0) or 0.0),
+            entry_shock=bool(getattr(params, "entry_shock", False)),
+            entry_shock_window_sec=float(getattr(params, "entry_shock_window_sec", 10.0) or 0.0),
+            entry_shock_move_pts=float(getattr(params, "entry_shock_move_pts", 300.0) or 0.0),
+            entry_shock_giveback=float(getattr(params, "entry_shock_giveback", 0.25) or 0.0),
+            entry_shock_settle_n=max(1, int(getattr(params, "entry_shock_settle_n", 2) or 2)),
+            entry_shock_settle_pts=float(getattr(params, "entry_shock_settle_pts", 1500.0) or 0.0),
+            entry_shock_pace_mult=float(getattr(params, "entry_shock_pace_mult", 3.0) or 0.0),
             max_hold_hours=float(params.max_hold_hours),
             flatten_hour=int(params.flatten_hour),
             one_trade_per_day=bool(params.one_trade_per_day),

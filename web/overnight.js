@@ -78,6 +78,13 @@
     "ob-shock-settle",
     "ob-shock-settle-pts",
     "ob-shock-tight",
+    "ob-entry-shock",
+    "ob-entry-shock-window",
+    "ob-entry-shock-move",
+    "ob-entry-shock-giveback",
+    "ob-entry-shock-settle-n",
+    "ob-entry-shock-settle-pts",
+    "ob-entry-shock-pace",
     "ob-max-hold",
     "ob-flatten",
     "ob-one-per-day",
@@ -113,6 +120,8 @@
     "ob-shock-dist",
     "ob-shock-settle-pts",
     "ob-shock-tight",
+    "ob-entry-shock-move",
+    "ob-entry-shock-settle-pts",
   ];
   let symbolSwitching = false;
 
@@ -248,6 +257,7 @@
         : "off";
     }
     syncShockControls();
+    syncShockEntryControls();
   }
 
   function loadForm() {
@@ -451,6 +461,18 @@
       : "A favorable move of Move pts inside Window seconds cancels the target and leaves the stop. The trail starts once profit reaches Arm, and sits Distance pts behind the best price. Defaults are the 1 Aug 2025 jobs print. Settle at 0 does not walk the trail in.";
   }
 
+  function syncShockEntryControls() {
+    const on = $("ob-entry-shock") && $("ob-entry-shock").checked;
+    const box = $("ob-entry-shock-box");
+    if (box) box.hidden = !on;
+    const help = $("ob-entry-shock-help");
+    if (!help || !on) return;
+    const candles = !$("ob-data") || $("ob-data").value !== "ticks";
+    help.textContent = candles
+      ? "This run is on 5-minute candles, so the shock entry does nothing and the level fills as usual. Switch Data to ticks."
+      : "A rush of Move points toward the EMA or fib inside Window seconds pulls the entry off the extreme of that rush. Giveback is the fraction given back before the fill. The entry keeps moving if the rush continues. It fills after Settle count stretches whose range is under Settle range and under Pace × the pre-shock range. 1500 is a wide ceiling on a 10-second window. The pace multiple is what waits for the rush to end. Pullback off ignores this.";
+  }
+
   // ----- inject tab button + panel if missing (keeps index.html unchanged) -----
   function ensureTab() {
     const nav = document.querySelector(".main-tabs");
@@ -615,6 +637,40 @@
               <input type="number" id="ob-resume-max-break" value="0" min="0" step="50"
                 title="Higher/lower close resume only: wait-bar close may not extend more than this many pts past the break close (long: above, short: below). 0 = off. Pullback side of the break always allowed. The level touch ignores this." />
             </label>
+            <div class="ob-shock-wrap">
+              <label class="chk">Shock entry
+                <input type="checkbox" id="ob-entry-shock" />
+              </label>
+              <div class="ob-shock" id="ob-entry-shock-box" hidden>
+                <p class="field-help" id="ob-entry-shock-help"></p>
+                <div class="ob-shock-fields">
+                  <label>Window (sec)
+                    <input type="number" id="ob-entry-shock-window" value="10" min="0.5" step="0.5"
+                      title="Lookback for the rush toward the level. 10 seconds is where fast Asia pullbacks show up. A 2-second window rarely reaches 300 points on the way in." />
+                  </label>
+                  <label>Move (pts)
+                    <input type="number" id="ob-entry-shock-move" value="300" min="0" step="50"
+                      title="Net move toward the EMA or fib inside the window. About the fastest tenth of real level touches. Slower approaches still fill at the level. 0 disables the shift." />
+                  </label>
+                  <label>Giveback
+                    <input type="number" id="ob-entry-shock-giveback" value="0.25" min="0" max="1" step="0.05"
+                      title="Fraction of the rush given back from the extreme. 0.25 on a 400-point rush through the level buys about 300 points past the original level. The entry keeps moving if the rush continues. 0 fills only if price revisits the extreme. 1 never beats the level." />
+                  </label>
+                  <label>Settle count
+                    <input type="number" id="ob-entry-shock-settle-n" value="2" min="1" step="1"
+                      title="Quiet stretches of Window seconds required before the shifted entry can fill. 2 waits out a one-stretch pause." />
+                  </label>
+                  <label>Settle range (pts)
+                    <input type="number" id="ob-entry-shock-settle-pts" value="1500" min="0" step="50"
+                      title="A stretch counts as quiet only when its range is under this many points and under Pace × the range before the rush. 1500 is a wide ceiling on a 10-second window. The pace multiple is what actually waits for the rush to end." />
+                  </label>
+                  <label>Pace ×
+                    <input type="number" id="ob-entry-shock-pace" value="3" min="0" step="0.5"
+                      title="Quiet when the stretch range is at most this many times the pre-shock range. 3 is a pause, not silence. The pre-shock 2-second range on level fills is about 16 points. 0 ignores the pace check and uses Settle range only." />
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1146,6 +1202,13 @@
     ["shock_settle_min", "Shock settle min"],
     ["shock_settle_pts", "Shock settle range"],
     ["shock_tight_pts", "Shock tight pts"],
+    ["entry_shock", "Shock entry"],
+    ["entry_shock_window_sec", "Entry shock window s"],
+    ["entry_shock_move_pts", "Entry shock move pts"],
+    ["entry_shock_giveback", "Entry shock giveback"],
+    ["entry_shock_settle_n", "Entry shock settle count"],
+    ["entry_shock_settle_pts", "Entry shock settle range"],
+    ["entry_shock_pace_mult", "Entry shock pace ×"],
     ["max_hold_hours", "Max hold h"],
     ["flatten_hour", "Flatten hour"],
     ["one_trade_per_day", "One per day"],
@@ -1215,6 +1278,13 @@
     shock_settle_min: "ob-shock-settle",
     shock_settle_pts: "ob-shock-settle-pts",
     shock_tight_pts: "ob-shock-tight",
+    entry_shock: "ob-entry-shock",
+    entry_shock_window_sec: "ob-entry-shock-window",
+    entry_shock_move_pts: "ob-entry-shock-move",
+    entry_shock_giveback: "ob-entry-shock-giveback",
+    entry_shock_settle_n: "ob-entry-shock-settle-n",
+    entry_shock_settle_pts: "ob-entry-shock-settle-pts",
+    entry_shock_pace_mult: "ob-entry-shock-pace",
     max_hold_hours: "ob-max-hold",
     flatten_hour: "ob-flatten",
     one_trade_per_day: "ob-one-per-day",
@@ -1363,6 +1433,7 @@
     syncSlControls();
     syncTpControls();
     syncShockControls();
+    syncShockEntryControls();
     scheduleSave();
   }
 
@@ -2080,6 +2151,13 @@
         shock_settle_min: Number(($("ob-shock-settle") && $("ob-shock-settle").value) || 0),
         shock_settle_pts: Number(($("ob-shock-settle-pts") && $("ob-shock-settle-pts").value) || 0),
         shock_tight_pts: Number(($("ob-shock-tight") && $("ob-shock-tight").value) || 0),
+        entry_shock: !!($("ob-entry-shock") && $("ob-entry-shock").checked),
+        entry_shock_window_sec: Number(($("ob-entry-shock-window") && $("ob-entry-shock-window").value) || 0),
+        entry_shock_move_pts: Number(($("ob-entry-shock-move") && $("ob-entry-shock-move").value) || 0),
+        entry_shock_giveback: Number(($("ob-entry-shock-giveback") && $("ob-entry-shock-giveback").value) || 0),
+        entry_shock_settle_n: Math.max(1, Number(($("ob-entry-shock-settle-n") && $("ob-entry-shock-settle-n").value) || 2)),
+        entry_shock_settle_pts: Number(($("ob-entry-shock-settle-pts") && $("ob-entry-shock-settle-pts").value) || 0),
+        entry_shock_pace_mult: Number(($("ob-entry-shock-pace") && $("ob-entry-shock-pace").value) || 0),
         max_hold_hours: Number($("ob-max-hold").value),
         flatten_hour: Number($("ob-flatten").value),
         one_trade_per_day: $("ob-one-per-day") && $("ob-one-per-day").checked,
@@ -2130,6 +2208,7 @@
   syncPullbackControls();
   syncTrailArmControls();
   syncShockControls();
+  syncShockEntryControls();
   syncSlControls();
   syncTpControls();
   const modeEl = $("ob-pullback-mode");
@@ -2144,8 +2223,13 @@
   if (trailModeEl) trailModeEl.addEventListener("change", syncTrailArmControls);
   const shockEl = $("ob-shock");
   if (shockEl) shockEl.addEventListener("change", syncShockControls);
+  const entryShockEl = $("ob-entry-shock");
+  if (entryShockEl) entryShockEl.addEventListener("change", syncShockEntryControls);
   const dataEl = $("ob-data");
-  if (dataEl) dataEl.addEventListener("change", syncShockControls);
+  if (dataEl) {
+    dataEl.addEventListener("change", syncShockControls);
+    dataEl.addEventListener("change", syncShockEntryControls);
+  }
   const slModeEl = $("ob-sl-mode");
   if (slModeEl) slModeEl.addEventListener("change", syncSlControls);
   const tpModeEl = $("ob-tp-mode");

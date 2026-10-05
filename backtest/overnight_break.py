@@ -31,6 +31,12 @@ quiet stretch of that many minutes walks the distance one quarter of the way
 toward shock_tight_pts. Four quiet stretches finish the walk. 5m candles
 cannot see a 2-second move, so candle runs keep the target.
 
+Shock entry (experimental, tick path only): while waiting for the EMA or fib,
+a fast move toward that level pulls the resting entry off the extreme of the
+rush and keeps pulling it if the rush continues. The order goes live after
+entry_shock_settle_n quiet windows. 5m candles cannot see it, so candle runs
+keep the original level.
+
 TP m12: mean of the last 12 complete months' daily-close ranges
 (max close − min close that month), rounded up to 50 pts.
 SL m12_frac: that same average × 1/4, 1/3, or 1/2, also rounded up to 50 pts.
@@ -46,7 +52,7 @@ from collections import defaultdict, deque
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from math import ceil, floor
-from statistics import mean
+from statistics import mean, median
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from zoneinfo import ZoneInfo
 
@@ -167,6 +173,15 @@ class OvernightParams:
     shock_settle_min: float = 0.0  # 0 = do not walk the distance in
     shock_settle_pts: float = 800.0  # quiet if the window's range is inside this
     shock_tight_pts: float = 800.0  # floor the walk-in steps toward. 0 = do not walk in
+    # Experimental pullback entry. Off keeps the first touch of the level.
+    # Tick path only. 5m candles cannot see a rush of a few seconds.
+    entry_shock: bool = False
+    entry_shock_window_sec: float = 10.0  # lookback for the rush toward the level
+    entry_shock_move_pts: float = 300.0  # net move toward the level inside the window
+    entry_shock_giveback: float = 0.25  # fraction of the rush given back from the extreme
+    entry_shock_settle_n: int = 2  # quiet windows before the shifted entry is live
+    entry_shock_settle_pts: float = 1500.0  # absolute ceiling on a quiet window
+    entry_shock_pace_mult: float = 3.0  # quiet if range <= this × the pre-shock pace
     max_hold_hours: float = 10.0
     flatten_hour: int = 18  # local hour hard flatten
     one_trade_per_day: bool = True
@@ -357,6 +372,27 @@ def _normalize_params(params: OvernightParams) -> OvernightParams:
     params.shock_settle_min = _nonneg(getattr(params, "shock_settle_min", 0.0), 0.0)
     params.shock_settle_pts = _nonneg(getattr(params, "shock_settle_pts", 800.0), 800.0)
     params.shock_tight_pts = _nonneg(getattr(params, "shock_tight_pts", 800.0), 800.0)
+    params.entry_shock = bool(getattr(params, "entry_shock", False))
+    params.entry_shock_window_sec = _nonneg(
+        getattr(params, "entry_shock_window_sec", 10.0), 10.0
+    )
+    params.entry_shock_move_pts = _nonneg(
+        getattr(params, "entry_shock_move_pts", 300.0), 300.0
+    )
+    params.entry_shock_giveback = _unit(
+        getattr(params, "entry_shock_giveback", 0.25), 0.25
+    )
+    try:
+        settle_n = int(getattr(params, "entry_shock_settle_n", 2))
+    except (TypeError, ValueError):
+        settle_n = 2
+    params.entry_shock_settle_n = max(1, settle_n)
+    params.entry_shock_settle_pts = _nonneg(
+        getattr(params, "entry_shock_settle_pts", 1500.0), 1500.0
+    )
+    params.entry_shock_pace_mult = _nonneg(
+        getattr(params, "entry_shock_pace_mult", 3.0), 3.0
+    )
     return params
 
 
@@ -365,6 +401,19 @@ def _nonneg(raw: Any, default: float) -> float:
         return max(0.0, float(raw))
     except (TypeError, ValueError):
         return default
+
+
+def _unit(raw: Any, default: float) -> float:
+    """Clamp to [0, 1]. A giveback of 1 never beats the original level."""
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return default
+    if value < 0.0:
+        return 0.0
+    if value > 1.0:
+        return 1.0
+    return value
 
 
 def _shock_config(params: OvernightParams) -> Optional[Dict[str, float]]:
@@ -516,6 +565,324 @@ class _ShockTracker:
         self.steps += 1
         frac = min(1.0, self.steps / float(self._STEPS))
         self.dist = self.wide + (self.tight - self.wide) * frac
+
+
+def _entry_shock_on(params: OvernightParams) -> bool:
+    """Tick-path pullback shift. Window 0 or move 0 leaves the level alone."""
+    if not bool(getattr(params, "entry_shock", False)):
+        return False
+    if _nonneg(getattr(params, "entry_shock_window_sec", 0.0), 0.0) <= 0.0:
+        return False
+    if _nonneg(getattr(params, "entry_shock_move_pts", 0.0), 0.0) <= 0.0:
+        return False
+    return True
+
+
+def _shock_level(
+    side: str,
+    ma: Optional[float],
+    fib: Optional[float],
+) -> Tuple[Optional[float], Optional[str]]:
+    """The level price would tag first. Longs hit the higher price first."""
+    if ma is None and fib is None:
+        return None, None
+    if fib is None:
+        return ma, "ma"
+    if ma is None:
+        return fib, "fib"
+    if side == "UP":
+        if fib >= ma:
+            return fib, "fib"
+        return ma, "ma"
+    if fib <= ma:
+        return fib, "fib"
+    return ma, "ma"
+
+
+@dataclass
+class _EntryShockHit:
+    fill: "_Fill"
+    kind: str
+    shifted: bool
+    past_pts: float
+
+
+class _EntryShock:
+    """Pull a known pullback level deeper when price rushes into it.
+
+    The impulse matches the exit shock: the net move versus the oldest
+    price still inside the window, and it cannot arm until that window
+    has elapsed once. The working entry sits giveback × the rush back
+    from the extreme, only moves to a better price, and is never a worse
+    price than the level. It goes live after settle_n quiet windows.
+    A new extreme restarts that count. Price back through the level
+    before the fill disarms and the original level works again.
+    """
+
+    def __init__(self, params: OvernightParams, ps: float) -> None:
+        self.ps = ps
+        self.window_sec = _nonneg(getattr(params, "entry_shock_window_sec", 10.0), 10.0)
+        self.window = timedelta(seconds=self.window_sec)
+        self.move_pts = _nonneg(getattr(params, "entry_shock_move_pts", 300.0), 300.0)
+        self.giveback = _unit(getattr(params, "entry_shock_giveback", 0.25), 0.25)
+        try:
+            settle_n = int(getattr(params, "entry_shock_settle_n", 2))
+        except (TypeError, ValueError):
+            settle_n = 2
+        self.settle_n = max(1, settle_n)
+        self.settle_pts = _nonneg(getattr(params, "entry_shock_settle_pts", 1500.0), 1500.0)
+        self.pace_mult = _nonneg(getattr(params, "entry_shock_pace_mult", 3.0), 3.0)
+        self.side = "UP"
+        self.kind = "ma"
+        self.level: Optional[float] = None
+        self.hist: deque = deque()
+        self.t0: Optional[datetime] = None
+        self.armed = False
+        self.done = False
+        self.live = False
+        self.quiet = 0
+        self.seen_discount = False
+        self.anchor: Optional[float] = None
+        self.extreme: Optional[float] = None
+        self.working: Optional[float] = None
+        self.pace: Optional[float] = None
+        self.stretch_t0: Optional[datetime] = None
+        self.stretch_hi = 0.0
+        self.stretch_lo = 0.0
+
+    def scan(
+        self,
+        feed: "_TickFeed",
+        open_t: datetime,
+        close_t: datetime,
+        side: str,
+        level: float,
+        kind: str,
+    ) -> Optional[_EntryShockHit]:
+        """Walk this bar's ticks. The boundary tick belongs to the next bar."""
+        if self.done or self.ps <= 0:
+            return None
+        self.side = side
+        self.kind = kind
+        self.set_level(level)
+        i0 = feed.find_index(open_t)
+        i1 = feed.find_index(close_t)
+        for ti in range(i0, min(i1, feed.n)):
+            hit = self.on_tick(feed.ticks[ti].ts, _mid(feed.ticks[ti]), ti)
+            if hit is not None:
+                return hit
+        return None
+
+    def set_level(self, level: float) -> None:
+        """A new bar may improve the floor. It cannot make the entry worse."""
+        if not self.armed or self.level is None:
+            self.level = level
+            return
+        if self._better(level, self.level):
+            self.level = level
+        if self.working is not None and self._better(level, self.working):
+            self.working = level
+
+    def on_tick(self, ts: datetime, px: float, index: int) -> Optional[_EntryShockHit]:
+        if self.done or self.level is None or self.ps <= 0:
+            return None
+        if self.t0 is None:
+            self.t0 = ts
+        self.hist.append((ts, px))
+        keep = ts - timedelta(seconds=max(180.0, self.window_sec + 90.0))
+        while self.hist and self.hist[0][0] < keep:
+            self.hist.popleft()
+        if not self.armed:
+            if self._should_arm(ts, px):
+                self._arm(ts)
+                return None
+            if self._crossed(px):
+                return self._emit(ts, px, index, shifted=False)
+            return None
+        return self._armed_tick(ts, px, index)
+
+    def _should_arm(self, ts: datetime, px: float) -> bool:
+        if self.t0 is None:
+            return False
+        if (ts - self.t0).total_seconds() + 1e-9 < self.window_sec:
+            return False
+        anchor = self._anchor_px(ts)
+        if anchor is None:
+            return False
+        return self._toward(anchor, px) + 1e-12 >= self.move_pts
+
+    def _anchor_px(self, ts: datetime) -> Optional[float]:
+        cut = ts - self.window
+        for t, px in self.hist:
+            if t >= cut:
+                return px
+        return None
+
+    def _toward(self, old: float, new: float) -> float:
+        if self.side == "UP":
+            return (old - new) / self.ps
+        return (new - old) / self.ps
+
+    def _arm(self, ts: datetime) -> None:
+        cut = ts - self.window
+        prices = [px for t, px in self.hist if t >= cut]
+        if not prices:
+            return
+        self.anchor = prices[0]
+        self.extreme = min(prices) if self.side == "UP" else max(prices)
+        self.armed = True
+        self.live = False
+        self.quiet = 0
+        self.seen_discount = self._on_discount(self.extreme)
+        self._freeze_pace(ts)
+        self._retarget()
+        self.stretch_t0 = ts
+        self.stretch_hi = prices[-1]
+        self.stretch_lo = prices[-1]
+
+    def _freeze_pace(self, ts: datetime) -> None:
+        """Median range of pre-shock windows. The arming window is left out."""
+        end = ts - self.window
+        start = end - timedelta(seconds=60.0)
+        ranges: List[float] = []
+        cursor = start
+        while cursor + self.window <= end + timedelta(microseconds=1):
+            nxt = cursor + self.window
+            chunk = [px for t, px in self.hist if cursor <= t < nxt]
+            if chunk:
+                ranges.append((max(chunk) - min(chunk)) / self.ps)
+            cursor = nxt
+        self.pace = median(ranges) if ranges else None
+
+    def _retarget(self) -> None:
+        if self.anchor is None or self.extreme is None or self.level is None:
+            return
+        if self.side == "UP":
+            travel = (self.anchor - self.extreme) / self.ps
+            candidate = self.extreme + max(0.0, travel) * self.giveback * self.ps
+        else:
+            travel = (self.extreme - self.anchor) / self.ps
+            candidate = self.extreme - max(0.0, travel) * self.giveback * self.ps
+        if self._better(candidate, self.level):
+            if self.working is None or self._better(candidate, self.working):
+                self.working = candidate
+        elif self.working is None:
+            self.working = self.level
+
+    def _armed_tick(self, ts: datetime, px: float, index: int) -> Optional[_EntryShockHit]:
+        if self.extreme is None:
+            return None
+        new_ext = False
+        if self.side == "UP" and px < self.extreme - 1e-12:
+            self.extreme = px
+            new_ext = True
+        elif self.side == "DOWN" and px > self.extreme + 1e-12:
+            self.extreme = px
+            new_ext = True
+        if new_ext:
+            self._retarget()
+            self.live = False
+            self.quiet = 0
+            self.stretch_t0 = ts
+            self.stretch_hi = px
+            self.stretch_lo = px
+            self._note_discount(px)
+            return None
+        if self.stretch_t0 is None:
+            self.stretch_t0 = ts
+            self.stretch_hi = px
+            self.stretch_lo = px
+        else:
+            if px > self.stretch_hi:
+                self.stretch_hi = px
+            if px < self.stretch_lo:
+                self.stretch_lo = px
+        if (ts - self.stretch_t0).total_seconds() + 1e-9 >= self.window_sec:
+            self._score_stretch()
+            self.stretch_t0 = ts
+            self.stretch_hi = px
+            self.stretch_lo = px
+        self._note_discount(px)
+        if self.live and self.working is not None and self._through_working(px):
+            return self._emit(ts, px, index, shifted=True)
+        if self._back_through(px):
+            self._disarm()
+        return None
+
+    def _score_stretch(self) -> None:
+        rng = (self.stretch_hi - self.stretch_lo) / self.ps if self.ps else 0.0
+        if self.pace_mult <= 0.0 or self.pace is None:
+            pace_ok = True
+        else:
+            pace_ok = rng <= self.pace * self.pace_mult + 1e-9
+        quiet = pace_ok and rng <= self.settle_pts + 1e-9
+        if quiet:
+            self.quiet += 1
+        else:
+            self.quiet = 0
+            self.live = False
+        if self.quiet >= self.settle_n:
+            self.live = True
+
+    def _note_discount(self, px: float) -> None:
+        if self._on_discount(px):
+            self.seen_discount = True
+
+    def _on_discount(self, px: float) -> bool:
+        if self.level is None:
+            return False
+        if self.side == "UP":
+            return px <= self.level + 1e-9
+        return px >= self.level - 1e-9
+
+    def _back_through(self, px: float) -> bool:
+        if not self.seen_discount or self.level is None:
+            return False
+        if self.side == "UP":
+            return px > self.level + 1e-9
+        return px < self.level - 1e-9
+
+    def _disarm(self) -> None:
+        self.armed = False
+        self.live = False
+        self.quiet = 0
+        self.working = None
+        self.extreme = None
+        self.anchor = None
+        self.seen_discount = False
+        self.stretch_t0 = None
+        self.pace = None
+
+    def _crossed(self, px: float) -> bool:
+        return self._on_discount(px)
+
+    def _through_working(self, px: float) -> bool:
+        if self.working is None:
+            return False
+        if self.side == "UP":
+            return px <= self.working + 1e-9
+        return px >= self.working - 1e-9
+
+    def _better(self, price: float, than: float) -> bool:
+        if self.side == "UP":
+            return price < than - 1e-12
+        return price > than + 1e-12
+
+    def _emit(self, ts: datetime, px: float, index: int, shifted: bool) -> _EntryShockHit:
+        self.done = True
+        past = 0.0
+        if self.level is not None and self.ps:
+            if self.side == "UP":
+                past = (self.level - px) / self.ps
+            else:
+                past = (px - self.level) / self.ps
+        took_shift = bool(shifted) and past > 1e-6
+        return _EntryShockHit(
+            fill=_Fill(index, ts, px),
+            kind=self.kind,
+            shifted=took_shift,
+            past_pts=past if took_shift else 0.0,
+        )
 
 
 def _use_wick_break(params: OvernightParams) -> bool:
@@ -826,6 +1193,7 @@ class OvernightTrade:
     news_kind: Optional[str] = None
     news_title: Optional[str] = None
     shock_fired: bool = False
+    entry_shock: bool = False
 
 
 @dataclass
@@ -2632,6 +3000,8 @@ def _run_overnight_days(
         fib_box_low: Optional[float] = None
         fib_level_px: Optional[float] = None
         touched_name: Optional[str] = None
+        entry_shock_flag = False
+        entry_shock_past: Optional[float] = None
 
         if seasonal_join:
             if close_fill is None:
@@ -2712,6 +3082,11 @@ def _run_overnight_days(
             ema_val: Optional[float] = None
             resume_need = _resume_need(params)
             resume_streak = 0
+            shock_entry = (
+                _EntryShock(params, ps)
+                if _entry_shock_on(params) and isinstance(feed, _TickFeed)
+                else None
+            )
 
             for wi, wc in enumerate(wait_candles, start=1):
                 waited = wi
@@ -2768,6 +3143,29 @@ def _run_overnight_days(
                     ema_val,
                     fib_level_px,
                 )
+                shock_hit: Optional[_EntryShockHit] = None
+                if shock_entry is not None:
+                    # The tick path owns the level fill. A 5m candle cannot
+                    # see this rush, so the candle feed never builds a tracker.
+                    active, active_kind = _shock_level(
+                        side,
+                        ema_val if _uses_ma(params) and ema_val is not None else None,
+                        fib_level_px if _uses_fib(params) and fib_level_px is not None else None,
+                    )
+                    level_fill = None
+                    level_kind = None
+                    if active is not None and active_kind is not None:
+                        shock_hit = shock_entry.scan(
+                            feed,
+                            wc.open_time,
+                            wc.close_time,
+                            side,
+                            active,
+                            active_kind,
+                        )
+                        if shock_hit is not None:
+                            level_fill = shock_hit.fill
+                            level_kind = shock_hit.kind
                 if ma_touched and fib_touched:
                     touched_name = f"{ma_label(params.ma_type)} and Fib"
                 elif ma_touched:
@@ -2783,7 +3181,8 @@ def _run_overnight_days(
                 if late_block and (resume_hit or level_fill is not None):
                     blocked_late_short = True
 
-                if resume_hit and not late_block:
+                shock_armed = shock_entry is not None and shock_entry.armed
+                if resume_hit and not late_block and not shock_armed:
                     resume_fill = feed.at_close(wc.close_time, px=wc.close)
                     if resume_fill is not None:
                         entry_ts = resume_fill.ts
@@ -2809,6 +3208,9 @@ def _run_overnight_days(
                     ema_at = fib_level_px if level_kind == "fib" else ema_val
                     prev_at = prev_close
                     sig_close = wc.close
+                    if shock_hit is not None and shock_hit.shifted:
+                        entry_shock_flag = True
+                        entry_shock_past = shock_hit.past_pts
                     found = True
                     break
 
@@ -2929,6 +3331,11 @@ def _run_overnight_days(
             level_name=_level_name(params),
             touched_name=touched_name,
         )
+        if entry_shock_past is not None and entry_shock_past > 1e-6:
+            decision = (
+                (decision + " · " if decision else "")
+                + f"shock entry · +{entry_shock_past:.0f} pts past the level"
+            )
         note = bias_snap.decision_note() if bias_snap is not None else regime_lbl
         if note:
             decision = (decision + " · " if decision else "") + note
@@ -3056,6 +3463,7 @@ def _run_overnight_days(
                 news_kind=day_kw.get("news_kind"),
                 news_title=day_kw.get("news_title"),
                 shock_fired=bool(shock_fired),
+                entry_shock=bool(entry_shock_flag),
             )
         )
         traded_days.add(day)
