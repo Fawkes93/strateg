@@ -43,6 +43,7 @@ class DawnCrossJobParams:
     tp_pts: float = 800.0
     flatten_hour: int = 12
     one_trade_per_day: bool = True
+    rv_max: float = 1.0
     force_download: bool = False
 
 
@@ -265,6 +266,7 @@ def _run(params: DawnCrossJobParams) -> None:
             tp_pts=float(params.tp_pts),
             flatten_hour=int(params.flatten_hour),
             one_trade_per_day=bool(params.one_trade_per_day),
+            rv_max=float(params.rv_max or 0),
         )
         result = run_dawn_cross(
             candles,

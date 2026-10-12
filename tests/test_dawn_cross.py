@@ -3,15 +3,17 @@
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from backtest.candles import Candle
+from backtest.candles import Candle, to_utc
 from backtest.dawn_cross import (
     DawnCrossParams,
     DawnCrossTrade,
+    RV_BARS,
     _summary,
     ema_series,
     in_window,
     ma_line_series,
     ma_line_spec,
+    relative_tick_volume,
     run_dawn_cross,
     same_average,
 )
@@ -463,3 +465,166 @@ def test_pullback_fill_uses_kama_hma_or_zlema():
         assert abs(row["pullback_ema"] - level) < 1e-6
         assert out["params"]["pull_ma"] == kind
         assert out["params"]["fast_ma"] == "ema"
+
+
+def test_relative_tick_volume_excludes_the_cross_bar():
+    start = datetime(2026, 9, 15, 0, 0, tzinfo=ZONE)
+    # 47 quiet bars, one heavy bar, then the cross bar, then the next bar.
+    ticks = [1] * 47 + [49, 10, 4]
+    bars = _series(start, [100.0] * len(ticks))
+    for bar, tick in zip(bars, ticks):
+        bar.tick_count = tick
+    rv = relative_tick_volume(bars)
+    assert RV_BARS == 48
+    assert rv[47] is None
+    # Prior 48 are 47 ones plus 49. The 10 on this bar stays out of the average.
+    assert rv[48] == 10 / 2
+    # The window then steps forward and drops the oldest 1.
+    assert rv[49] == 4 / (105 / 48)
+    zeros = _series(start, [100.0] * 49)
+    for bar in zeros:
+        bar.tick_count = 0
+    zeros[-1].tick_count = 5
+    assert relative_tick_volume(zeros)[48] is None
+
+
+def _rv_params(**overrides):
+    base = dict(
+        fast_ema=3,
+        slow_ema=8,
+        pullback_ema=40,
+        sl_pts=5000,
+        tp_pts=5000,
+        flatten_hour=0,
+        rv_max=1,
+    )
+    base.update(overrides)
+    return DawnCrossParams(**base)
+
+
+def _rv_start():
+    return datetime(2026, 9, 14, 12, 0, tzinfo=ZONE)
+
+
+def _rv_rise():
+    # 168 flat bars land on 02:00. The rise crosses up on that first bar.
+    return [100.0] * 168 + [103, 108, 116, 128, 142, 155, 160, 160, 160, 160]
+
+
+def _set_ticks(bars, tick):
+    for bar in bars:
+        bar.tick_count = tick
+
+
+def _crosses(bars, fast_p=3, slow_p=8):
+    closes = [bar.close for bar in bars]
+    fast = ema_series(closes, fast_p)
+    slow = ema_series(closes, slow_p)
+    found = []
+    for i in range(1, len(bars)):
+        if None in (fast[i - 1], slow[i - 1], fast[i], slow[i]):
+            continue
+        if fast[i - 1] <= slow[i - 1] and fast[i] > slow[i]:
+            found.append((i, "UP"))
+        elif fast[i - 1] >= slow[i - 1] and fast[i] < slow[i]:
+            found.append((i, "DOWN"))
+    return found
+
+
+def _tag_bar(bars, close):
+    closes = [bar.close for bar in bars] + [close]
+    level = float(ema_series(closes, 40)[-1])
+    return _bar(
+        bars[-1].open_time + timedelta(minutes=5),
+        close,
+        low=min(close, level) - 0.5,
+        high=max(close, level) + 0.5,
+    )
+
+
+def _long_arm_book():
+    bars = _series(_rv_start(), _rv_rise())
+    tag = _tag_bar(bars, bars[-1].close)
+    book = bars + [tag]
+    _set_ticks(book, 10)
+    return book
+
+
+def test_rv_at_most_one_arms_and_a_busier_bar_does_not():
+    book = _long_arm_book()
+    up_i = next(i for i, side in _crosses(book) if side == "UP")
+    assert up_i >= RV_BARS
+    opened = run_dawn_cross(book, symbol="XAUUSD", params=_rv_params())
+    assert opened["trades"] == 1, opened
+    assert opened["rows"][0]["side"] == "UP"
+    assert opened["params"]["rv_max"] == 1
+
+    busy = _long_arm_book()
+    busy_i = next(i for i, side in _crosses(busy) if side == "UP")
+    busy[busy_i].tick_count = 11
+    blocked = run_dawn_cross(busy, symbol="XAUUSD", params=_rv_params())
+    assert blocked["trades"] == 0, blocked
+
+    # Dropping the oldest of the 48 prior bars out of the average would hide this.
+    shifted = _long_arm_book()
+    shift_i = next(i for i, side in _crosses(shifted) if side == "UP")
+    _set_ticks(shifted, 20)
+    shifted[shift_i].tick_count = 20
+    shifted[shift_i - RV_BARS].tick_count = 1
+    assert run_dawn_cross(shifted, symbol="XAUUSD", params=_rv_params())["trades"] == 0
+
+
+def test_rv_filter_blocks_a_cross_before_48_bars_exist():
+    _cross_bar, book = _up_cross_book()
+    opened = run_dawn_cross(
+        book,
+        symbol="XAUUSD",
+        params=DawnCrossParams(sl_pts=5000, tp_pts=200, flatten_hour=0, rv_max=0),
+    )
+    assert opened["trades"] == 1, opened
+    cross_ts = opened["rows"][0]["cross_ts"]
+    idx = next(i for i, bar in enumerate(book) if to_utc(bar.close_time).isoformat() == cross_ts)
+    assert idx < RV_BARS
+    blocked = run_dawn_cross(
+        book,
+        symbol="XAUUSD",
+        params=DawnCrossParams(sl_pts=5000, tp_pts=200, flatten_hour=0, rv_max=1),
+    )
+    assert blocked["trades"] == 0, blocked
+
+
+def test_blocked_opposite_cross_disarms():
+    rise = _series(_rv_start(), _rv_rise())
+    dip = _series(rise[-1].open_time + timedelta(minutes=5), [156, 150, 142, 134, 126, 118, 112, 108, 104])
+    held = rise + dip
+    crosses = _crosses(held)
+    assert [side for _i, side in crosses] == ["UP", "DOWN"], crosses
+    up_i, down_i = crosses[0][0], crosses[1][0]
+    pull = ema_series([bar.close for bar in held], 40)
+    for i in range(up_i + 1, down_i + 1):
+        level = float(pull[i])
+        assert not (held[i].low <= level <= held[i].high)
+    tag = _tag_bar(held, held[-1].close)
+    book = held + [tag]
+    _set_ticks(book, 10)
+
+    still_long = run_dawn_cross(rise + [_tag_bar(rise, rise[-1].close)], symbol="XAUUSD", params=_rv_params())
+    assert still_long["trades"] == 1, still_long
+    assert still_long["rows"][0]["side"] == "UP"
+
+    book[down_i].tick_count = 40
+    blocked = run_dawn_cross(book, symbol="XAUUSD", params=_rv_params())
+    assert blocked["trades"] == 0, blocked
+
+    for bar in book:
+        bar.tick_count = 10
+    replaced = run_dawn_cross(book, symbol="XAUUSD", params=_rv_params())
+    assert replaced["trades"] == 1, replaced
+    assert replaced["rows"][0]["side"] == "DOWN"
+
+    same_bars = held + [_tag_bar(held, held[-1].close)]
+    _set_ticks(same_bars, 10)
+    same_bars[_crosses(same_bars)[1][0]].tick_count = 40
+    ignored = run_dawn_cross(same_bars, symbol="XAUUSD", params=_rv_params(rv_max=0))
+    assert ignored["trades"] == 1, ignored
+    assert ignored["rows"][0]["side"] == "DOWN"

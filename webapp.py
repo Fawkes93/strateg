@@ -980,6 +980,7 @@ class DawnCrossRunRequest(BaseModel):
     tp_pts: float = 800.0
     flatten_hour: int = 12
     one_trade_per_day: bool = True
+    rv_max: float = 1.0
     force_download: bool = False
 
 
@@ -1010,6 +1011,9 @@ def dawn_run(body: DawnCrossRunRequest):
     tp = float(body.tp_pts)
     if sl <= 0 or tp <= 0:
         raise HTTPException(status_code=422, detail="SL and TP must be greater than 0")
+    rv_max = float(body.rv_max)
+    if rv_max < 0:
+        raise HTTPException(status_code=422, detail="Max relative volume must be 0 or greater")
     params = DawnCrossJobParams(
         symbol=body.symbol,
         date_from=body.date_from,
@@ -1035,6 +1039,7 @@ def dawn_run(body: DawnCrossRunRequest):
         tp_pts=tp,
         flatten_hour=max(0, min(23, int(body.flatten_hour))),
         one_trade_per_day=bool(body.one_trade_per_day),
+        rv_max=rv_max,
         force_download=bool(body.force_download),
     )
     out = start_dawn_job(params)
@@ -1049,7 +1054,6 @@ def dawn_stop():
     if not out.get("ok"):
         raise HTTPException(status_code=409, detail=out.get("error") or "not running")
     return out
-
 
 
 # ---------------------------------------------------------------------------

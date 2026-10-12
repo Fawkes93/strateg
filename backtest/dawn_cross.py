@@ -2,9 +2,12 @@
 
 Watch 02:00–06:00 Europe/Chisinau. A fast average cross of the slow average on
 a closed 5m bar arms the side: up is a buy, down is a sell. Each line is an
-EMA, KAMA, HMA, or ZLEMA. The fill waits for a later bar in that same window
-whose range tags the pullback average. Stop and target are fixed point
-distances. One position at a time.
+EMA, KAMA, HMA, or ZLEMA. When max relative volume is above 0, that cross arms
+only if the bar's tick count divided by the average tick count of the previous
+48 bars is at most that max. The average does not include the cross bar. A
+blocked cross the other way clears an arm that is already open. The fill waits
+for a later bar in that same window whose range tags the pullback average.
+Stop and target are fixed point distances. One position at a time.
 """
 
 from __future__ import annotations
@@ -44,6 +47,9 @@ class DawnCrossParams:
     tp_pts: float = 800.0
     flatten_hour: int = 12  # local hour; 0 = hold for SL/TP only
     one_trade_per_day: bool = True
+    # 0 disables. Otherwise the cross arms only when its tick count divided by
+    # the mean tick count of the prior 48 bars is <= rv_max. The tester sends 1.
+    rv_max: float = 0.0
 
 
 @dataclass
@@ -69,6 +75,32 @@ class DawnCrossTrade:
 
 
 MA_KINDS = ("ema", "kama", "hma", "zlema")
+# 48 five-minute bars. The cross bar is not included.
+RV_BARS = 48
+
+
+def relative_tick_volume(
+    candles: Sequence[Candle], lookback: int = RV_BARS
+) -> List[Optional[float]]:
+    """Tick count of bar i divided by the mean tick count of the bars before it.
+
+    The bar itself is not in the average. The value is missing until `lookback`
+    earlier bars exist, and missing when that average is 0.
+    """
+    n = len(candles)
+    out: List[Optional[float]] = [None] * n
+    ticks = [int(getattr(c, "tick_count", 0) or 0) for c in candles]
+    lb = int(lookback)
+    if lb < 1:
+        return out
+    total = 0.0
+    for i in range(n):
+        if i >= lb:
+            mean = total / lb
+            out[i] = (ticks[i] / mean) if mean > 0 else None
+            total -= ticks[i - lb]
+        total += ticks[i]
+    return out
 
 
 def ema_series(values: Sequence[float], period: int) -> List[Optional[float]]:
@@ -240,6 +272,8 @@ def run_dawn_cross(
     zone = _zone(params.timezone)
     closes = [float(c.close) for c in candles]
     fast_spec, slow_spec, pull_spec = _apply_lines(params)
+    rv_max = float(params.rv_max or 0)
+    rv = relative_tick_volume(candles) if rv_max > 0 else None
     fast = ma_line_series(closes, fast_spec)
     slow = ma_line_series(closes, slow_spec)
     if same_average(pull_spec, fast_spec):
@@ -354,6 +388,12 @@ def run_dawn_cross(
         side = _cross(float(pf), float(ps_), float(cf), float(cs))
         if side is None:
             continue
+        if rv is not None:
+            ratio = rv[i]
+            if ratio is None or ratio > rv_max:
+                if armed is not None and armed[0] != side:
+                    armed = None
+                continue
         if armed is None or armed[0] != side:
             armed = (side, i)
 

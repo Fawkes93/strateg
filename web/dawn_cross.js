@@ -30,6 +30,7 @@
     "dx-tp",
     "dx-flat",
     "dx-one-per-day",
+    "dx-rv",
     "dx-force",
   ];
 
@@ -89,6 +90,7 @@
       <ol>
         <li>Watch the local window below (default <strong>02:00–06:00 Europe/Chisinau</strong>) on 5-minute candles.</li>
         <li>The fast average crossing above the slow average arms a buy. A downward cross arms a sell. Each line is an EMA, KAMA, HMA, or ZLEMA.</li>
+        <li>Relative volume is that bar's tick count divided by the average tick count of the previous 48 bars (4 hours). The average does not include the cross bar. The cross arms only when the ratio is at most the max below. 0 turns the filter off. A blocked cross the other way still cancels an open arm.</li>
         <li>The fill waits for a later bar in that window to tag the pullback average.</li>
         <li>Stop and target are fixed distances in points. Open trades flatten at the local hour below.</li>
       </ol>
@@ -190,6 +192,10 @@
         <label class="chk">One trade per day
           <input type="checkbox" id="dx-one-per-day" checked
             title="After a fill, ignore later crosses on that local date." />
+        </label>
+        <label>Max relative volume
+          <input type="number" id="dx-rv" value="1" min="0" step="0.1"
+            title="Tick count of the cross bar divided by the average tick count of the 48 five-minute bars before it. The cross bar is not part of that average. The cross arms only when the ratio is at most this value. 1 means the bar was no busier than usual. 0 turns the filter off. A blocked cross the other way cancels an arm that is already open." />
         </label>
       </div>
       <div class="actions">
@@ -632,6 +638,9 @@
         " · pull " +
         maTag(result.params, "pull") +
         (result.params && result.params.one_trade_per_day ? " · one/day" : "") +
+        (result.params && Number(result.params.rv_max) > 0
+          ? " · RV≤" + result.params.rv_max
+          : "") +
         " · " +
         (result.bars || 0) +
         " bars";
@@ -806,6 +815,7 @@
         tp_pts: num("dx-tp", 800),
         flatten_hour: num("dx-flat", 12),
         one_trade_per_day: !!($("dx-one-per-day") && $("dx-one-per-day").checked),
+        rv_max: Math.max(0, num("dx-rv", 1)),
         force_download: $("dx-force") && $("dx-force").checked,
       };
       saveForm();
