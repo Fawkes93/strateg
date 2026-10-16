@@ -106,7 +106,7 @@ app.include_router(asia_box_router)
 app.include_router(overnight_router)
 app.include_router(asia_pullback_router)
 
-_ASIA_PULLBACK_SCRIPT = '<script src="/static/asia_pullback.js?v=20261013b"></script>'
+_ASIA_PULLBACK_SCRIPT = '<script src="/static/asia_pullback.js?v=20261016a"></script>'
 
 
 class RunRequest(BaseModel):

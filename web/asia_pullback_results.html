@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Asia pullback results — Strateg</title>
+  <link rel="stylesheet" href="/static/app.css?v=20261016a" />
+</head>
+<body class="ab-page">
+  <header class="top">
+    <div>
+      <h1>Asia pullback catalog</h1>
+      <p class="sub">Pullback runs saved in SQLite. Click a trade to open its 15-minute chart.</p>
+    </div>
+    <a class="ab-back" href="/">← Strateg</a>
+  </header>
+
+  <section class="card">
+    <h2>Filters</h2>
+    <div class="grid ab-filters">
+      <label>Run
+        <select id="ap-run"><option value="">All runs</option></select>
+        <span class="field-help">Each finished Asia pullback with at least one trade.</span>
+      </label>
+      <div class="ab-run-actions">
+        <button type="button" class="ab-btn ab-btn-danger" id="ap-delete-run" disabled>Delete run</button>
+      </div>
+      <label>Side
+        <select id="ap-side">
+          <option value="">Both</option>
+          <option value="UP">UP</option>
+          <option value="DOWN">DOWN</option>
+        </select>
+        <span class="field-help">UP cleared the box high. DOWN cleared the box low.</span>
+      </label>
+      <label>Entry
+        <select id="ap-entry">
+          <option value="">Any</option>
+          <option value="leg_fib">Fib of the leg</option>
+          <option value="box_fib">Fib of the box</option>
+          <option value="ema">Moving average</option>
+          <option value="close5m">5m close</option>
+          <option value="reversal">Reversal</option>
+        </select>
+        <span class="field-help">The resting level, or a shelf fade when reversal is on.</span>
+      </label>
+      <label>Exit
+        <select id="ap-exit">
+          <option value="">Any</option>
+          <option value="tp">tp</option>
+          <option value="sl">sl</option>
+          <option value="flatten">flatten</option>
+          <option value="timeout">timeout</option>
+        </select>
+        <span class="field-help">Why the trade closed.</span>
+      </label>
+      <label>From
+        <input type="date" id="ap-from" />
+        <span class="field-help">First local date included.</span>
+      </label>
+      <label>To
+        <input type="date" id="ap-to" />
+        <span class="field-help">Stops before this local date.</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Summary</h2>
+    <p id="ap-summary" class="hint">Loading…</p>
+  </section>
+
+  <section class="card">
+    <h2>Trades</h2>
+    <p class="table-note">Click a row. The chart opens in a new tab with the box, the pullback level, the impulse, the stop, the target, and the break, entry, and exit.</p>
+    <div class="table-wrap">
+      <table class="ab-table" id="ap-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Local</th>
+            <th>Side</th>
+            <th>Entry</th>
+            <th>Level</th>
+            <th>Fill</th>
+            <th>Exit</th>
+            <th>Pts</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+  <script src="/static/asia_pullback_results.js?v=20261016a"></script>
+</body>
+</html>

@@ -225,6 +225,7 @@
     <section class="card">
       <h2>Results</h2>
       <p class="muted" id="ap-meta">No run yet.</p>
+      <p class="table-note">Click a saved trade to open its 15-minute chart. <a id="ap-catalog" href="/asia-pullback/results" target="_blank" rel="noopener">Open catalog</a></p>
       <div class="hero-grid" id="ap-hero"></div>
       <div class="table-wrap">
         <table id="ap-table">
@@ -361,16 +362,44 @@
         return "<div><span>" + pair[0] + "</span><strong>" + pair[1] + "</strong></div>";
       }).join("");
     }
-    const body = document.querySelector("#ap-table tbody");
+    const catalog = $("ap-catalog");
+    if (catalog) {
+      catalog.href = result.sqlite_id
+        ? "/asia-pullback/results?run=" + encodeURIComponent(result.sqlite_id)
+        : "/asia-pullback/results";
+      catalog.textContent = result.sqlite_id
+        ? "Open catalog #" + result.sqlite_id
+        : "Open catalog";
+    }
+    const table = $("ap-table");
+    const body = table ? table.querySelector("tbody") : null;
     if (!body) return;
     const rows = result.rows || [];
-    body.innerHTML = rows.map(function (r) {
-      return "<tr><td>" + r.local_date + "</td><td>" + (r.weekday || "").slice(0, 3) +
+    const saved = rows.some(function (r) { return r.id; });
+    if (table) table.classList.toggle("ab-table", saved);
+    body.innerHTML = "";
+    rows.forEach(function (r) {
+      const tr = document.createElement("tr");
+      const pts = Number(r.pts);
+      const ptsClass = Number.isFinite(pts) ? (pts >= 0 ? "ab-win" : "ab-loss") : "";
+      tr.innerHTML =
+        "<td>" + r.local_date + "</td><td>" + (r.weekday || "").slice(0, 3) +
         "</td><td>" + r.side + "</td><td>" + r.level + "</td><td>" + r.entry +
         "</td><td>" + r.sl + "</td><td>" + r.tp + "</td><td>" + r.exit +
-        "</td><td>" + r.exit_reason + "</td><td>" + r.pts +
-        "</td><td>" + (r.box_h1_atr == null ? "—" : r.box_h1_atr) + "</td></tr>";
-    }).join("");
+        "</td><td>" + r.exit_reason + "</td><td class='" + ptsClass + "'>" + r.pts +
+        "</td><td>" + (r.box_h1_atr == null ? "—" : r.box_h1_atr) + "</td>";
+      if (r.id) {
+        tr.tabIndex = 0;
+        function openChart() {
+          window.open("/asia-pullback/chart?trade=" + r.id, "_blank");
+        }
+        tr.addEventListener("click", openChart);
+        tr.addEventListener("keydown", function (ev) {
+          if (ev.key === "Enter") openChart();
+        });
+      }
+      body.appendChild(tr);
+    });
   }
 
   async function poll() {

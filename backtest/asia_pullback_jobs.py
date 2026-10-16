@@ -29,6 +29,7 @@ from backtest.dukascopy import (
     parse_ymd,
     reaktor_symbol,
 )
+from backtest.asia_pullback_store import insert_run as insert_pullback_run
 from backtest.job_memory import release_job_memory, retain_result, slim_state_result_inplace
 from backtest.overnight_break import require_zone
 from backtest.runner import (
@@ -457,12 +458,21 @@ def _run(params: AsiaPullbackJobParams) -> None:
         result["run_id"] = run_id
         path.write_text(json.dumps(result, indent=2, default=str), encoding="utf-8")
         result["saved_to"] = str(path)
+        sqlite_id = insert_pullback_run(
+            None,
+            date_from=params.date_from,
+            date_to=params.date_to,
+            result=result,
+            status="cancelled" if cancelled else "complete",
+        )
+        result["sqlite_id"] = sqlite_id
+        catalog = f" · catalog #{sqlite_id}" if sqlite_id else ""
         with _lock:
             _state.result = retain_result(result)
         if cancelled:
             _set_progress(
                 phase="cancelled",
-                message=f"Stopped · {result.get('trades') or 0} trades",
+                message=f"Stopped · {result.get('trades') or 0} trades" + catalog,
                 ticks=total_ticks,
                 trades=result.get("trades") or 0,
                 finished_at=result["finished_at"],
@@ -482,6 +492,7 @@ def _run(params: AsiaPullbackJobParams) -> None:
                 message=(
                     f"Done · {result.get('trades')} trades · "
                     f"PF {pf if pf is not None else '—'} · {result.get('sum_pts')} pts"
+                    + catalog
                 ),
                 pct=100.0,
                 ticks=total_ticks,

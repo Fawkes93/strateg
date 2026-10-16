@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Asia pullback chart — Strateg</title>
+  <link rel="stylesheet" href="/static/app.css?v=20261016a" />
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body class="ab-page">
+  <header class="top">
+    <div>
+      <h1 id="apc-title">Asia pullback trade</h1>
+      <p class="sub" id="apc-sub">Loading…</p>
+    </div>
+    <div class="ab-chart-actions">
+      <label class="ab-btn ab-magnet-toggle" title="Drag across the chart to read the point distance, price change, and how many 15-minute bars. Esc clears the box. On by default.">
+        <input type="checkbox" id="apc-measure" checked />
+        Measure
+      </label>
+      <label class="ab-btn ab-magnet-toggle" title="Snap the crosshair to the candle open, high, low, or close. Off leaves it free on the price scale.">
+        <input type="checkbox" id="apc-magnet" />
+        Magnet
+      </label>
+      <a id="apc-back" class="ab-back" href="/asia-pullback/results">← Catalog</a>
+    </div>
+  </header>
+  <section class="card ab-chart-card">
+    <div class="ab-chart-wrap">
+      <div id="apc-chart" class="ab-chart"></div>
+      <svg id="apc-measure-svg" class="ab-measure-svg" aria-hidden="true"></svg>
+      <div id="apc-measure-label" class="ab-measure-label" hidden></div>
+    </div>
+    <p class="hint" id="apc-decision"></p>
+    <ul id="apc-legend" class="ab-legend"></ul>
+  </section>
+  <script src="/static/asia_pullback_chart.js?v=20261016a"></script>
+</body>
+</html>
