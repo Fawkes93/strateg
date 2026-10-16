@@ -178,6 +178,10 @@ def _busy() -> Optional[str]:
 
     if is_asia_box_running():
         return "Asia box is running"
+    from backtest.stop_scalper_jobs import is_scalper_running
+
+    if is_scalper_running():
+        return "Stop Scalper is running"
     return None
 
 

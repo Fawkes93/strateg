@@ -6,13 +6,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -87,13 +88,25 @@ from backtest.dawn_cross_jobs import (
     start_dawn_job,
     stop_dawn,
 )
+from backtest.stop_scalper import validate_params as validate_scalper_params
+from backtest.stop_scalper import StopScalperParams
+from backtest.stop_scalper_jobs import (
+    StopScalperJobParams,
+    get_scalper_state,
+    start_scalper_job,
+    stop_scalper,
+)
 from backtest.asia_box_api import router as asia_box_router
 from backtest.overnight_api import router as overnight_router
+from backtest.asia_pullback_api import router as asia_pullback_router
 
 WEB_DIR = ROOT / "web"
 app = FastAPI(title="Strateg", version="0.5", docs_url="/docs")
 app.include_router(asia_box_router)
 app.include_router(overnight_router)
+app.include_router(asia_pullback_router)
+
+_ASIA_PULLBACK_SCRIPT = '<script src="/static/asia_pullback.js?v=20261013b"></script>'
 
 
 class RunRequest(BaseModel):
@@ -1057,6 +1070,94 @@ def dawn_stop():
 
 
 # ---------------------------------------------------------------------------
+# Stop scalper (buy stop + sell stop, BE, trail, one reversal)
+# ---------------------------------------------------------------------------
+
+
+class StopScalperRunRequest(BaseModel):
+    symbol: str = "XAUUSD"
+    date_from: str = "2025-05-01"
+    date_to: str = "2025-06-01"
+    timezone: str = "Europe/Chisinau"
+    entry_pts: float = 50.0
+    sl_pts: float = 500.0
+    trail_pts: float = 100.0
+    trail_arm_pts: float = 200.0
+    be_pts: float = 150.0
+    lock_arm_pts: float = 0.0
+    lock_pts: float = 0.0
+    tp_pts: float = 0.0
+    spread_pts: float = 0.0
+    max_spread_pts: float = 0.0
+    reverse: bool = True
+    reverse_on: str = "close"
+    force_download: bool = False
+
+
+@app.get("/api/stop-scalper")
+def stop_scalper_status(rows: int = Query(0), limit: int = Query(2000)):
+    return get_scalper_state(include_rows=bool(rows), row_limit=int(limit))
+
+
+@app.post("/api/stop-scalper/run")
+def stop_scalper_run(body: StopScalperRunRequest):
+    try:
+        ZoneInfo(body.timezone or "Europe/Chisinau")
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="Unknown timezone") from exc
+    try:
+        validate_scalper_params(
+            StopScalperParams(
+                entry_pts=float(body.entry_pts),
+                sl_pts=float(body.sl_pts),
+                trail_pts=float(body.trail_pts),
+                trail_arm_pts=float(body.trail_arm_pts),
+                be_pts=float(body.be_pts),
+                lock_arm_pts=float(body.lock_arm_pts),
+                lock_pts=float(body.lock_pts),
+                tp_pts=float(body.tp_pts),
+                spread_pts=float(body.spread_pts),
+                max_spread_pts=float(body.max_spread_pts),
+                reverse=bool(body.reverse),
+                reverse_on=str(body.reverse_on or "close"),
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    params = StopScalperJobParams(
+        symbol=body.symbol,
+        date_from=body.date_from,
+        date_to=body.date_to,
+        timezone=body.timezone or "Europe/Chisinau",
+        entry_pts=float(body.entry_pts),
+        sl_pts=float(body.sl_pts),
+        trail_pts=float(body.trail_pts),
+        trail_arm_pts=float(body.trail_arm_pts),
+        be_pts=float(body.be_pts),
+        lock_arm_pts=float(body.lock_arm_pts),
+        lock_pts=float(body.lock_pts),
+        tp_pts=float(body.tp_pts),
+        spread_pts=float(body.spread_pts),
+        max_spread_pts=float(body.max_spread_pts),
+        reverse=bool(body.reverse),
+        reverse_on=str(body.reverse_on or "close"),
+        force_download=bool(body.force_download),
+    )
+    out = start_scalper_job(params)
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "busy")
+    return out
+
+
+@app.post("/api/stop-scalper/stop")
+def stop_scalper_stop():
+    out = stop_scalper()
+    if not out.get("ok"):
+        raise HTTPException(status_code=409, detail=out.get("error") or "not running")
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Inverse FVG (IFVG after liquidity raid)
 # ---------------------------------------------------------------------------
 
@@ -1139,7 +1240,10 @@ def fvg_stop():
 
 @app.get("/")
 def index():
-    return FileResponse(WEB_DIR / "index.html")
+    html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    if "asia_pullback.js" not in html:
+        html = html.replace("</body>", _ASIA_PULLBACK_SCRIPT + "\n</body>")
+    return HTMLResponse(html)
 
 
 app.mount("/static", StaticFiles(directory=str(WEB_DIR)), name="static")

@@ -7,6 +7,217 @@ Add a new `### YYYY-MM-DD — <engine> <short label>` block under ## Runs (newes
 
 ## Runs
 
+
+
+## BTCUSD Asia overnight
+
+### 2026-10-03 08:23:52 GTB Daylight Time BTCUSD 5m WILD — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_BTCUSD_20261003T052245Z.json · helper results/_asia_stage/btcusd_asia_wild_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09 · scale=1.0 point_size=0.01 · 34 sparse extreme cells (not a KEEP densify). timeout=market only.
+- **Control:** CONTROL_tp6000 (TP_DENSIFY champ shape, tp=6000 only) pts=90000.0 PF=1.3 n=365 win%=17.8 — reproduced.
+- **Top by pts:** CONTROL_tp6000 pts=90000.0 PF=1.3 n=365, k_wait30_pbpref_ema50_sl1500tp8000_mb800_tight_flat16 pts=77500.0 PF=1.185 n=341, k_long_wait20_pbreq_ema50_sl1500tp8000_mb100 pts=46000.0 PF=1.404 n=96, a04_wait30_pbpref_ema100_sl1500tp8000_mb800 pts=33500.0 PF=1.061 n=440, k_both_wait5_pbreq_ema50_sl500tp8000_mb100 pts=32500.0 PF=1.684 n=105
+- **Top by PF:** k_both_wait5_pbreq_ema50_sl500tp8000_mb100 PF=1.684 pts=32500.0 n=105, k_long_wait20_pbreq_ema50_sl1500tp8000_mb100 PF=1.404 pts=46000.0 n=96, a08_wait5_pbreq_ema50_sl1500tp8000_mb100 PF=1.333 pts=20000.0 n=50, CONTROL_tp6000 PF=1.3 pts=90000.0 n=365, k_wait30_pbpref_ema50_sl1500tp8000_mb800_tight_flat16 PF=1.185 pts=77500.0 n=341
+- **Best pts:** CONTROL_tp6000 pts=90000.0 PF=1.3 n=365 win%=17.8 (still champ vs every wild cell)
+- **PF>=~2 with meaningful pts:** no (tick-worthy count=0). Best PF 1.684 is +32.5k, well under the +90k soft bar.
+- **Dead structure:** n=0 on wait0+pullback required, and on asia 12-20 with flatten 16 (flatten before the box ends). Pullback-off and overlap 12-20 were large losers.
+- **Conclusion:** variant pocket only — wide TP (~8000) + pullback required + ema50 + mb~100 lifts PF (1.40–1.68) but cuts pts and n. Next wild axis: densify that RR pocket (SL 300–700, TP 8000–15000, ema 21/50/80, wait 3–10, mb 50–150, both vs long) on asia 0-6. Do not tick-confirm.
+- **Exit:** 0
+
+
+
+### 2026-10-03 02:24:41 GTB Daylight Time BTCUSD 5m SHORT_DENSIFY — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_BTCUSD_20261002T232420Z.json · helper results/_asia_stage/btcusd_asia_short_densify_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09 · scale=1.0 point_size=0.01
+- **Top by pts:** short_w14_tp6000 pts=40000.0 PF=1.253 n=191, short_w16_tp6000 pts=33000.0 PF=1.208 n=191, short_w16_tp5000 pts=19000.0 PF=1.122 n=191, long_w16 pts=16000.0 PF=1.118 n=174, short_w14_tp5000 pts=13000.0 PF=1.083 n=191
+- **Best:** short_w14_tp6000 pts=40000.0 PF=1.253 n=191 win%=17.3
+- **Tick-worthy:** no (count=0)
+- **Exit:** 0
+
+
+### 2026-10-03 02:24:20 GTB Daylight Time BTCUSD 5m RESUME_DEEPEN — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_BTCUSD_20261002T232359Z.json · helper results/_asia_stage/btcusd_asia_resume_deepen_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09 · scale=1.0 point_size=0.01
+- **Top by pts:** asia_end5 pts=40000.0 PF=1.133 n=385, SEED_rc6_rcap1200 pts=-15000.0 PF=0.949 n=365, rc7 pts=-15000.0 PF=0.949 n=365, rc10 pts=-15000.0 PF=0.949 n=365, rc8 pts=-15000.0 PF=0.949 n=365
+- **Best:** asia_end5 pts=40000.0 PF=1.133 n=385 win%=22.1
+- **Tick-worthy:** no (count=0)
+- **Exit:** 0
+
+
+### 2026-10-03 02:23:58 GTB Daylight Time BTCUSD 5m NEARBOX_REFINE — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_BTCUSD_20261002T232337Z.json · helper results/_asia_stage/btcusd_asia_nearbox_refine_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09 · scale=1.0 point_size=0.01
+- **Top by pts:** SEED_N5_D1550_out pts=-15000.0 PF=0.949 n=365, N0 pts=-15000.0 PF=0.949 n=365, N3 pts=-15000.0 PF=0.949 n=365, N4 pts=-15000.0 PF=0.949 n=365, N6 pts=-15000.0 PF=0.949 n=365
+- **Best:** SEED_N5_D1550_out pts=-15000.0 PF=0.949 n=365 win%=19.2
+- **Tick-worthy:** no (count=0)
+- **Exit:** 0
+
+
+### 2026-10-03 02:23:37 GTB Daylight Time BTCUSD 5m TP_DENSIFY — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_BTCUSD_20261002T232316Z.json · helper results/_asia_stage/btcusd_asia_tp_densify_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09 · scale=1.0 point_size=0.01
+- **Top by pts:** tp6000 pts=90000.0 PF=1.3 n=365, tp5500 pts=77000.0 PF=1.259 n=365, sl1000_tp5000 pts=49000.0 PF=1.166 n=365, tp5000 pts=49000.0 PF=1.166 n=365, sl1200_tp4800 pts=18000.0 PF=1.052 n=365
+- **Best:** tp6000 pts=90000.0 PF=1.3 n=365 win%=17.8
+- **Tick-worthy:** no (count=0)
+- **Exit:** 0
+
+
+### 2026-10-03 02:23:16 GTB Daylight Time BTCUSD 5m WAIT_RISK — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_BTCUSD_20261002T232256Z.json · helper results/_asia_stage/btcusd_asia_wait_risk_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09 · scale=1.0 point_size=0.01
+- **Top by pts:** sl2000_tp6000 pts=62000.0 PF=1.117 n=365, sl1500_tp6000 pts=60000.0 PF=1.141 n=365, sl1000_tp5000 pts=49000.0 PF=1.166 n=365, sl1200_tp4800 pts=18000.0 PF=1.052 n=365, side_long pts=6000.0 PF=1.043 n=174
+- **Best:** sl2000_tp6000 pts=62000.0 PF=1.117 n=365 win%=27.1
+- **Tick-worthy:** no (count=0)
+- **Exit:** 0
+
+
+### 2026-10-03 02:22:56 GTB Daylight Time BTCUSD 5m WAIT_EMA_PB — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_BTCUSD_20261002T232234Z.json · helper results/_asia_stage/btcusd_asia_wait_ema_pb_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09 · scale=1.0 point_size=0.01
+- **Top by pts:** wait12_pb_req_ema28 pts=32000.0 PF=1.222 n=188, pb_required pts=31000.0 PF=1.197 n=204, wait14_pb_req pts=31000.0 PF=1.197 n=204, wait10_ema21 pts=20000.0 PF=1.069 n=365, wait10_pb_req pts=16000.0 PF=1.129 n=159
+- **Best:** wait12_pb_req_ema28 pts=32000.0 PF=1.222 n=188 win%=23.4
+- **Tick-worthy:** no (count=0)
+- **Exit:** 0
+
+
+### 2026-10-03 02:22:34 GTB Daylight Time BTCUSD 5m ENTRY_STRUCT — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_BTCUSD_20261002T232211Z.json · helper results/_asia_stage/btcusd_asia_entry_struct_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09 · scale=1.0 point_size=0.01
+- **Top by pts:** asia_end5 pts=40000.0 PF=1.133 n=385, pb_required pts=31000.0 PF=1.197 n=204, wait16 pts=5000.0 PF=1.017 n=365, ema21 pts=0.0 PF=1.0 n=365, asia_start1_end6 pts=-1000.0 PF=0.997 n=396
+- **Best:** asia_end5 pts=40000.0 PF=1.133 n=385 win%=22.1
+- **Tick-worthy:** no (count=0)
+- **Exit:** 0
+
+
+### 2026-10-03 02:22:11 GTB Daylight Time BTCUSD 5m DIST_KNOBS — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_BTCUSD_20261002T232149Z.json · helper results/_asia_stage/btcusd_asia_dist_knobs_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09 · scale=1.0 point_size=0.01
+- **Top by pts:** sl1500_tp6000 pts=60000.0 PF=1.141 n=365, sl1000_tp5000 pts=49000.0 PF=1.166 n=365, sl1200_tp4800 pts=18000.0 PF=1.052 n=365, mb120 pts=-2000.0 PF=0.993 n=367, mb180 pts=-7000.0 PF=0.976 n=367
+- **Best:** sl1500_tp6000 pts=60000.0 PF=1.141 n=365 win%=22.2
+- **Tick-worthy:** no (count=0)
+- **Exit:** 0
+
+
+### 2026-10-03 02:21:48 GTB Daylight Time BTCUSD 5m BASELINE — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_BTCUSD_20261002T231523Z.json · helper results/_asia_stage/btcusd_asia_baseline_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09 · scale=1.0 point_size=0.01
+- **Top by pts:** BASELINE_asia0-6_ema31_wait14_rc6_flat22_mb256_sl1000_tp4000_N5_D1550_pref pts=-15000.0 PF=0.949 n=365
+- **Best:** BASELINE_asia0-6_ema31_wait14_rc6_flat22_mb256_sl1000_tp4000_N5_D1550_pref pts=-15000.0 PF=0.949 n=365 win%=19.2
+- **Tick-worthy:** no (count=0)
+- **Exit:** 0
+
+
+### 2026-10-02 21:39 GTB Daylight Time BTCUSD data kick PIDs
+- download_ticks full 2025-01-01..2026-10-01: launcher PID 16072 / worker 16636 (venv stub -> system Python312 child; do not kill child)
+- download_ticks lookback 2024-12: see results/_asia_stage/logs/btcusd_download_lookback.pid
+- orch wait-then-run: launcher 936 / worker 11580; state results/_asia_stage/logs/btcusd_asia_orch_state.json; log results/_asia_stage/logs/btcusd_asia_orch.log
+- bi5 progress under data/dukascopy/BTCUSD/ (month 1/21 in flight). Stages pending data.
+
+
+### 2026-10-02 21:36 GTB Daylight Time PARK GBPUSD Asia; START BTCUSD Asia overnight 5m chain
+- **GBPUSD Asia:** PARKED (orch already finished earlier today; no GBP process running). Last SHORT_DENSIFY champ SEED_both_w10_tp120 pts=1280 PF=1.258 — below soft PF~2 tick bar; no tick-confirm. Do not resume GBP unless asked.
+- **Symbol confirmed:** `BTCUSD` (Dukascopy `BTC/USD`, normalize_duka_symbol → BTCUSD). Not BTCUSDT.
+- **point_size:** `0.01` (same as XAU; `backtest.config.point_size` — 1 pt = $0.01). Dukascopy price_scale for BTCUSD = 10.0 (tick decode only).
+- **Scale factor:** **1.0** (no structural shrink). Repo fade BTC configs use same point units as XAU and often larger dollar thresholds vs gold HOT; FX used ~10–15x shrink because EUR/GBP point_size=1e-5. First BTC Asia trial keeps XAU KEEP magnitudes.
+- **KEEP seed (rescaled = identity):** asia0-6 ema31 wait14 rc6 rcap1200 flat22 mb256 maxb15 hold15 SL1000/TP4000 tip4/2600 near_box N5 D1550 outside wick-on pullback preferred fib0.40 both asia trail off side both timeout market wfb news_mode=filter; min_asia_range_pts=300 (XAU-ish default, not in KEEP string).
+- **Window:** 2025-01 → 2026-09 candles_5m workers=2 local ProcessPool. Helpers under `results/_asia_stage/btcusd_asia_*.py` + `btcusd_asia_orch.py`.
+- **Data:** no prior BTC candles/ticks in strateg; `download_ticks.py --symbol BTCUSD --from 2025-01-01 --to 2026-10-01` started; orch waits then runs BASELINE→DIST_KNOBS→ENTRY_STRUCT→WAIT_EMA_PB→WAIT_RISK→TP_DENSIFY→NEARBOX→RESUME→SHORT.
+- **Constraints honored:** never stop XAU; never Start-Process webapp; no git; never edit reaktor.
+- **Scoring:** max sum_pts; soft PF>=~2 for tick; never tick-confirm under bar.
+
+## GBPUSD Asia overnight
+
+### 2026-10-02 21:36 GTB Daylight Time GBPUSD Asia PARKED — switched to BTCUSD Asia overnight
+- Orch finished; no further GBP batches. Soft PF stayed <2 across stages (SHORT best PF1.258). Resume only on request.
+
+
+### 2026-10-02 14:39:39 GTB Daylight Time GBPUSD 5m SHORT_DENSIFY — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_GBPUSD_20261002T113920Z.json · helper results/_asia_stage/gbpusd_asia_short_densify_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09
+- **Top by pts:** SEED_both_w10_tp120 pts=1280.0 PF=1.258 n=114, short_w10_tp240 pts=240.0 PF=1.071 n=57, short_w15_tp240 pts=0.0 PF=1.0 n=64, short_w12_tp100 pts=-20.0 PF=0.993 n=61, short_w10_tp100 pts=-60.0 PF=0.977 n=57
+- **Best:** SEED_both_w10_tp120 pts=1280.0 PF=1.258 n=114 win%=45.6
+- **Tick-worthy:** no
+- **Exit:** 0
+
+
+### 2026-10-02 14:39:20 GTB Daylight Time GBPUSD 5m RESUME_DEEPEN — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_GBPUSD_20261002T113908Z.json · helper results/_asia_stage/gbpusd_asia_resume_deepen_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09
+- **Top by pts:** sls7 pts=1400.0 PF=1.269 n=120, sls3 pts=1320.0 PF=1.306 n=101, SEED_rc8_rcap120 pts=1280.0 PF=1.258 n=114, rc6 pts=1280.0 PF=1.258 n=114, rc7 pts=1280.0 PF=1.258 n=114
+- **Best:** sls7 pts=1400.0 PF=1.269 n=120 win%=45.8
+- **Tick-worthy:** no
+- **Exit:** 0
+
+
+### 2026-10-02 14:39:07 GTB Daylight Time GBPUSD 5m NEARBOX_REFINE — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_GBPUSD_20261002T113853Z.json · helper results/_asia_stage/gbpusd_asia_nearbox_refine_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09
+- **Top by pts:** N6_D200_out pts=1560.0 PF=1.26 n=138, SEED_N6_D100_out pts=1280.0 PF=1.258 n=114, N4_D100_out pts=1280.0 PF=1.258 n=114, N5_D100_out pts=1280.0 PF=1.258 n=114, N7_D100_out pts=1280.0 PF=1.258 n=114
+- **Best:** N6_D200_out pts=1560.0 PF=1.26 n=138 win%=45.7
+- **Tick-worthy:** no
+- **Exit:** 0
+
+
+### 2026-10-02 14:38:52 GTB Daylight Time GBPUSD 5m TP120_DENSIFY — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_GBPUSD_20261002T113838Z.json · helper results/_asia_stage/gbpusd_asia_tp120_densify_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09
+- **Top by pts:** sl100_tp150 pts=2629.6 PF=1.456 n=114, sl100_tp120 pts=2460.0 PF=1.482 n=114, sl90_tp120 pts=2340.0 PF=1.481 n=114, sl90_tp140 pts=2160.0 PF=1.4 n=114, long_sl80_tp120 pts=1440.0 PF=1.667 n=57
+- **Best:** sl100_tp150 pts=2629.6 PF=1.456 n=114 win%=49.1
+- **Tick-worthy:** no
+- **Exit:** 0
+
+
+### 2026-10-02 14:38:38 GTB Daylight Time GBPUSD 5m WAIT10_RISK — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_GBPUSD_20261002T113823Z.json · helper results/_asia_stage/gbpusd_asia_wait10_risk_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09
+- **Top by pts:** sl100_tp240 pts=3929.6 PF=1.572 n=114, sl100_tp200 pts=3629.6 PF=1.57 n=114, sl90_tp200 pts=3099.6 PF=1.508 n=114, sl120_tp240 pts=2929.6 PF=1.361 n=114, sl120_tp180 pts=2869.6 PF=1.408 n=114
+- **Best:** sl100_tp240 pts=3929.6 PF=1.572 n=114 win%=39.5
+- **Tick-worthy:** no
+- **Exit:** 0
+
+
+### 2026-10-02 14:38:23 GTB Daylight Time GBPUSD 5m WAIT_EMA_PB — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_GBPUSD_20261002T113804Z.json · helper results/_asia_stage/gbpusd_asia_wait_ema_pb_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09
+- **Top by pts:** wait12_pb_pref pts=2429.5 PF=1.245 n=202, pb_preferred pts=2429.5 PF=1.241 n=205, wait10_pb_pref pts=2429.5 PF=1.241 n=205, wait10_ema21_pb_pref pts=2109.5 PF=1.206 n=206, wait11_ema21 pts=1360.0 PF=1.195 n=139
+- **Best:** wait12_pb_pref pts=2429.5 PF=1.245 n=202 win%=38.6
+- **Tick-worthy:** no
+- **Exit:** 0
+
+
+### 2026-10-02 14:38:04 GTB Daylight Time GBPUSD 5m ENTRY_STRUCT — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_GBPUSD_20261002T113748Z.json · helper results/_asia_stage/gbpusd_asia_entry_struct_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09
+- **Top by pts:** sl100_tp160 pts=2829.6 PF=1.418 n=128, pb_preferred pts=1549.5 PF=1.153 n=201, rc4 pts=1200.0 PF=1.172 n=138, ema21 pts=1120.0 PF=1.156 n=142, ema21_wait10 pts=1040.0 PF=1.157 n=131
+- **Best:** sl100_tp160 pts=2829.6 PF=1.418 n=128 win%=46.9
+- **Tick-worthy:** no
+- **Exit:** 0
+
+
+### 2026-10-02 14:37:48 GTB Daylight Time GBPUSD 5m FX_KNOBS — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_GBPUSD_20261002T113731Z.json · helper results/_asia_stage/gbpusd_asia_fx_knobs_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09
+- **Top by pts:** ma80_mb40_nb200 pts=4254.1 PF=1.474 n=146, mb40 pts=3674.1 PF=1.467 n=128, nb200 pts=3274.6 PF=1.276 n=183, mb30 pts=3054.6 PF=1.341 n=141, ma40_mb30 pts=3054.6 PF=1.341 n=141
+- **Best:** ma80_mb40_nb200 pts=4254.1 PF=1.474 n=146 win%=38.4
+- **Tick-worthy:** no
+- **Exit:** 0
+
+
+### 2026-10-02 14:37:31 GTB Daylight Time GBPUSD 5m BASELINE — auto
+- **Grid:** C:\Users\user\strateg\results\overnight_5m_grid_GBPUSD_20261002T113509Z.json · helper results/_asia_stage/gbpusd_asia_baseline_5m_grid.py · candles_5m · workers=2 · window 2025-01→2026-09
+- **Top by pts:** BASELINE_asia0-6_ema30_wait13_rc6_flat21_sl100_tp240_ma30_mb20_nb100 pts=2074.6 PF=1.194 n=161
+- **Best:** BASELINE_asia0-6_ema30_wait13_rc6_flat21_sl100_tp240_ma30_mb20_nb100 pts=2074.6 PF=1.194 n=161 win%=33.5
+- **Tick-worthy:** no
+- **Exit:** 0
+
+
+### 2026-10-02 ~09:41 Europe/Bucharest GBPUSD 5m BASELINE PARTIAL (3mo smoke) — provisional; not full-window
+- **Grid:** results/overnight_5m_grid_GBPUSD_20261002T063952Z.json (+ .csv) · tag GBPUSD_ASIA_BASELINE · helper results/_asia_stage/gbpusd_asia_baseline_5m_grid.py · candles_5m · workers=2 · **window 2025-01-06→2025-04-01** (date-from shifted +5d: no 2024-12 ticks for lookback).
+- **Seed:** asia0-6 ema30 wait13 rc6 flat21 trail off SL100/TP240 ma30 mb20 nb100 outside N6 timeout market wfb pb required.
+- **Result:** n=25 · win32.0% · **+220.0** · **PF 1.129** — thin sample; soft tick bar N/A on 3mo.
+- **Data gaps:** ticks 2025-01..03 complete; 2025-04 in progress; 2025-05→2026-08 missing; no 2024-12 lookback. Candles built: data/candles/5m/GBPUSD/2025-01..03.candlepack.
+- **Tick-worthy?** NO (partial window; PF<<2; pts<<1920). Champ: none (full-window BASELINE still pending).
+- **Pipeline:** download_ticks workers=4 still running; orch polling for full months before official BASELINE→… sequence. Resume state: results/_asia_stage/logs/gbpusd_asia_resume_state.json. Did **not** mark orch batches done (avoid skip of full BASELINE).
+- **Conclusion:** Stage1 partial candles ready; Stage2 BASELINE smoke only. Next: wait more months / orch full BASELINE; do not densify knobs on 3mo alone.
+
+
+### 2026-10-02 ~09:21 Europe/Bucharest - RESUME (executor pickup; data still downloading)
+- **Pickup:** Lenovo online. Prior kickoff intact — helpers `gbpusd_asia_*`, orch PID waiting, `download_ticks` workers=4 active. No overnight_5m_grid_GBPUSD_* yet; no candles_5m yet.
+- **Data progress:** Dukascopy cache `data/dukascopy/GBPUSD` — months_done **3/21** (2025-01..03 done; on 2025-04). bi5~2273. Jan slow (~33m, early 503s); Feb ~3.1m; Mar ~8.7m. ETA remaining ~1.5–2.5h at post-Jan rate (vs EURUSD ref ~6.5h total).
+- **Pipeline:** `gbpusd_asia_orch.py` polling every ~90s; will auto-run BASELINE → FX_KNOBS → … → SHORT_DENSIFY when months sufficient. Left alone (no second orch / no grid start).
+- **Constraints honored:** local ProcessPool only; XAU/webapp untouched; no git push; no reaktor edit.
+- **Status:** Stage 1 (data) in progress. First unfinished screen = BASELINE. Champ: none yet. Tick-worthy: n/a.
+- **Next:** wait for download phase=done / ready_heuristic; orch starts BASELINE automatically.
+
+### 2026-10-02 ~08:25 Europe/Bucharest — SWITCH kickoff (data pending)
+- **Action:** Switched Asia overnight research target EURUSD → **GBPUSD** on Lenovo WINDOWS-A7QMMOS.
+- **Point scale:** FX `point_size` 1e-5 (same as EURUSD; Dukascopy `price_scale=100000`). Do NOT copy XAU SL/TP.
+- **Data:** No prior GBPUSD tickpacks/candles. Started `download_ticks.py --symbol GBPUSD --from 2025-01-01 --to 2026-10-01` (workers=4 after 503 thrash). EURUSD reference download was ~6.5h / 21 months.
+- **Helpers:** Created `results/_asia_stage/gbpusd_asia_*_5m_grid.py` (+ baseline + orch) mirroring EURUSD Asia sequence.
+- **Constraint:** local ProcessPool 5m only; never stop XAU; no webapp Start-Process; no git push; never edit reaktor.
+- **Status:** Waiting on Dukascopy cache before BASELINE → FX_KNOBS → ENTRY_STRUCT → … screens.
+- **Next:** orch waits for months then runs batch; soft tick bar PF≥~2 ∧ pts≥~1920 (prefer ≥2240); never promote on 5m alone.
 ## EURUSD Asia overnight
 
 ### 2026-09-26 ~15:35 Europe/Bucharest EURUSD 5m SHORT_DENSIFY (36 cells) - REJECT/PARK (short PF clean but pts-thin; no tick)
@@ -4083,3 +4294,2154 @@ esults/overnight_5m_grid_20260927T221820Z.json - tag RESIDUAL_CC_SOFT_COMPOUND_P
 - **Conclusion:** Batch CC compounds CB soft pocket (tr x tpm2.4/2.5 x hold_flat22 x wait/mar/sl) after CA/CB stall. **No** clear soft>=2.5 pts refine (best dpts **+1669.2** under ~2k bar). Plan-F side/season/week2 and rc denser reject for total pts. KEEP unchanged (ticks PF2.69/+215812.6 n239 20260927T090050Z_65ffdcc2).
 - **Next:** Batch CD RESIDUAL_CD_TR170_TPM_DENSE_NEW_KEEP 5m - densify CC soft champ pocket (	r166-171 x 	pm2.30-2.45 x hold_flat22 / mild ema29-33 / mild sls / mild arm3900-4100 / mild maxbreak16-18) to seek dpts>=~2k; avoid CC cells already screened, BY/BZ temd x tr x wait13, CA singles, BW near-box/TP-fixed, asia micro, wait12, flat24, arm>=4500, sl850, rc/side/season plan-F retreads. Tick-confirm only clear soft>=2.5 pts lifts (dpts>=~2k), max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
 
+### 2026-10-01 ~17:50 Europe/Bucharest Asia Batch CD RESIDUAL_CD_TR170_TPM_DENSE_NEW_KEEP 5m - no clear pts lifts
+- **Grid:** `results/overnight_5m_grid_20260927T225354Z.json` - tag `RESIDUAL_CD_TR170_TPM_DENSE_NEW_KEEP` - seed KEEP ticks `20260927T090050Z_65ffdcc2` (asia0-6 ema31 wait14 rc3 cap800 flat23 mb275 SL1000 TP range_multx2.25 sls5/2100 trail arm4000/tr190 hold16 near_box N6 D1000 trend=off) - candles_5m - workers=2 - window 2025-01 to 2026-09 - 125 cells (0 errors). Finished ~2026-09-28 01:54; scored after Lenovo reconnect 2026-10-01 (offline since ~2026-09-27 ~14:19).
+- **Baseline 5m KEEP** (`NEW_KEEP_baseline`): n239 - PF **2.835** - **+234028.0**.
+- **Top by pts vs baseline:**
+  - `tr166_tpm2_4`: PF **2.850** / **+235957.2** n239 - dPF **+0.015** - dpts **+1929.2**
+  - `tr167_tpm2_4`: PF **2.850** / **+235891.9** n239 - dPF **+0.015** - dpts **+1863.9**
+  - `tr168_tpm2_4`: PF **2.849** / **+235827.0** n239 - dPF **+0.014** - dpts **+1799.0**
+  - `tr168_tpm2_4_hold16/17/18_flat22`: PF **2.867** / **+235789.1** n239 - dPF **+0.032** - dpts **+1761.1**
+  - `tr169_tpm2_4`: PF **2.849** / **+235762.1** n239 - dPF **+0.014** - dpts **+1734.1**
+  - `tr170_tpm2_4` family: PF **2.848** / **+235697.2** n239 - dPF **+0.013** - dpts **+1669.2** (matches CC soft champ)
+- **CLEAR dpts>=~2k at PF>=2.5:** none (best +1929.2 under ~2k tick bar).
+- **Soft >=2.5 with pts lift (under ~2k tick bar):** 55 cells - best `tr166_tpm2_4` dpts **+1929.2**; trail ladder monotonic (lower tr -> higher pts in 166-171 band); hold*_flat22 adds PF~+0.03 but not enough pts to clear.
+- **Under-floor PF<2.0:** 0.
+- **Inert (=baseline):** 0.
+- **Conclusion:** Batch CD densifies CC soft champ pocket (tr166-171 x tpm2.30-2.45 x hold_flat22 / ema / sls / arm / maxbreak / wait). **No** clear soft>=2.5 pts refine (best dpts **+1929.2** under ~2k bar). Direction: lower trail (~166) > higher; tpm2.4 dominates. KEEP unchanged (ticks PF2.69/+215812.6 n239 `20260927T090050Z_65ffdcc2`).
+- **Next:** Batch CE `RESIDUAL_CE_TR166_BELOW_DENSE_NEW_KEEP` 5m - densify below CD soft champ (`tr160-165` x `tpm2.35-2.45` x hold_flat22 / mild wait14 / mild arm3900-4050 / thin ema30-32 compounds) to seek dpts>=~2k; optional tick only if a cell clears ~2k. Avoid CD cells already screened, BY/BZ temd x tr x wait13, CA/CB/CC singles, BW near-box/TP-fixed, asia micro, wait12, flat24, arm>=4500, sl850, plan-F side/season. Tick-confirm only clear soft>=2.5 pts lifts (dpts>=~2k), max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-01 ~18:16 Europe/Bucharest Asia Batch CE RESIDUAL_CE_TR166_BELOW_DENSE_NEW_KEEP 5m — CLEAR dpts>=~2k; tick-confirm champ
+- **Grid:** `results/overnight_5m_grid_20261001T145346Z.json` — tag `RESIDUAL_CE_TR166_BELOW_DENSE_NEW_KEEP` — seed KEEP ticks `20260927T090050Z_65ffdcc2` (asia0-6 ema31 wait14 rc3 cap800 flat23 mb275 SL1000 TP range_multx2.25 sls5/2100 trail arm4000/tr190 hold16 near_box N6 D1000 trend=off) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 111 cells (0 errors).
+- **Baseline 5m KEEP** (`NEW_KEEP_baseline`): n239 — PF **2.835** — **+234028.0**.
+- **Top by pts vs baseline:**
+  - `tr160_tpm2_4`: PF **2.853** / **+236346.9** n239 — dPF **+0.018** — dpts **+2318.9**
+  - `tr160_tpm2_4_hold16_flat22`: PF **2.871** / **+236309.0** n239 — dPF **+0.036** — dpts **+2281.0**
+  - `tr160_tpm2_4_hold17_flat22`: PF **2.871** / **+236309.0** n239 — dPF **+0.036** — dpts **+2281.0**
+  - `tr160_tpm2_4_hold18_flat22`: PF **2.871** / **+236309.0** n239 — dPF **+0.036** — dpts **+2281.0**
+  - `tr161_tpm2_4`: PF **2.853** / **+236282.1** n239 — dPF **+0.018** — dpts **+2254.1**
+  - `tr162_tpm2_4`: PF **2.852** / **+236217.1** n239 — dPF **+0.017** — dpts **+2189.1**
+  - `tr162_tpm2_4_wait14`: PF **2.852** / **+236217.1** n239 — dPF **+0.017** — dpts **+2189.1**
+  - `tr162_tpm2_4_hold16_flat22`: PF **2.870** / **+236179.2** n239 — dPF **+0.035** — dpts **+2151.2**
+- **CLEAR dpts>=~2k at PF>=2.5:** 21 cells — `tr160_tpm2_4`: PF **2.853** / **+236346.9** n239 — dPF **+0.018** — dpts **+2318.9**, `tr160_tpm2_4_hold16_flat22`: PF **2.871** / **+236309.0** n239 — dPF **+0.036** — dpts **+2281.0**, `tr160_tpm2_4_hold17_flat22`: PF **2.871** / **+236309.0** n239 — dPF **+0.036** — dpts **+2281.0**, `tr160_tpm2_4_hold18_flat22`: PF **2.871** / **+236309.0** n239 — dPF **+0.036** — dpts **+2281.0**, `tr161_tpm2_4`: PF **2.853** / **+236282.1** n239 — dPF **+0.018** — dpts **+2254.1**, `tr162_tpm2_4`: PF **2.852** / **+236217.1** n239 — dPF **+0.017** — dpts **+2189.1**, `tr162_tpm2_4_wait14`: PF **2.852** / **+236217.1** n239 — dPF **+0.017** — dpts **+2189.1**, `tr162_tpm2_4_hold16_flat22`: PF **2.870** / **+236179.2** n239 — dPF **+0.035** — dpts **+2151.2**, `tr162_tpm2_4_hold17_flat22`: PF **2.870** / **+236179.2** n239 — dPF **+0.035** — dpts **+2151.2**, `tr162_tpm2_4_hold18_flat22`: PF **2.870** / **+236179.2** n239 — dPF **+0.035** — dpts **+2151.2**.
+- **Soft >=2.5 with pts lift (incl clear):** 56 cells.
+- **Under-floor PF<2.0:** 0.
+- **Inert (=baseline):** 0.
+- **Pts-down sample:** `tr165_tpm2_38_wait15` dpts -24656.6, `tr164_tpm2_38_wait15` dpts -24597.7, `tr162_tpm2_38_wait15` dpts -24479.6, `tr165_tpm2_4_wait15` dpts -24446.6, `tr164_tpm2_4_wait15` dpts -24387.7, `tr162_tpm2_4_wait15` dpts -24269.6.
+- **Conclusion:** Batch CE densifies below CD soft champ (tr160-165 x tpm2.35-2.45 x hold_flat22 / wait / arm / ema). **First clear soft>=2.5 pts refine since CD stall** (best `tr160_tpm2_4` dpts **+2318.9** PF2.853). Direction: lower trail (~160) + tpm2.4 continues CD ladder; hold*_flat22 lifts PF ~+0.02 but slightly less pts than bare tr160_tpm2_4. KEEP unchanged pending tick (ticks PF2.69/+215812.6 n239 `20260927T090050Z_65ffdcc2`).
+- **Next:** tick-confirm champ `tr160_tpm2_4` (overrides {"trail_pts":160.0,"tp_mode":"range_mult","tp_range_mult":2.4}) on KEEP seed ticks workers=2. Optional runner `tr160_tpm2_4_hold16_flat22` after. Prefer max_loss streak <=7-8; promote only if tick dpts>=~2k AND PF>=~2.5. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-01 ~18:45 Europe/Bucharest Asia CE_tick tr160_tpm2_4 — REJECT vs KEEP
+- **Tick:** `tr160_tpm2_4` = KEEP + `trail_pts=160` `tp_mode=range_mult` `tp_range_mult=2.4` — run `20261001T153245Z_6ba2e541` — data_source=ticks — window 2025-01 to 2026-09 — workers=2. started 2026-10-01T15:19Z finished 15:32Z UTC.
+- **Result:** n239 — PF **2.69** — **+215725.6** — win%45.2 — max_loss_streak **8** (max_win 6) — exits {"flatten":37,"sl":126,"tp":12,"trail":64}.
+- **vs KEEP** `20260927T090050Z_65ffdcc2` PF2.69/+215812.6 n239: dPF **+0.00** — dpts **-87.0** — dn **+0**.
+- **vs 5m screen** tr160_tpm2_4 PF2.853/+236346.9 dpts+2318.9: tick **fails to confirm** (flat/slightly worse vs KEEP; 5m overpromised).
+- **Streak filter:** max_loss=8 (prefer <=7-8) — PASS.
+- **Decision:** **REJECT** — dpts -87.0 under ~2k pts bar (no lift). KEEP unchanged.
+- **KEEP unchanged:** asia0-6 / ema31 / wait14 / rc3 / cap800 / flat23 / mb275 / SL1000 / TP range_multx2.25 / sls5/2100 / trail arm4000/tr190 / hold16 / timeout market / wait_from_break / pullback preferred / near_box N6 D1000 trend=off / side both / ticks → PF2.69/+215812.6 n239 (`20260927T090050Z_65ffdcc2`).
+- **Next:** tick-confirm runner `tr160_tpm2_4_hold16_flat22` (overrides {"trail_pts":160.0,"tp_mode":"range_mult","tp_range_mult":2.4,"max_hold_hours":16.0,"flatten_hour":22}) on KEEP seed. If reject → Batch CF residual densify (tr155-159 × tpm2.35-2.45 × hold_flat22 / mild wait/arm/ema; avoid CE/CD screened cells). Prefer max_loss streak <=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-01 ~19:05 Europe/Bucharest Asia SEED SWITCH + baseline re-tick PF271 trail-off — CONFIRMED
+- **Parked KEEP (do not resume unless asked):** tpr2_25_sls5 ticks `20260927T090050Z_65ffdcc2` — PF **2.69** / **+215812.6** / n239 (trail on).
+- **CURRENT KEEP:** trail-off PF champ lineage `20260925T133834Z_7a6b8116` — body `_seed_pf271_trailoff.json`.
+- **Baseline re-tick:** run `20261001T160531Z_4eda016f` — ticks — workers=2 — window 2025-01→2026-09 — started 15:51Z finished 16:05Z.
+- **Result:** n148 — PF **2.71** — **+125799.5** — win%50.0 — max_loss_streak **6** (max_win 7) — exits {flatten:37, sl:73, tp:38} — entries {ema_touch:118, higher_close:6, near_box_timeout:24} — trail_armed 0.
+- **vs prior KEEP ticks:** exact match (dPF 0 / dpts 0 / dn 0). PARAM echo OK (TP4000 fixed, trail off, near_box outside N6 D1000, pullback required, ema30 wait13 rc6 cap1200 flat21 mb250 sls5/2200).
+- **Decision:** **KEEP locked** on PF271 trail-off. Research focus → new MA/fib pullback knobs (`pullback_ref`, `fib_anchor`, `pullback_fib`, `ma_type`).
+- **Next:** Batch CF `MA_FIB_CF_PF271_TRAIL_OFF` 5m (~52 cells) from this seed; tick-confirm only clear soft≥2.5 pts lifts (dpts≥~2k), max_loss≤7–8. Lenovo primary; Vostro optional parallel. No reaktor / no push.
+
+
+
+### 2026-10-01 ~19:22 Europe/Bucharest Asia Batch CF MA_FIB_CF_PF271_TRAIL_OFF 5m — CLEAR dpts>=~2k; tick-confirm champ
+- **Grid:** `results/overnight_5m_grid_20261001T160815Z.json` — tag `MA_FIB_CF_PF271_TRAIL_OFF` — seed KEEP ticks `20261001T160531Z_4eda016f` (lineage `20260925T133834Z_7a6b8116`: asia0-6 ema30 wait13 rc6 cap1200 flat21 mb250 SL1000/TP4000 sls5/2200 near_box outside N6 D1000 wick on pullback required trail off) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 52 cells (0 errors).
+- **Baseline 5m KEEP** (`PF271_baseline`): n148 — PF **2.619** — **+120691.3**.
+- **Top by pts vs baseline:**
+  - `ema32`: PF **2.895** / **+131720.7** n144 — dPF **+0.276** — dpts **+11029.4**
+  - `fib0_382_asia_both`: PF **2.690** / **+125966.7** n149 — dPF **+0.071** — dpts **+5275.4**
+- **CLEAR dpts>=~2k at PF>=2.5:** 2 cells — `ema32`: PF **2.895** / **+131720.7** n144 — dPF **+0.276** — dpts **+11029.4**, `fib0_382_asia_both`: PF **2.690** / **+125966.7** n149 — dPF **+0.071** — dpts **+5275.4**.
+- **Soft >=2.5 with pts lift (incl clear):** 2 cells.
+- **Under-floor PF<2.0:** 38 (alt MA / fib-only / most kama·hma·zlema).
+- **Inert (=baseline):** 4 (`ref_both`, `fib0_5_asia_both`, `fib0_618_asia_both`, `fib0_786_asia_both`).
+- **Pts-down sample:** `fib0_382_roll_fib` dpts -38476.5 PF2.200, `fib0_618_roll_both` dpts -15014.7 PF2.233, `fib0_786_roll_both` dpts -15014.7 PF2.233, `fib0_5_roll_both` dpts -14919.9 PF2.219, `ema28` dpts -13116.2 PF2.288, `fib0_382_roll_both` dpts -11497.0 PF2.203, `ema34` dpts -627.2 PF2.727.
+- **Alt-MA / fib-only reject sample:** `ma_kama` PF1.595 dpts-39476, `ma_hma21` PF1.374 dpts-59040, `ma_zlema21` PF1.258 dpts-76879, `ref_fib` PF1.358 dpts-102747, `hma30` PF1.338 dpts-65964, `zlema30` PF1.192 dpts-89575.
+- **Conclusion:** First MA/fib pullback screen on PF271 trail-off. **Clear champs:** `ema32` dpts **+11029.4** PF2.895; runner `fib0_382_asia_both` dpts +5275.4 PF2.690. `pullback_ref=both` alone is inert (same as ema); fib-only and alt MAs (kama/hma/zlema) collapse pts/PF. KEEP unchanged pending tick (ticks PF2.71/+125799.5 n148 `20261001T160531Z_4eda016f`).
+- **Next:** tick-confirm champ `ema32` (overrides {"ema_period":32,"ma_type":"ema"}) on KEEP seed ticks workers=2. Optional runner `fib0_382_asia_both` after (overrides {"pullback_ref":"both","pullback_fib":0.382,"fib_anchor":"asia"}). Prefer max_loss streak <=7-8; promote only if tick dpts>=~2k AND PF>=~2.5. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-01 ~19:49 Europe/Bucharest Asia CF_tick ema32 — NEW KEEP vs PF271 trail-off
+- **Tick:** `ema32` = prior KEEP + `ema_period=32` `ma_type=ema` — run `20261001T163825Z_34401136` — data_source=ticks — window 2025-01 to 2026-09 — workers=2. started 2026-10-01T16:24Z finished 16:38Z UTC. PARAM_ECHO_OK (ema32 / trail off / TP4000 fixed / pullback required / near_box outside N6 D1000 / asia0-6 / sls5/2200 / mb250 / rc6 / flat21).
+- **Result:** n144 — PF **2.9** — **+131844.0** — win%51.4 — max_loss_streak **6** (max_win 8) — exits {"flatten": 36, "sl": 69, "tp": 39} — entries {"ema_touch": 113, "higher_close": 6, "near_box_timeout": 25}.
+- **vs KEEP** `20261001T160531Z_4eda016f` (lineage `20260925T133834Z_7a6b8116`) PF2.71/+125799.5 n148: dPF **+0.19** — dpts **+6044.5** — dn **-4**.
+- **vs 5m screen** ema32 PF2.895/+131720.7 dpts+11029.4: tick **confirms** (pts lift holds; PF slightly higher than 5m).
+- **Streak filter:** max_loss=6 (prefer <=7-8) — PASS.
+- **Decision:** **NEW KEEP** — meaningful pts lift at PF>=2.5 with streak OK. Body template updated `_seed_pf29_ema32.json` + `_seed_pf271_trailoff.json`. Prior ema30 PF2.71/+125799.5 parked as previous trail-off seed (not the 215k trail KEEP).
+- **Next:** Batch CG `EMA_FIB_DENSE_CG_PF29` 5m densify on NEW KEEP (ema29-35 neighbors + fib0.35-0.45 asia both/fib + mild ema×fib compounds). Tick-confirm only clear soft>=2.5 dpts>=~2k; max_loss<=7-8. Optional runner path: fib0_382_asia_both if densify stalls. Parked trail KEEP (tpr2.25) do not resume. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-01 ~20:11 Europe/Bucharest Asia Batch CG EMA_FIB_DENSE_CG_PF29 5m — CLEAR dpts>=~2k; tick-confirm champ
+- **Grid:** `results/overnight_5m_grid_20261001T164958Z.json` — tag `EMA_FIB_DENSE_CG_PF29` — seed NEW KEEP ticks `20261001T163825Z_34401136` (asia0-6 ema32 wait13 rc6 cap1200 flat21 mb250 SL1000/TP4000 sls5/2200 near_box outside N6 D1000 wick on pullback required trail off PF2.9/+131844.0 n144) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 35 cells (0 errors).
+- **Baseline 5m KEEP** (`PF29_baseline`): n144 — PF **2.895** — **+131720.7**.
+- **Top by pts vs baseline:**
+  - `ema31_fib0_382_asia_both`: PF **2.982** / **+139759.2** n147 — dPF **+0.087** — dpts **+8038.5**
+  - `ema33_fib0_382_asia_both`: PF **2.973** / **+137180.9** n145 — dPF **+0.078** — dpts **+5460.2**
+  - `fib0_4_asia_both`: PF **2.971** / **+137019.1** n145 — dPF **+0.076** — dpts **+5298.4**
+  - `fib0_382_asia_both`: PF **2.971** / **+136996.1** n145 — dPF **+0.076** — dpts **+5275.4**
+  - `fib0_37_asia_both`: PF **2.971** / **+136980.8** n145 — dPF **+0.076** — dpts **+5260.1**
+  - `fib0_36_asia_both`: PF **2.970** / **+136968.0** n145 — dPF **+0.075** — dpts **+5247.3**
+  - `fib0_35_asia_both`: PF **2.928** / **+135955.2** n146 — dPF **+0.033** — dpts **+4234.5**
+  - `ema31`: PF **2.907** / **+134483.8** n146 — dPF **+0.012** — dpts **+2763.1**
+  - `wait14`: PF **2.815** / **+134230.7** n150 — dPF **-0.080** — dpts **+2510.0**
+  - `ema33`: PF **2.897** / **+131905.5** n144 — dPF **+0.002** — dpts **+184.8**
+- **CLEAR dpts>=~2k at PF>=2.5:** 9 cells — `ema31_fib0_382_asia_both`: PF **2.982** / **+139759.2** n147 — dPF **+0.087** — dpts **+8038.5**, `ema33_fib0_382_asia_both`: PF **2.973** / **+137180.9** n145 — dPF **+0.078** — dpts **+5460.2**, `fib0_4_asia_both`: PF **2.971** / **+137019.1** n145 — dPF **+0.076** — dpts **+5298.4**, `fib0_382_asia_both`: PF **2.971** / **+136996.1** n145 — dPF **+0.076** — dpts **+5275.4**, `fib0_37_asia_both`: PF **2.971** / **+136980.8** n145 — dPF **+0.076** — dpts **+5260.1**, `fib0_36_asia_both`: PF **2.970** / **+136968.0** n145 — dPF **+0.075** — dpts **+5247.3**, `fib0_35_asia_both`: PF **2.928** / **+135955.2** n146 — dPF **+0.033** — dpts **+4234.5**, `ema31`: PF **2.907** / **+134483.8** n146 — dPF **+0.012** — dpts **+2763.1**, `wait14`: PF **2.815** / **+134230.7** n150 — dPF **-0.080** — dpts **+2510.0**.
+- **Soft >=2.5 with pts lift (incl clear):** 10 cells.
+- **Under-floor PF<2.0:** 3.
+- **Inert (=baseline):** 2 (`fib0_42_asia_both`, `fib0_45_asia_both`).
+- **Pts-down sample:** `fib0_4_asia_fib` dpts -75476.7 PF2.039, `fib0_37_asia_fib` dpts -64242.7 PF2.161, `fib0_36_asia_fib` dpts -63009.2 PF2.162, `fib0_35_asia_fib` dpts -62067.6 PF2.158, `wait11` dpts -33051.3 PF2.440, `ema35` dpts -20301.6 PF2.580, `wait12` dpts -15216.4 PF2.652, `ema34` dpts -11656.6 PF2.727, `ema30` dpts -11029.4 PF2.619, `rc8` dpts -8171.8 PF2.777.
+- **Fib-only sample:** `fib0_35_asia_fib` PF2.158 dpts-62068, `fib0_36_asia_fib` PF2.162 dpts-63009, `fib0_37_asia_fib` PF2.161 dpts-64243, `fib0_382_asia_fib` PF1.996 dpts-74786, `fib0_42_asia_fib` PF1.822 dpts-88042, `fib0_45_asia_fib` PF1.683 dpts-96777, `fib0_4_asia_fib` PF2.039 dpts-75477.
+- **Conclusion:** Densify on NEW KEEP ema32. **Clear champ:** `ema31_fib0_382_asia_both` dpts **+8038.5** PF2.982 (ema31 + fib0.382 asia both). Fib asia both ladder 0.35–0.40 clusters ~+4.2k–5.3k; ema31 alone +2763; wait14 +2510 but dPF down; fib 0.42/0.45 inert; fib-only/alt neighbors mostly dilute. KEEP unchanged pending tick (ticks PF2.9/+131844 n144 `20261001T163825Z_34401136`).
+- **Next:** tick-confirm champ `ema31_fib0_382_asia_both` (overrides {"ema_period":31,"ma_type":"ema","pullback_ref":"both","pullback_fib":0.382,"fib_anchor":"asia"}) on KEEP seed ticks workers=2. Optional runners `ema33_fib0_382_asia_both` then `fib0_4_asia_both` / `ema31` if champ rejects. Prefer max_loss streak <=7-8; promote only if tick dpts>=~2k AND PF>=~2.5. Parked trail KEEP do not resume. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-01 ~20:44 Europe/Bucharest Asia CG_tick ema31_fib0_382_asia_both — NEW KEEP vs PF2.9 ema32
+- **Tick:** `ema31_fib0_382_asia_both` = prior KEEP + `ema_period=31` `ma_type=ema` `pullback_ref=both` `pullback_fib=0.382` `fib_anchor=asia` — run `20261001T172717Z_8eb294c8` — data_source=ticks — window 2025-01 to 2026-09 — workers=2. started 2026-10-01T17:13Z finished 17:27Z UTC. PARAM_ECHO_OK (ema31 / fib0.382 asia both / trail off / TP4000 fixed / pullback required / near_box outside N6 D1000 / asia0-6 / sls5/2200 / mb250 / rc6 / flat21 / wait13).
+- **Result:** n147 — PF **2.98** — **+139840.5** — win%51.7 — max_loss_streak **6** (max_win 7) — exits {"flatten": 36, "sl": 70, "tp": 41} — entries {"ema_touch": 110, "higher_close": 6, "near_box_timeout": 23, "fib_touch": 8}.
+- **vs KEEP** `20261001T163825Z_34401136` (CF_tick ema32) PF2.9/+131844.0 n144: dPF **+0.08** — dpts **+7996.5** — dn **+3**.
+- **vs 5m screen** ema31_fib0_382_asia_both PF2.982/+139759.2 dpts+8038.5: tick **confirms** (pts lift holds; PF ~matches 5m).
+- **Streak filter:** max_loss=6 (prefer <=7-8) — PASS.
+- **Decision:** **NEW KEEP** — meaningful pts lift at PF>=2.5 with streak OK. Body template updated `_seed_pf298_ema31_fib.json` (+ mirrors `_seed_pf29_ema32.json` / `_seed_pf271_trailoff.json`). Prior ema32 PF2.9/+131844 parked as previous trail-off seed (not the 215k trail KEEP).
+- **Next:** Batch CH `EMA_FIB_DENSE_CH_PF298` 5m densify on NEW KEEP (ema neighbors around 31 + fib ladder 0.35–0.45 asia both + fib_anchor roll + pullback_ref ema|fib|both + mild wait/rc). Tick-confirm only clear soft>=2.5 dpts>=~2k; max_loss<=7-8. Parked trail KEEP (tpr2.25) do not resume. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-01 ~21:20 Europe/Bucharest Asia Batch CH EMA_FIB_DENSE_CH_PF298 5m — CLEAR wait14; tick-confirm
+- **Grid:** `results/overnight_5m_grid_20261001T174731Z.json` — tag `EMA_FIB_DENSE_CH_PF298` — seed NEW KEEP ticks `20261001T172717Z_8eb294c8` (asia0-6 ema31 wait13 rc6 cap1200 flat21 mb250 SL1000/TP4000 sls5/2200 near_box outside N6 D1000 wick on pullback required both fib0.382 asia trail off PF2.98/+139840.5 n147) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 32 cells (0 errors).
+- **Baseline 5m KEEP** (`PF298_baseline`): n147 — PF **2.982** — **+139759.2**.
+- **Top by pts vs baseline:**
+  - `wait14`: PF **2.933** / **+142944.3** n152 — dPF **-0.049** — dpts **+3185.1**
+  - `fib0_4_asia_both`: PF **2.982** / **+139782.2** n147 — dPF **+0.000** — dpts **+23.0**
+  - `fib0_39_asia_both`: PF **2.982** / **+139769.4** n147 — dPF **+0.000** — dpts **+10.2**
+- **CLEAR dpts>=~2k at PF>=2.5:** 1 cells — `wait14`: PF **2.933** / **+142944.3** n152 — dPF **-0.049** — dpts **+3185.1**.
+- **Soft >=2.5 with pts lift (incl clear):** 3 cells.
+- **Near-noise soft <2k:** `fib0_39_asia_both` dpts+10.2 PF2.982, `fib0_4_asia_both` dpts+23.0 PF2.982.
+- **Under-floor PF<2.0:** 1.
+- **Inert (=baseline):** 0.
+- **Pts-down sample:** `ema28` dpts -30908.7 PF2.303, `ema34` dpts -14419.7 PF2.803, `ema30_fib0_37_asia_both` dpts -13807.8 PF2.690, `ema30` dpts -13792.5 PF2.690, `ema30_fib0_4_asia_both` dpts -13769.5 PF2.690, `ema29` dpts -13404.5 PF2.651, `fib0_382_roll_both` dpts -11772.2 PF2.493, `wait12` dpts -11539.7 PF2.793, `rc7` dpts -7454.3 PF2.876, `fib0_4_roll_both` dpts -6610.1 PF2.572, `wait15` dpts -6040.8 PF2.721, `fib0_42_asia_both` dpts -5275.4 PF2.907.
+- **Conclusion:** Densify on NEW KEEP ema31 fib0.382 asia both. **Only clear champ:** `wait14` dpts **+3185.1** PF2.933 (max_wait=14; mild dPF−). Fib asia both 0.36–0.40 essentially flat vs baseline (~0–+23 pts); ema neighbors 28–34 dilute or below; fib_anchor=roll / ref_fib collapse; wait12/15 dilute. KEEP unchanged pending tick (ticks PF2.98/+139840.5 n147 `20261001T172717Z_8eb294c8`).
+- **Next:** tick-confirm champ `wait14` (overrides {"max_wait_candles":14}) on KEEP seed ticks workers=2. No other clear runners. Prefer max_loss streak <=7-8; promote only if tick dpts>=~2k AND PF>=~2.5. If reject → densify wait around 13–15 or mild rc/flat residual; do not revive parked trail KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-01 ~21:46 Europe/Bucharest Asia CH_tick wait14 — NEW KEEP vs PF2.98 ema31 fib0.382 asia both
+- **Tick:** `wait14` = prior KEEP + `max_wait_candles=14` — run `20261001T183537Z_97cd8ea8` — data_source=ticks — window 2025-01 to 2026-09 — workers=2. started 2026-10-01T18:22Z finished 18:35Z UTC. PARAM_ECHO_OK (wait14 / ema31 / fib0.382 asia both / trail off / TP4000 fixed / pullback required / near_box outside N6 D1000 / asia0-6 / sls5/2200 / mb250 / rc6 / flat21).
+- **Result:** n152 — PF **2.93** — **+143018.4** — win%50.7 — max_loss_streak **7** (max_win 6) — exits {"flatten": 36, "sl": 73, "tp": 43} — entries {"ema_touch": 118, "higher_close": 6, "near_box_timeout": 20, "fib_touch": 8}.
+- **vs KEEP** `20261001T172717Z_8eb294c8` (CG_tick ema31_fib0_382_asia_both) PF2.98/+139840.5 n147: dPF **-0.05** — dpts **+3177.9** — dn **+5**.
+- **vs 5m screen** wait14 PF2.933/+142944.3 dpts+3185.1: tick **confirms** (pts lift holds; PF matches 5m).
+- **Streak filter:** max_loss=7 (prefer <=7-8) — PASS.
+- **Decision:** **NEW KEEP** — meaningful pts lift (+3177.9) at PF>=2.5 with streak OK (PF soft dip -0.05 still well above floor). Body template updated `_seed_pf293_wait14.json` (+ mirrors `_seed_pf298_ema31_fib.json` / `_seed_pf29_ema32.json` / `_seed_pf271_trailoff.json`). Prior wait13 PF2.98/+139840.5 parked as previous trail-off seed (not the 215k trail KEEP).
+- **Next:** Batch CI `EMA_FIB_DENSE_CI_PF293` 5m densify on NEW KEEP (wait 12/13/15/16 + ema neighbors + fib 0.35–0.45 asia both + fib_anchor roll + pullback_ref ema|fib|both + mild rc/flat/compounds). Tick-confirm only clear soft>=2.5 dpts>=~2k; max_loss<=7-8. Parked trail KEEP (tpr2.25) do not resume. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-01 ~22:17 Europe/Bucharest Asia Batch CI EMA_FIB_DENSE_CI_PF293 5m — NO CLEAR
+- **Grid:** `results/overnight_5m_grid_20261001T184910Z.json` — tag `EMA_FIB_DENSE_CI_PF293` — seed KEEP ticks `20261001T183537Z_97cd8ea8` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb250 SL1000/TP4000 sls5/2200 near_box outside N6 D1000 wick on pullback required both fib0.382 asia trail off PF2.93/+143018.4 n152) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 36 cells (0 errors).
+- **Baseline 5m KEEP** (`PF293_baseline`): n152 — PF **2.933** — **+142944.3**.
+- **Top by pts vs baseline:**
+  - `fib0_4_asia_both`: PF **2.933** / **+142967.3** n152 — dPF **+0.0** — dpts_base **+23.0** (vs KEEP ticks dpts **-51.1**)
+  - `wait14_fib0_4_asia_both`: PF **2.933** / **+142967.3** n152 — dPF **+0.0** — dpts_base **+23.0** (vs KEEP ticks dpts **-51.1**)
+  - `fib0_39_asia_both`: PF **2.933** / **+142954.5** n152 — dPF **+0.0** — dpts_base **+10.2** (vs KEEP ticks dpts **-63.9**)
+  - `PF293_baseline`: PF **2.933** / **+142944.3** n152 — dPF **+0.0** — dpts_base **+0.0** (vs KEEP ticks dpts **-74.1**)
+  - `fib0_37_asia_both`: PF **2.933** / **+142929.0** n152 — dPF **+0.0** — dpts_base **-15.3** (vs KEEP ticks dpts **-89.4**)
+  - `wait14_fib0_37_asia_both`: PF **2.933** / **+142929.0** n152 — dPF **+0.0** — dpts_base **-15.3** (vs KEEP ticks dpts **-89.4**)
+- **CLEAR dpts>=~2k vs KEEP ticks at PF>=2.5:** 0 cells.
+- **Soft >=2.5 with dpts_keep>=500:** 0 cells.
+- **Near-noise vs 5m baseline (<500 pts):** `fib0_39_asia_both` dpts_base+10.2 PF2.933, `fib0_4_asia_both` dpts_base+23.0 PF2.933, `wait14_fib0_4_asia_both` dpts_base+23.0 PF2.933.
+- **Under-floor PF<2.0:** 1.
+- **Pts-down sample:** `ref_fib` dpts_base -93274.4 PF1.82, `ema28` dpts_base -33908.7 PF2.268, `ema34` dpts_base -20419.7 PF2.635, `ema30_fib0_37_asia_both` dpts_base -18807.8 PF2.572, `ema30` dpts_base -18792.5 PF2.572, `ema30_fib0_4_asia_both` dpts_base -18769.5 PF2.573, `ema29` dpts_base -18404.5 PF2.538, `wait12` dpts_base -14724.8 PF2.793, `fib0_382_roll_both` dpts_base -14138.5 PF2.436, `wait16` dpts_base -9623.0 PF2.652.
+- **Conclusion:** Densify on KEEP wait14 ema31 fib0.382 asia both exhausted for lift. Fib asia both 0.35–0.45 essentially flat (~−28 to +23 vs 5m baseline); wait12/13/15/16 dilute or below KEEP; ema 28–34 dilute; fib_anchor=roll / ref_fib collapse; mild rc/flat no clear. **No tick-confirm.** KEEP unchanged PF2.93/+143018.4 n152.
+- **Next:** Batch CJ `RESIDUAL_CJ_PF293` 5m orthogonal residual on KEEP (mb / near_box / resume-cap / sls / hold-flat / SL-TP mild / pullback_mode / wick / arange / maxbreak). Tick-confirm only clear soft>=2.5 dpts>=~2k; max_loss<=7-8. Do not revive parked trail KEEP (tpr2.25). stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-01 ~22:45 Europe/Bucharest Asia Batch CJ RESIDUAL_CJ_PF293 5m — CLEAR nd1500 (+mb200/mb260); tick-confirm
+- **Grid:** `results/overnight_5m_grid_20261001T192027Z.json` — tag `RESIDUAL_CJ_PF293` — seed KEEP ticks `20261001T183537Z_97cd8ea8` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb250 SL1000/TP4000 sls5/2200 near_box outside N6 D1000 wick on pullback required both fib0.382 asia trail off PF2.93/+143018.4 n152) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 59 cells (0 errors).
+- **Baseline 5m KEEP** (`PF293_baseline`): n152 — PF **2.933** — **+142944.3**.
+- **Top by pts vs baseline (PF>=2.5):**
+  - `nd1500`: PF **2.813** / **+146754.8** n164 — dPF **-0.120** — dpts_base **+3810.5** (vs KEEP ticks dpts **+3736.4)**
+  - `mb200`: PF **2.774** / **+145182.7** n164 — dPF **-0.159** — dpts_base **+2238.4** (vs KEEP ticks dpts **+2164.3)**
+  - `mb260`: PF **3.015** / **+145016.8** n150 — dPF **+0.082** — dpts_base **+2072.5** (vs KEEP ticks dpts **+1998.4)**
+  - `nd800`: PF **3.113** / **+144784.2** n144 — dPF **+0.180** — dpts_base **+1839.9** (vs KEEP ticks dpts **+1765.8)**
+  - `flat23`: PF **2.957** / **+144716.6** n152 — dPF **+0.024** — dpts_base **+1772.3** (vs KEEP ticks dpts **+1698.2)**
+  - `sls3`: PF **3.036** / **+144481.4** n148 — dPF **+0.103** — dpts_base **+1537.1** (vs KEEP ticks dpts **+1463.0)**
+  - `sls4`: PF **2.973** / **+143944.3** n151 — dPF **+0.040** — dpts_base **+1000.0** (vs KEEP ticks dpts **+925.9)**
+  - `sls4_2200`: PF **2.973** / **+143944.3** n151 — dPF **+0.040** — dpts_base **+1000.0** (vs KEEP ticks dpts **+925.9)**
+  - `mb275_sls4`: PF **2.973** / **+143923.6** n151 — dPF **+0.040** — dpts_base **+979.3** (vs KEEP ticks dpts **+905.2)**
+  - `nbars8`: PF **2.998** / **+143769.8** n149 — dPF **+0.065** — dpts_base **+825.5** (vs KEEP ticks dpts **+751.4)**
+- **Pts-champ under PF floor:** `pb_preferred` PF **2.325** / **+174571.3** n243 — dpts_base **+31627.0** (PF under soft floor ~2.5 — no tick).
+- **CLEAR dpts>=~2k at PF>=2.5:** 3 cells — `nd1500`: PF **2.813** / **+146754.8** n164 — dPF **-0.120** — dpts_base **+3810.5** (vs KEEP ticks dpts **+3736.4)**, `mb200`: PF **2.774** / **+145182.7** n164 — dPF **-0.159** — dpts_base **+2238.4** (vs KEEP ticks dpts **+2164.3)**, `mb260`: PF **3.015** / **+145016.8** n150 — dPF **+0.082** — dpts_base **+2072.5** (vs KEEP ticks dpts **+1998.4)**.
+- **Soft >=2.5 with pts lift (incl clear):** 14 cells.
+- **Near-noise soft <2k:** `flat23` dpts+1772.3 PF2.957, `hold15` dpts+92.5 PF2.934, `hold16` dpts+92.5 PF2.934, `mb225` dpts+656.8 PF2.777, `mb225_cap1000` dpts+42.8 PF2.791, `mb275_sls4` dpts+979.3 PF2.973, `nbars8` dpts+825.5 PF2.998, `nd800` dpts+1839.9 PF3.113, `sls3` dpts+1537.1 PF3.036, `sls4` dpts+1000.0 PF2.973.
+- **Under-floor PF<2.0:** 2.
+- **Inert (=baseline):** 9 (`arange250`, `arange350`, `arange400`, `cap1400`, `cap1600`, `nbars4`, `nbars5`, `slsa2500`).
+- **Pts-down sample:** `sl1200_tp4800` dpts -35996.2 PF2.146, `maxbreak12` dpts -18622.4 PF2.944, `sl1500_tp4000` dpts -16847.4 PF2.266, `sl1000_tp3500` dpts -16749.2 PF2.706, `sl1000_tp4500` dpts -16171.9 PF2.626, `sl1200_tp4000` dpts -12028.2 PF2.520, `hc_off` dpts -6351.4 PF2.872, `rc9` dpts -6351.4 PF2.872, `maxbreak18` dpts -6203.8 PF2.573, `mb300` dpts -6190.9 PF2.901, `nearbox_off` dpts -5383.3 PF3.166, `slsa1800` dpts -5000.0 PF2.747.
+- **Conclusion:** Residual ortho on KEEP after CI fib/wait/ema exhaustion. **Clear champ:** `nd1500` dpts_base **+3810.5** PF2.813 (near_box_pts=1500). Runners: `mb200`, `mb260`. `pb_preferred` huge pts but PF2.325 under soft floor — skip. SL/TP mild / nearbox_off / rc3 dilute or under floor. KEEP unchanged pending tick (ticks PF2.93/+143018.4 n152 `20261001T183537Z_97cd8ea8`).
+- **Next:** tick-confirm champ `nd1500` (overrides {"near_box_pts":1500.0}) on KEEP seed ticks workers=2; then runners `mb200`, `mb260` if champ rejects. Prefer max_loss streak <=7-8; promote only if tick dpts>=~2k AND PF>=~2.5. Do not revive parked trail KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-01 ~23:18 Europe/Bucharest Asia CJ_tick nd1500 — NEW KEEP vs wait14 D1000
+- **Tick:** `nd1500` = prior KEEP + `near_box_pts=1500` — run `20261001T200223Z_eef65e2d` — data_source=ticks — window 2025-01 to 2026-09 — workers=2. started 2026-10-01T19:49Z finished 20:02Z UTC. PARAM_ECHO_OK (near_box outside N6 D1500 / wait14 / ema31 / fib0.382 asia both / trail off / TP4000 fixed / pullback required / asia0-6 / sls5/2200 / mb250 / rc6 / flat21 / cap1200).
+- **Result:** n164 — PF **2.81** — **+146825.9** — win%50.0 — max_loss_streak **7** (max_win 7) — exits {"sl": 80, "flatten": 39, "tp": 45} — entries {"near_box_timeout": 32, "ema_touch": 118, "higher_close": 6, "fib_touch": 8}.
+- **vs KEEP** `20261001T183537Z_97cd8ea8` (CH_tick wait14 D1000) PF2.93/+143018.4 n152: dPF **-0.12** — dpts **+3807.5** — dn **+12**.
+- **vs 5m screen** `nd1500` PF2.813/+146754.8 dpts_base+3810.5: tick **confirms** (pts lift holds; PF matches 5m).
+- **Streak filter:** max_loss=7 (prefer <=7-8) — PASS.
+- **Decision:** **NEW KEEP** — meaningful pts lift (+3807.5) at PF>=2.5 with streak OK (PF soft dip -0.12 still well above floor). Body template `_seed_pf281_nd1500.json` (+ mirrors `_seed_pf293_wait14.json` / `_seed_pf298_ema31_fib.json` / `_seed_pf29_ema32.json` / `_seed_pf271_trailoff.json`). Prior wait14 D1000 PF2.93/+143018.4 superseded. Prior 215k trail KEEP remains PARKED.
+- **Next:** Batch CK `NEARBOX_MB_DENSE_CK_PF281` 5m densify on NEW KEEP (near_box ladder around 1500 + nbars x nd compounds + mb200/mb260 recheck + mild wait/rc/flat/fib). Tick-confirm only clear soft>=2.5 dpts>=~2k; max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-01 ~23:50 Europe/Bucharest Asia Batch CK NEARBOX_MB_DENSE_CK_PF281 5m — CLEAR nbars5_nd1600 (+nbars5/nd1700/mb260); tick-confirm
+- **Grid:** `results/overnight_5m_grid_20261001T202234Z.json` — tag `NEARBOX_MB_DENSE_CK_PF281` — seed KEEP ticks `20261001T200223Z_eef65e2d` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb250 SL1000/TP4000 sls5/2200 near_box outside N6 D1500 wick on pullback required both fib0.382 asia trail off PF2.81/+146825.9 n164 max_loss7) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 49 cells (0 errors).
+- **Baseline 5m KEEP** (`PF281_baseline`): n164 — PF **2.813** — **+146754.8**.
+- **Top by pts vs baseline (PF>=2.5):**
+  - `nbars5_nd1600`: PF **2.808** / **+151754.8** n169 — dPF **-0.005** — dpts_base **+5000.0** (vs KEEP ticks dpts **+4928.9)**
+  - `nd1700`: PF **2.739** / **+151170.3** n173 — dPF **-0.074** — dpts_base **+4415.5** (vs KEEP ticks dpts **+4344.4)**
+  - `nbars5`: PF **2.862** / **+150754.8** n165 — dPF **+0.049** — dpts_base **+4000.0** (vs KEEP ticks dpts **+3928.9)**
+  - `nbars8_nd1700`: PF **2.775** / **+150754.8** n170 — dPF **-0.038** — dpts_base **+4000.0** (vs KEEP ticks dpts **+3928.9)**
+  - `mb200_nd1600`: PF **2.633** / **+149993.2** n180 — dPF **-0.180** — dpts_base **+3238.4** (vs KEEP ticks dpts **+3167.3)**
+  - `nbars4`: PF **2.827** / **+149754.8** n166 — dPF **+0.014** — dpts_base **+3000.0** (vs KEEP ticks dpts **+2928.9)**
+  - `mb260`: PF **2.885** / **+148827.3** n162 — dPF **+0.072** — dpts_base **+2072.5** (vs KEEP ticks dpts **+2001.4)**
+  - `nbars8_nd1600`: PF **2.793** / **+148754.8** n167 — dPF **-0.020** — dpts_base **+2000.0** (vs KEEP ticks dpts **+1928.9)**
+  - `nd1600`: PF **2.793** / **+148754.8** n167 — dPF **-0.020** — dpts_base **+2000.0** (vs KEEP ticks dpts **+1928.9)**
+  - `mb260_nd1400`: PF **2.882** / **+148607.3** n161 — dPF **+0.069** — dpts_base **+1852.5** (vs KEEP ticks dpts **+1781.4)**
+- **CLEAR dpts>=~2k at PF>=2.5:** 9 cells — `nbars5_nd1600`: PF **2.808** / **+151754.8** n169 — dPF **-0.005** — dpts_base **+5000.0** (vs KEEP ticks dpts **+4928.9)**, `nd1700`: PF **2.739** / **+151170.3** n173 — dPF **-0.074** — dpts_base **+4415.5** (vs KEEP ticks dpts **+4344.4)**, `nbars5`: PF **2.862** / **+150754.8** n165 — dPF **+0.049** — dpts_base **+4000.0** (vs KEEP ticks dpts **+3928.9)**, `nbars8_nd1700`: PF **2.775** / **+150754.8** n170 — dPF **-0.038** — dpts_base **+4000.0** (vs KEEP ticks dpts **+3928.9)**, `mb200_nd1600`: PF **2.633** / **+149993.2** n180 — dPF **-0.180** — dpts_base **+3238.4** (vs KEEP ticks dpts **+3167.3)**, `nbars4`: PF **2.827** / **+149754.8** n166 — dPF **+0.014** — dpts_base **+3000.0** (vs KEEP ticks dpts **+2928.9)**, `mb260`: PF **2.885** / **+148827.3** n162 — dPF **+0.072** — dpts_base **+2072.5** (vs KEEP ticks dpts **+2001.4)**, `nbars8_nd1600`: PF **2.793** / **+148754.8** n167 — dPF **-0.020** — dpts_base **+2000.0** (vs KEEP ticks dpts **+1928.9)**, `nd1600`: PF **2.793** / **+148754.8** n167 — dPF **-0.020** — dpts_base **+2000.0** (vs KEEP ticks dpts **+1928.9)**.
+- **Soft >=2.5 with pts lift (incl clear):** 15 cells.
+- **Near-noise soft <2k:** `fib0_4` dpts+23.0 PF2.813, `mb200` dpts+1238.4 PF2.648, `mb200_nd1400` dpts+1018.4 PF2.645, `mb225` dpts+656.8 PF2.678, `mb260_nd1400` dpts+1852.5 PF2.882, `nd1800` dpts+1415.5 PF2.647.
+- **Under-floor PF<2.0:** 1 (`pref_fib` alone if any).
+- **Inert (=baseline):** 3 (`nbars7`, `nbars7_nd1500`, `nbars8`).
+- **Pts-down sample:** `wait12` dpts -25823.7 PF2.465, `ema30` dpts -18792.5 PF2.489, `ema29` dpts -18404.5 PF2.459, `fib_anchor_roll` dpts -17803.0 PF2.333, `wait16` dpts -14557.3 PF2.490, `wait13` dpts -13728.3 PF2.652, `wait15` dpts -12715.1 PF2.582, `ema33` dpts -7578.3 PF2.719, `mb275` dpts -6020.7 PF2.697, `rc7` dpts -5746.8 PF2.721, `fib0_45` dpts -4950.5 PF2.752, `pref_ema` dpts -4950.5 PF2.752.
+- **Conclusion:** Near-box densify on NEW KEEP D1500 found **clear lifts**. Pts-champ `nbars5_nd1600` dpts_base **+5000.0** PF2.808 (overrides {"near_box_bars":5,"near_box_pts":1600.0}). PF-champ among clear: `mb260` PF2.885/+148827.3. Runners: `nd1700`, `nbars5`, `nbars8_nd1700`. wait/ema/fib/pref_fib dilute or under floor (same CI story). KEEP unchanged pending tick (ticks PF2.81/+146825.9 n164 `20261001T200223Z_eef65e2d`).
+- **Next:** tick-confirm champ `nbars5_nd1600` (overrides {"near_box_bars":5,"near_box_pts":1600.0}) on KEEP seed ticks workers=2; then runners `nd1700`, `nbars5`, `nbars8_nd1700` if champ rejects. Prefer max_loss streak <=7-8; promote only if tick dpts>=~2k AND PF>=~2.5. Do not revive parked trail KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+
+### 2026-10-02 ~00:20 Europe/Bucharest Asia CK_tick nbars5_nd1600 — NEW KEEP vs CJ_tick nd1500
+- **Tick:** `nbars5_nd1600` = prior KEEP + `near_box_bars=5` `near_box_pts=1600` — run `20261001T210701Z_ae6626fd` — data_source=ticks — window 2025-01 to 2026-09 — workers=2. started 2026-10-01T20:53Z finished 21:07Z UTC. PARAM_ECHO_OK (near_box outside N5 D1600 / wait14 / ema31 / fib0.382 asia both / trail off / TP4000 fixed / pullback required / asia0-6 / sls5/2200 / mb250 / rc6 / flat21 / cap1200).
+- **Result:** n169 — PF **2.81** — **+151825.9** — win%49.7 — max_loss_streak **7** (max_win 7) — exits {"sl": 83, "flatten": 39, "tp": 47} — entries {"near_box_timeout": 37, "ema_touch": 118, "higher_close": 6, "fib_touch": 8}.
+- **vs KEEP** `20261001T200223Z_eef65e2d` (CJ_tick nd1500 N6 D1500) PF2.81/+146825.9 n164: dPF **+0.0** — dpts **+5000.0** — dn **+5**.
+- **vs 5m screen** `nbars5_nd1600` PF2.808/+151754.8 dpts_base+5000.0: tick **confirms** (pts lift holds; PF matches 5m).
+- **Streak filter:** max_loss=7 (prefer <=7-8) — PASS.
+- **Decision:** **NEW KEEP** — meaningful pts lift (+5000.0) at PF>=2.5 with streak OK (PF flat 0.0). Body template `_seed_pf281_nbars5_nd1600.json` (+ mirrors `_seed_pf281_nd1500.json` / `_seed_pf293_wait14.json` / `_seed_pf298_ema31_fib.json` / `_seed_pf29_ema32.json` / `_seed_pf271_trailoff.json`). Prior CJ_tick nd1500 PF2.81/+146825.9 superseded. Prior 215k trail KEEP remains PARKED.
+- **Next:** Batch CL `NEARBOX_MB_DENSE_CL_PF281` 5m densify on NEW KEEP (fine near_box ladder around N5 D1600 + nbars x nd compounds + mb200/mb260 recheck + mild wait/rc/flat). Tick-confirm only clear soft>=2.5 dpts>=~2k; max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-02 ~00:49 Europe/Bucharest Asia Batch CL NEARBOX_MB_DENSE_CL_PF281 5m — CLEAR nd1550 (+mb260); tick-confirm
+- **Grid:** `results/overnight_5m_grid_20261001T212302Z.json` — tag `NEARBOX_MB_DENSE_CL_PF281` — seed KEEP ticks `20261001T210701Z_ae6626fd` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb250 SL1000/TP4000 sls5/2200 near_box outside N5 D1600 wick on pullback required both fib0.382 asia trail off PF2.81/+151825.9 n169 max_loss7) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 50 cells (0 errors).
+- **Baseline 5m KEEP** (`PF281_N5D1600_baseline`): n169 — PF **2.808** — **+151754.8**.
+- **Top by pts vs baseline (PF>=2.5):**
+  - `nd1550`: PF **2.912** / **+154754.8** n166 — dPF **+0.104** — dpts_base **+3000.0** (vs KEEP ticks dpts **+2928.9)**
+  - `mb260`: PF **2.877** / **+153827.3** n167 — dPF **+0.069** — dpts_base **+2072.5** (vs KEEP ticks dpts **+2001.4)**
+  - `mb260_nd1600`: PF **2.877** / **+153827.3** n167 — dPF **+0.069** — dpts_base **+2072.5** (vs KEEP ticks dpts **+2001.4)**
+  - `nd1650`: PF **2.803** / **+153170.3** n171 — dPF **-0.005** — dpts_base **+1415.5** (vs KEEP ticks dpts **+1344.4)**
+  - `mb200`: PF **2.648** / **+152993.2** n182 — dPF **-0.160** — dpts_base **+1238.4** (vs KEEP ticks dpts **+1167.3)**
+  - `mb200_nd1600`: PF **2.648** / **+152993.2** n182 — dPF **-0.160** — dpts_base **+1238.4** (vs KEEP ticks dpts **+1167.3)**
+  - `mb225`: PF **2.678** / **+152411.6** n179 — dPF **-0.130** — dpts_base **+656.8** (vs KEEP ticks dpts **+585.7)**
+  - `mb260_nd1700`: PF **2.771** / **+152242.8** n172 — dPF **-0.037** — dpts_base **+488.0** (vs KEEP ticks dpts **+416.9)**
+  - `nbars3`: PF **2.770** / **+152170.3** n172 — dPF **-0.038** — dpts_base **+415.5** (vs KEEP ticks dpts **+344.4)**
+- **CLEAR dpts>=~2k at PF>=2.5:** 3 cells — `nd1550`: PF **2.912** / **+154754.8** n166 — dPF **+0.104** — dpts_base **+3000.0** (vs KEEP ticks dpts **+2928.9)**, `mb260`: PF **2.877** / **+153827.3** n167 — dPF **+0.069** — dpts_base **+2072.5** (vs KEEP ticks dpts **+2001.4)**, `mb260_nd1600`: PF **2.877** / **+153827.3** n167 — dPF **+0.069** — dpts_base **+2072.5** (vs KEEP ticks dpts **+2001.4)**.
+- **Soft >=2.5 with pts lift (incl clear):** 9 cells.
+- **Near-noise soft <2k:** `mb200` dpts+1238.4 PF2.648, `mb200_nd1600` dpts+1238.4 PF2.648, `mb225` dpts+656.8 PF2.678, `mb260_nd1700` dpts+488.0 PF2.771, `nbars3` dpts+415.5 PF2.77, `nd1650` dpts+1415.5 PF2.803.
+- **Under-floor PF<2.0:** 0.
+- **Inert (=baseline):** 2 (`nbars4`, `nbars4_nd1600`).
+- **Pts-down sample:** `wait12` dpts -29823.7 PF2.426, `wait13` dpts -17728.3 PF2.605, `wait16` dpts -15133.8 PF2.506, `wait15` dpts -12715.1 PF2.585, `mb275` dpts -6020.7 PF2.695, `nd1400` dpts -5220.0 PF2.810, `nbars6_nd1500` dpts -5000.0 PF2.813, `nbars5_nd1800` dpts -4584.5 PF2.618, `nd1800` dpts -4584.5 PF2.618, `nd1900` dpts -4415.9 PF2.599, `nd2000` dpts -4375.4 PF2.565, `rc7` dpts -4044.5 PF2.739.
+- **Conclusion:** Fine near_box densify on NEW KEEP N5 D1600 found **clear lifts**. Pts-champ `nd1550` dpts_base **+3000.0** PF2.912 (overrides {"near_box_pts":1550.0}). PF-champ among clear: `nd1550` PF2.912/+154754.8. Runners: `mb260`, `mb260_nd1600`. wait/rc/flat dilute; nbars alone mostly flat/down. KEEP unchanged pending tick (ticks PF2.81/+151825.9 n169 `20261001T210701Z_ae6626fd`).
+- **Next:** tick-confirm champ `nd1550` (overrides {"near_box_pts":1550.0}) on KEEP seed ticks workers=2; then runners `mb260`, `mb260_nd1600` if champ rejects. Prefer max_loss streak <=7-8; promote only if tick dpts>=~2k AND PF>=~2.5. Do not revive parked trail KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+
+### 2026-10-02 ~01:15 Europe/Bucharest Asia CL_tick nd1550 - NEW KEEP vs CK_tick nbars5_nd1600
+- **Tick:** `nd1550` = prior KEEP + `near_box_pts=1550` - run `20261001T220647Z_9e075c54` - data_source=ticks - window 2025-01 to 2026-09 - workers=2. started 2026-10-01T21:53Z finished 2026-10-01T22:06Z UTC. PARAM_ECHO_OK (near_box outside N5 D1550 / wait14 / ema31 / fib0.382 asia both / trail off / TP4000 fixed / pullback required / asia0-6 / sls5/2200 / mb250 / rc6 / flat21 / cap1200).
+- **Result:** n166 - PF **2.91** - **+154825.9** - win%50.6 - max_loss_streak **7** (max_win 7) - exits {"sl": 80, "flatten": 39, "tp": 47} - entries {"near_box_timeout": 34, "ema_touch": 118, "higher_close": 6, "fib_touch": 8}.
+- **vs KEEP** `20261001T210701Z_ae6626fd` (CK_tick nbars5_nd1600 N5 D1600) PF2.81/+151825.9 n169: dPF **+0.1** - dpts **+3000.0** - dn **-3**.
+- **vs 5m screen** `nd1550` PF2.912/+154754.8 dpts_base+3000.0: tick **confirms** (pts lift holds; PF matches 5m).
+- **Streak filter:** max_loss=7 (prefer <=7-8) - PASS.
+- **Decision:** **NEW KEEP** - meaningful pts lift (+3000.0) at PF>=2.5 with streak OK (dPF +0.1). Body template `_seed_pf291_nd1550.json` (+ mirrors `_seed_pf281_nbars5_nd1600.json` / `_seed_pf281_nd1500.json` / `_seed_pf293_wait14.json` / `_seed_pf298_ema31_fib.json` / `_seed_pf29_ema32.json` / `_seed_pf271_trailoff.json`). Prior CK_tick nbars5_nd1600 PF2.81/+151825.9 superseded. Prior 215k trail KEEP remains PARKED.
+- **Next:** Batch CM `NEARBOX_MB_DENSE_CM_PF291` 5m densify on NEW KEEP (fine near_box ladder around N5 D1550 + nbars x nd compounds + mb200/mb260 recheck + mild wait/rc/flat). Tick-confirm only clear soft>=2.5 dpts>=~2k; max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+
+### 2026-10-02 ~01:45 Europe/Bucharest Asia Batch CM NEARBOX_MB_DENSE_CM_PF291 5m — CLEAR mb260; tick-confirm
+- **Grid:** `results/overnight_5m_grid_20261001T221753Z.json` — tag `NEARBOX_MB_DENSE_CM_PF291` — seed KEEP ticks `20261001T220647Z_9e075c54` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb250 SL1000/TP4000 sls5/2200 near_box outside N5 D1550 wick on pullback required both fib0.382 asia trail off PF2.91/+154825.9 n166 max_loss7) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 53 cells (0 errors).
+- **Baseline 5m KEEP** (`PF291_N5D1550_baseline`): n166 — PF **2.912** — **+154754.8**.
+- **Top by pts vs baseline (PF>=2.5):**
+  - `mb260`: PF **2.986** / **+156827.3** n164 — dPF **+0.074** — dpts_base **+2072.5** (vs KEEP ticks dpts **+2001.4)**
+  - `mb260_nd1550`: PF **2.986** / **+156827.3** n164 — dPF **+0.074** — dpts_base **+2072.5** (vs KEEP ticks dpts **+2001.4)**
+  - `mb200`: PF **2.737** / **+155993.2** n179 — dPF **-0.175** — dpts_base **+1238.4** (vs KEEP ticks dpts **+1167.3)**
+  - `mb200_nd1550`: PF **2.737** / **+155993.2** n179 — dPF **-0.175** — dpts_base **+1238.4** (vs KEEP ticks dpts **+1167.3)**
+  - `mb225`: PF **2.770** / **+155411.6** n176 — dPF **-0.142** — dpts_base **+656.8** (vs KEEP ticks dpts **+585.7)**
+- **CLEAR dpts>=~2k at PF>=2.5:** 2 cells — `mb260`: PF **2.986** / **+156827.3** n164 — dPF **+0.074** — dpts_base **+2072.5** (vs KEEP ticks dpts **+2001.4)**, `mb260_nd1550`: PF **2.986** / **+156827.3** n164 — dPF **+0.074** — dpts_base **+2072.5** (vs KEEP ticks dpts **+2001.4)**.
+- **Soft >=2.5 with pts lift (incl clear):** 5 cells.
+- **Near-noise soft <2k:** `mb200` dpts+1238.4 PF2.737, `mb200_nd1550` dpts+1238.4 PF2.737, `mb225` dpts+656.8 PF2.77.
+- **Under-floor PF<2.0:** 0.
+- **Inert (=baseline):** 0.
+- **Pts-down sample:** `wait12` dpts -31823.7 PF2.454, `wait13` dpts -18728.3 PF2.669, `wait15` dpts -17715.1 PF2.599, `wait16` dpts -16133.8 PF2.563, `nd1400` dpts -8220.0 PF2.810, `nbars6_nd1500` dpts -8000.0 PF2.813, `nd1800` dpts -7584.5 PF2.618, `nd1900` dpts -7415.9 PF2.599, `mb275` dpts -6020.7 PF2.793, `nbars6_nd1600` dpts -6000.0 PF2.793, `nbars7_nd1600` dpts -6000.0 PF2.793, `nbars8_nd1600` dpts -6000.0 PF2.793.
+- **Conclusion:** Fine near_box densify on NEW KEEP N5 D1550 found **clear lifts**. Pts-champ `mb260` dpts_base **+2072.5** PF2.986 (overrides {"min_break_pts_above":260.0,"min_break_pts_below":260.0}). PF-champ among clear: `mb260` PF2.986/+156827.3. Runners: n/a (mb260_nd1550 redundant with mb260 on KEEP D1550). near_box ladder around 1550 mostly flat/down; wait/rc/flat dilute. KEEP unchanged pending tick (ticks PF2.91/+154825.9 n166 `20261001T220647Z_9e075c54`).
+- **Next:** tick-confirm champ `mb260` (overrides {"min_break_pts_above":260.0,"min_break_pts_below":260.0}) on KEEP seed ticks workers=2; then runners n/a if champ rejects. Prefer max_loss streak <=7-8; promote only if tick dpts>=~2k AND PF>=~2.5. Do not revive parked trail KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+
+### 2026-10-02 ~02:20 Europe/Bucharest Asia CM_tick mb260 - NEW KEEP vs CL_tick nd1550
+- **Tick:** `mb260` = prior KEEP + `min_break_pts_above/below=260` - run `20261001T230119Z_63cbf550` - data_source=ticks - window 2025-01 to 2026-09 - workers=2. started 2026-10-01T22:48Z finished 2026-10-01T23:01Z UTC. PARAM_ECHO_OK (near_box outside N5 D1550 / wait14 / ema31 / fib0.382 asia both / trail off / TP4000 fixed / pullback required / asia0-6 / sls5/2200 / mb260 / rc6 / flat21 / cap1200).
+- **Result:** n164 - PF **2.99** - **+156898.4** - win%51.2 - max_loss_streak **7** (max_win 7) - exits {"sl": 78, "flatten": 39, "tp": 47} - entries {"near_box_timeout": 34, "ema_touch": 117, "higher_close": 6, "fib_touch": 7}.
+- **vs KEEP** `20261001T220647Z_9e075c54` (CL_tick nd1550 mb250) PF2.91/+154825.9 n166: dPF **+0.08** - dpts **+2072.5** - dn **-2**.
+- **vs 5m screen** `mb260` PF2.986/+156827.3 dpts_base+2072.5: tick **confirms** (pts lift holds; PF matches 5m).
+- **Streak filter:** max_loss=7 (prefer <=7-8) - PASS.
+- **Decision:** **NEW KEEP** - meaningful pts lift (+2072.5) at PF>=2.5 with streak OK (dPF +0.08). Body template `_seed_pf299_mb260.json` (+ mirrors `_seed_pf291_nd1550.json` / `_seed_pf281_nbars5_nd1600.json` / `_seed_pf281_nd1500.json` / `_seed_pf293_wait14.json` / `_seed_pf298_ema31_fib.json` / `_seed_pf29_ema32.json` / `_seed_pf271_trailoff.json`). Prior CL_tick nd1550 PF2.91/+154825.9 superseded. Prior 215k trail KEEP remains PARKED.
+- **Next:** Batch CN `NEARBOX_MB_DENSE_CN_PF299` 5m densify on NEW KEEP (fine near_box ladder around N5 D1550 with mb260 locked + nbars x nd compounds + fine mb around 260 + mild wait/rc/flat/cap). Tick-confirm only clear soft>=2.5 dpts>=~2k; max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+
+### 2026-10-02 ~02:50 Europe/Bucharest Asia Batch CN NEARBOX_MB_DENSE_CN_PF299 5m — no clear lift; kick residual CO
+- **Grid:** `results/overnight_5m_grid_20261001T232410Z.json` — tag `NEARBOX_MB_DENSE_CN_PF299` — seed KEEP ticks `20261001T230119Z_63cbf550` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 SL1000/TP4000 sls5/2200 near_box outside N5 D1550 wick on pullback required both fib0.382 asia trail off PF2.99/+156898.4 n164 max_loss7) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 62 cells (0 errors).
+- **Baseline 5m KEEP** (`PF299_mb260_baseline`): n164 — PF **2.986** — **+156827.3**.
+- **Top by pts vs baseline (PF>=2.5):**
+  - `cap1100`: PF **2.986** / **+156827.3** n164 — dPF **+0.000** — dpts_base **+0.0** (vs KEEP ticks dpts **-71.1)**
+  - `cap1300`: PF **2.986** / **+156827.3** n164 — dPF **+0.000** — dpts_base **+0.0** (vs KEEP ticks dpts **-71.1)**
+  - `cap1400`: PF **2.986** / **+156827.3** n164 — dPF **+0.000** — dpts_base **+0.0** (vs KEEP ticks dpts **-71.1)**
+  - `flat22`: PF **2.981** / **+156449.2** n164 — dPF **-0.005** — dpts_base **-378.1** (vs KEEP ticks dpts **-449.2)**
+  - `nbars3`: PF **2.906** / **+156242.8** n168 — dPF **-0.080** — dpts_base **-584.5** (vs KEEP ticks dpts **-655.6)**
+  - `mb200`: PF **2.737** / **+155993.2** n179 — dPF **-0.249** — dpts_base **-834.1** (vs KEEP ticks dpts **-905.2)**
+  - `nbars4`: PF **2.949** / **+155827.3** n165 — dPF **-0.037** — dpts_base **-1000.0** (vs KEEP ticks dpts **-1071.1)**
+  - `nbars4_nd1550`: PF **2.949** / **+155827.3** n165 — dPF **-0.037** — dpts_base **-1000.0** (vs KEEP ticks dpts **-1071.1)**
+  - `nbars5_nd1575`: PF **2.949** / **+155827.3** n165 — dPF **-0.037** — dpts_base **-1000.0** (vs KEEP ticks dpts **-1071.1)**
+  - `nd1575`: PF **2.949** / **+155827.3** n165 — dPF **-0.037** — dpts_base **-1000.0** (vs KEEP ticks dpts **-1071.1)**
+- **CLEAR dpts>=~2k at PF>=2.5:** 0 cells — none.
+- **Soft >=2.5 with pts lift (incl clear):** 0 cells.
+- **Near-noise soft <2k:** none.
+- **Under-floor PF<2.0:** 0.
+- **Inert (=baseline):** 3 (`cap1100`, `cap1300`, `cap1400`).
+- **Pts-down sample:** `wait12` dpts -32271.3 PF2.528, `wait15` dpts -17856.2 PF2.660, `wait13` dpts -17699.8 PF2.772, `wait16` dpts -16050.9 PF2.624, `mb270_nd1600` dpts -11093.2 PF2.695, `mb280` dpts -11093.2 PF2.778, `nd1400` dpts -8220.0 PF2.882, `mb270` dpts -8093.2 PF2.793, `mb275` dpts -8093.2 PF2.793, `nbars6_nd1500` dpts -8000.0 PF2.885, `nd1800` dpts -7584.5 PF2.678, `nd1900` dpts -7415.9 PF2.657.
+- **Conclusion:** Fine near_box densify on NEW KEEP mb260 N5 D1550 found **no clear lifts**. Baseline tops the board; caps 1100/1300/1400 inert; best non-inert `flat22` dpts_base **-378.1** PF2.981 still under ~2k threshold. wait/rc/mb/nd/nbars dilute or flat. **No tick-confirm.** KEEP unchanged ticks PF2.99/+156898.4 n164 `20261001T230119Z_63cbf550`.
+- **Next:** Batch CO `RESIDUAL_CO_PF299` 5m orthogonal residual on KEEP (sls / SL-TP mild / pullback_mode / wick / arange / maxbreak / hold-flat / ema-fib light / timeout temd-tmb). Tick-confirm only clear soft>=2.5 dpts>=~2k; max_loss<=7-8. Do not revive parked trail KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~03:11 Europe/Bucharest Asia Batch CO RESIDUAL_CO_PF299 5m — no clear lift; kick soft-near densify CP
+- **Grid:** `results/overnight_5m_grid_20261001T235514Z.json` — tag `RESIDUAL_CO_PF299` — seed KEEP ticks `20261001T230119Z_63cbf550` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 SL1000/TP4000 sls5/2200 near_box outside N5 D1550 wick on pullback required both fib0.382 asia trail off PF2.99/+156898.4 n164 max_loss7) — candles_5m — workers=2 — window 2025-01 to 2026-09 — 66 cells (0 errors). Finished ~2026-10-02 02:56 Europe/Bucharest (log `results/_co_grid_run.log`, script `scripts/_residual_CO_pf299_20261002.py`).
+- **Baseline 5m KEEP** (`PF299_mb260_baseline`): n164 — PF **2.986** — **+156827.3**.
+- **Top by pts vs baseline (PF>=2.5):**
+  - `flat23`: PF **3.005** / **+158795.5** n164 — dPF **+0.019** — dpts_base **+1968.2** (vs KEEP ticks dpts **+1897.1)**
+  - `sls3`: PF **3.085** / **+158364.4** n160 — dPF **+0.099** — dpts_base **+1537.1** (vs KEEP ticks dpts **+1466.0)**
+  - `sls3_2200`: PF **3.085** / **+158364.4** n160 — dPF **+0.099** — dpts_base **+1537.1** (vs KEEP ticks dpts **+1466.0)**
+  - `sls4`: PF **3.025** / **+157827.3** n163 — dPF **+0.039** — dpts_base **+1000.0** (vs KEEP ticks dpts **+928.9)**
+  - `sls4_2200`: PF **3.025** / **+157827.3** n163 — dPF **+0.039** — dpts_base **+1000.0** (vs KEEP ticks dpts **+928.9)**
+  - `sls4_2500`: PF **3.025** / **+157827.3** n163 — dPF **+0.039** — dpts_base **+1000.0** (vs KEEP ticks dpts **+928.9)**
+  - `flat19`: PF **3.045** / **+157066.2** n164 — dPF **+0.059** — dpts_base **+238.9** (vs KEEP ticks dpts **+167.8)**
+  - `hold15`: PF **2.987** / **+156919.8** n164 — dPF **+0.001** — dpts_base **+92.5** (vs KEEP ticks dpts **+21.4)**
+  - `hold16`: PF **2.987** / **+156919.8** n164 — dPF **+0.001** — dpts_base **+92.5** (vs KEEP ticks dpts **+21.4)**
+  - `fib0_4`: PF **2.987** / **+156850.3** n164 — dPF **+0.001** — dpts_base **+23.0** (vs KEEP ticks dpts **-48.1)**
+- **CLEAR dpts>=~2k at PF>=2.5:** 0 cells — none.
+- **Soft >=2.5 with pts lift (incl clear):** 10 cells.
+- **Near-noise soft <2k:** `flat23` dpts+1968.2 PF3.005, `sls3`/`sls3_2200` dpts+1537.1 PF3.085, `sls4`/`sls4_2200`/`sls4_2500` dpts+1000.0 PF3.025, `flat19` dpts+238.9 PF3.045, `hold15`/`hold16` dpts+92.5 PF2.987, `fib0_4` dpts+23.0 PF2.987.
+- **Under-floor PF<2.0:** 2 (`pb_off` PF1.302, `sl800_tp3200` PF1.950).
+- **Inert (=baseline):** 12 (`arange250`, `arange350`, `arange400`, `slsa2400`, `slsa2500`, `temd200`, `temd400`, `temd600`, `tmb100`, `tmb200`, `tmb300`, `wick_off`).
+- **Pts-down sample:** `pb_off` dpts -103352.6 PF1.302, `pref_fib` dpts -88274.4 PF2.000, `sl800_tp3200` dpts -79342.1 PF1.950, `sl900_tp3600` dpts -35837.1 PF2.509, `sl1500_tp4500` dpts -32525.1 PF2.114, `sl1200_tp4800` dpts -31902.0 PF2.273, `maxbreak12` dpts -29222.8 PF2.878, `fib_anchor_roll` dpts -25803.0 PF2.384, `ema30` dpts -18792.5 PF2.644, `ema29` dpts -18404.5 PF2.610, `sl1000_tp5000` dpts -17602.8 PF2.639, `sl1000_tp3500` dpts -17564.2 PF2.764.
+- **Note:** `pb_preferred` tops raw pts (+178027.8 / dpts+21200.5) but PF **2.372** under soft floor — reject for promote / no tick.
+- **Conclusion:** Orthogonal residual on NEW KEEP mb260 found **no clear lifts**. Soft champ `flat23` dpts_base **+1968.2** PF3.005 just under ~2k threshold; runner `sls3` +1537.1 PF3.085. SL/TP / maxbreak / ema / fib / timeout temd-tmb dilute or inert. **No tick-confirm.** KEEP unchanged ticks PF2.99/+156898.4 n164 `20261001T230119Z_63cbf550`.
+- **Next:** Batch CP `SOFT_NEAR_DENSE_CP_PF299` 5m densify around CO soft near-misses (flatten 18–24, sls2–4 × asia 1900–2500, flat×sls compounds, mild hold/wait/rc). Tick-confirm only clear soft>=2.5 dpts>=~2k; max_loss<=7-8. Do not revive parked trail KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+
+### 2026-10-02 ~03:50 Europe/Bucharest Asia Batch CP SOFT_NEAR_DENSE_CP_PF299 5m - CLEAR flat23_sls3; tick-confirm
+- **Grid:** `results/overnight_5m_grid_20261002T001533Z.json` - tag `SOFT_NEAR_DENSE_CP_PF299` - seed KEEP ticks `20261001T230119Z_63cbf550` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 SL1000/TP4000 sls5/2200 near_box outside N5 D1550 wick on pullback required both fib0.382 asia trail off PF2.99/+156898.4 n164 max_loss7) - candles_5m - workers=2 - window 2025-01 to 2026-09 - 54 cells (1 errors: `flat24`; flat24 invalid-hour expected).
+- **Baseline 5m KEEP** (`PF299_mb260_baseline`): n164 - PF **2.986** - **+156827.3**.
+- **Top by pts vs baseline (PF>=2.5):**
+  - `flat23_sls3`: PF **3.104** / **+160332.6** n160 - dPF **+0.118** - dpts_base **+3505.3** (vs KEEP ticks dpts **+3434.2)**
+  - `flat23_sls3_2100`: PF **3.104** / **+160332.6** n160 - dPF **+0.118** - dpts_base **+3505.3** (vs KEEP ticks dpts **+3434.2)**
+  - `flat23_sls3_2200`: PF **3.104** / **+160332.6** n160 - dPF **+0.118** - dpts_base **+3505.3** (vs KEEP ticks dpts **+3434.2)**
+  - `flat23_sls3_2300`: PF **3.104** / **+160332.6** n160 - dPF **+0.118** - dpts_base **+3505.3** (vs KEEP ticks dpts **+3434.2)**
+  - `flat23_sls3_hold15`: PF **3.100** / **+160049.2** n160 - dPF **+0.114** - dpts_base **+3221.9** (vs KEEP ticks dpts **+3150.8)**
+  - `flat23_sls4`: PF **3.043** / **+159795.5** n163 - dPF **+0.057** - dpts_base **+2968.2** (vs KEEP ticks dpts **+2897.1)**
+  - `flat23_sls4_2200`: PF **3.043** / **+159795.5** n163 - dPF **+0.057** - dpts_base **+2968.2** (vs KEEP ticks dpts **+2897.1)**
+  - `flat23`: PF **3.005** / **+158795.5** n164 - dPF **+0.019** - dpts_base **+1968.2** (vs KEEP ticks dpts **+1897.1)**
+  - `flat23_hold16`: PF **3.003** / **+158651.2** n164 - dPF **+0.017** - dpts_base **+1823.9** (vs KEEP ticks dpts **+1752.8)**
+  - `sls3`: PF **3.085** / **+158364.4** n160 - dPF **+0.099** - dpts_base **+1537.1** (vs KEEP ticks dpts **+1466.0)**
+- **CLEAR dpts>=~2k at PF>=2.5:** 7 cells - `flat23_sls3`: PF **3.104** / **+160332.6** n160 - dPF **+0.118** - dpts_base **+3505.3** (vs KEEP ticks dpts **+3434.2)**, `flat23_sls3_2100`: PF **3.104** / **+160332.6** n160 - dPF **+0.118** - dpts_base **+3505.3** (vs KEEP ticks dpts **+3434.2)**, `flat23_sls3_2200`: PF **3.104** / **+160332.6** n160 - dPF **+0.118** - dpts_base **+3505.3** (vs KEEP ticks dpts **+3434.2)**, `flat23_sls3_2300`: PF **3.104** / **+160332.6** n160 - dPF **+0.118** - dpts_base **+3505.3** (vs KEEP ticks dpts **+3434.2)**, `flat23_sls3_hold15`: PF **3.100** / **+160049.2** n160 - dPF **+0.114** - dpts_base **+3221.9** (vs KEEP ticks dpts **+3150.8)**, `flat23_sls4`: PF **3.043** / **+159795.5** n163 - dPF **+0.057** - dpts_base **+2968.2** (vs KEEP ticks dpts **+2897.1)**, `flat23_sls4_2200`: PF **3.043** / **+159795.5** n163 - dPF **+0.057** - dpts_base **+2968.2** (vs KEEP ticks dpts **+2897.1)**.
+- **Soft >=2.5 with pts lift (incl clear):** 29 cells.
+- **Near-noise soft <2k:** `flat18` dpts+1472.0 PF3.087, `flat19` dpts+238.9 PF3.045, `flat22_sls3` dpts+1159.0 PF3.08, `flat22_sls3_2200` dpts+1159.0 PF3.08, `flat22_sls3_hold15` dpts+1268.1 PF3.081, `flat22_sls4` dpts+621.9 PF3.02, `flat22_sls4_2200` dpts+621.9 PF3.02, `flat23` dpts+1968.2 PF3.005, `flat23_hold15` dpts+1513.8 PF2.999, `flat23_hold16` dpts+1823.9 PF3.003.
+- **Under-floor PF<2.0:** 0.
+- **Inert (=baseline):** 5 (`slsa2100`, `slsa2200`, `slsa2300`, `slsa2400`, `slsa2500`).
+- **Pts-down sample:** `wait15` dpts -17856.2 PF2.660, `wait13` dpts -17699.8 PF2.772, `rc7` dpts -5746.8 PF2.890, `rc5` dpts -3110.1 PF2.945, `flat20` dpts -2887.6 PF2.947, `sls2` dpts -2462.9 PF3.032, `sls2_2200` dpts -2462.9 PF3.032, `sls3_2400` dpts -2462.9 PF3.032, `slsa1900` dpts -2000.0 PF2.913, `slsa2000` dpts -2000.0 PF2.913, `flat20_sls4` dpts -1887.6 PF2.985, `flat20_sls4_2200` dpts -1887.6 PF2.985.
+- **Conclusion:** Soft-near densify around CO flat23/sls3 pocket found **clear lifts**. Pts-champ `flat23_sls3` dpts_base **+3505.3** PF3.104 (overrides {"flatten_hour":23,"skip_late_short_wait":3}); asia 2100/2200/2300 twins identical. PF-champ among clear: `flat23_sls3` PF3.104/+160332.6. Runners: `flat23_sls3_hold15`, `flat23_sls4`, `flat23_sls4_2200`. wait/rc dilute. KEEP unchanged pending tick (ticks PF2.99/+156898.4 n164 `20261001T230119Z_63cbf550`).
+- **Next:** tick-confirm champ `flat23_sls3` (overrides {"flatten_hour":23,"skip_late_short_wait":3}) on KEEP seed ticks workers=2; then runners `flat23_sls3_hold15`, `flat23_sls4`, `flat23_sls4_2200` if champ rejects. Prefer max_loss streak <=7-8; promote only if tick dpts>=~2k AND PF>=~2.5. Do not revive parked trail KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+
+### 2026-10-02 ~04:11 Europe/Bucharest Asia CP_tick flat23_sls3 REJECT max_loss9; kick hold15 runner
+- **Tick:** `20261002T010643Z_8a180dfa` - data ticks - workers=2 - window 2025-01 to 2026-09 - overrides {"flatten_hour":23,"skip_late_short_wait":3} - started 2026-10-02T00:53:14.123466+00:00 finished 2026-10-02T01:06:43.442535+00:00.
+- **Result:** n161 - PF **3.06** - **+159260.5** - win50.3% - max_loss **9** max_win14 - exits sl76/flatten38/tp47 - saved `results\overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261002T010643Z_8a180dfa.json`.
+- **vs KEEP** ticks `20261001T230119Z_63cbf550` PF2.99/+156898.4 n164 max_loss7: dPF **+0.070** - dpts **+2362.1** - nΔ-3.
+- **Verdict:** **REJECT** — max_loss9 > hard-ish <=7-8 (despite dpts+2362.1 PF3.06). Soft PF floor and ~2k pts lift met, but max loss streak fails hard-ish filter (prefer ≤7–8; reject above 8).
+- **KEEP unchanged:** ticks PF2.99/+156898.4 n164 max_loss7 `20261001T230119Z_63cbf550` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 SL1000/TP4000 sls5/2200 near_box outside N5 D1550 wick on pullback required both fib0.382 asia trail off).
+- **Next:** tick-confirm runner `flat23_sls3_hold15` (overrides {"flatten_hour":23,"skip_late_short_wait":3,"max_hold_hours":15.0}) on KEEP seed ticks workers=2; then `flat23_sls4` if hold15 rejects. Promote only tick dpts≥~2k PF≥~2.5 max_loss≤7–8. Do not revive parked trail KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+
+### 2026-10-02 ~04:42 Europe/Bucharest Asia CP_tick flat23_sls3_hold15 REJECT max_loss9; kick flat23_sls4 runner
+- **Tick:** `20261002T012742Z_7e343905` - data ticks - workers=2 - window 2025-01 to 2026-09 - overrides {"flatten_hour":23,"skip_late_short_wait":3,"max_hold_hours":15.0} - started 2026-10-02T01:14:00.745495+00:00 finished 2026-10-02T01:27:42.394555+00:00.
+- **Result:** n161 - PF **3.06** - **+159121.7** - win50.3% - max_loss **9** max_win14 - exits sl76/flatten38/tp47 - saved `results\overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261002T012742Z_7e343905.json`.
+- **vs KEEP** ticks `20261001T230119Z_63cbf550` PF2.99/+156898.4 n164 max_loss7: dPF **+0.070** - dpts **+2223.3** - nΔ-3.
+- **Verdict:** **REJECT** — max_loss9 > hard-ish <=7-8 (despite dpts+2223.3 PF3.06). Soft PF floor and ~2k pts lift met, but max loss streak fails hard-ish filter (prefer ≤7–8; reject above 8).
+- **KEEP unchanged:** ticks PF2.99/+156898.4 n164 max_loss7 `20261001T230119Z_63cbf550` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 SL1000/TP4000 sls5/2200 near_box outside N5 D1550 wick on pullback required both fib0.382 asia trail off).
+- **Next:** tick-confirm runner `flat23_sls4` (overrides {"flatten_hour":23,"skip_late_short_wait":4}) on KEEP seed ticks workers=2; then `flat23_sls4_2200` if sls4 rejects. Promote only tick dpts≥~2k PF≥~2.5 max_loss≤7–8. Do not revive parked trail KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+
+### 2026-10-02 ~05:18 Europe/Bucharest Asia CP_tick flat23_sls4 REJECT max_loss9; skip twin sls4_2200; kick Batch CQ
+- **Tick:** `20261002T015738Z_c58fcb9f` - data ticks - workers=2 - window 2025-01 to 2026-09 - overrides {"flatten_hour":23,"skip_late_short_wait":4} - started 2026-10-02T01:44:12.148059+00:00 finished 2026-10-02T01:57:38.903442+00:00.
+- **Result:** n163 - PF **3.04** - **+159690.5** - win50.3% - max_loss **9** max_win8 - exits sl77/flatten39/tp47 - saved `results\overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261002T015738Z_c58fcb9f.json`.
+- **vs KEEP** ticks `20261001T230119Z_63cbf550` PF2.99/+156898.4 n164 max_loss7: dPF **+0.050** - dpts **+2792.1** - nΔ-1.
+- **Verdict:** **REJECT** — max_loss9 > hard-ish <=7-8 (despite dpts+2792.1 PF3.04). Soft PF floor and ~2k pts lift met, but max loss streak fails hard-ish filter (prefer ≤7–8; reject above 8).
+- **Twin skip:** `flat23_sls4_2200` identical to this tick on KEEP seed (asia pts already 2200); 5m twins matched exactly — do not re-tick.
+- **CP tick line closed:** champ `flat23_sls3` + runners `hold15`/`sls4` all REJECT max_loss9; asia twins inert.
+- **KEEP unchanged:** ticks PF2.99/+156898.4 n164 max_loss7 `20261001T230119Z_63cbf550` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 SL1000/TP4000 sls5/2200 near_box outside N5 D1550 wick on pullback required both fib0.382 asia trail off).
+- **Next:** Batch CQ `ALT_POCKET_CQ_PF299` 5m — densify away from rejected flat23×sls pocket (flat22 compounds, flat21×sls, mb/nd/wait/rc/cap fine, maxbreak, near_box trend, side diagnostic). Tick-confirm only clear soft≥2.5 dpts≥~2k with max_loss≤7–8. Do not revive parked trail KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+
+### 2026-10-02 ~05:45 Europe/Bucharest Asia Batch CQ ALT_POCKET_CQ_PF299 5m NO CLEAR; kick Batch CR
+- **Grid:** `overnight_5m_grid_20261002T022116Z.json` - tag `ALT_POCKET_CQ_PF299` - candles_5m - workers=2 - window 2025-01 to 2026-09 - 61 cells - finished 2026-10-02T02:21:46.097294+00:00.
+- **5m baseline:** `PF299_mb260_baseline` n164 PF2.986 / +156827.3 (seed KEEP ticks `20261001T230119Z_63cbf550` PF2.99/+156898.4 n164 max_loss7).
+- **Best:** `flat21_sls3` n160 PF **3.085** / **+158364.4** win51.9% — dpts **+1537.1** dPF **+0.099** overrides {"flatten_hour":21,"skip_late_short_wait":3}.
+- **Runners:** `flat21_sls3` dpts+1537.1 PF3.085; `flat21_sls3_2200` dpts+1537.1 PF3.085; `flat22_sls3_hold15` dpts+1268.1 PF3.081; `flat22_sls3` dpts+1159.0 PF3.080; `flat21_sls4` dpts+1000.0 PF3.025; `flat21_sls4_2200` dpts+1000.0 PF3.025.
+- **Verdict:** **NO CLEAR** — best `flat21_sls3` dpts+1537.1 PF3.085 under ~2k clear bar (twin `flat21_sls3_2200` identical). Skip tick-confirm (prior BC precedent: dpts under ~2k on 5m). KEEP already flat21/sls5/2200; CQ flat21×sls3 pocket is only milder sls and echoes CP flat23×sls3 max_loss9 risk.
+- **KEEP unchanged:** ticks PF2.99/+156898.4 n164 max_loss7 `20261001T230119Z_63cbf550` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 SL1000/TP4000 sls5/2200 near_box outside N5 D1550 wick on pullback required both fib0.382 asia trail off).
+- **Next:** Batch CR `ORTHO_DENSE_CR_PF299` 5m — SL/TP denser + tpsl/tprm + week2/trend + MA probes + be/otp/seasonal/news + asia mild + timeout denser + sl_mode/cap; avoid flat23×sls and CQ flat21_sls3 tick. Tick-confirm only clear soft≥2.5 dpts≥~2k with max_loss≤7–8. Do not revive parked trail KEEP. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-02 ~06:17 Europe/Bucharest Asia Batch CR ORTHO_DENSE_CR_PF299 5m NO CLEAR; kick Batch CS
+- **Grid:** 
+esults/overnight_5m_grid_20261002T024948Z.json - tag ORTHO_DENSE_CR_PF299 - candles_5m - workers=2 - window 2025-01 to 2026-09 - 75 cells - errors [] - finished ~2026-10-02T02:50Z UTC (log 
+esults/_cr_grid_run.log; script scripts/_ortho_dense_CR_pf299_20261002.py).
+- **5m baseline:** PF299_mb260_baseline n164 PF2.986 / +156827.3 (seed KEEP ticks 20261001T230119Z_63cbf550 PF2.99/+156898.4 n164 max_loss7).
+- **CLEAR dpts>=~2k at PF>=2.5:** 0.
+- **Soft >=2.5 with pts lift:** 0 (no cell with dpts>0 at PF>=2.5 excl baseline).
+- **Best non-worse-by-pts among movers:** sl1100_tp4000 n164 PF2.875 / +156499.1 - dpts **-328.2** dPF -0.111 (closest to flat; still pts-down).
+- **PF-up / pts-down diagnostics:** seasonal_filter PF3.240 dpts-9063.6 n144; 
+ews_filter PF3.238 dpts-9190.6 n144; week2_filter PF2.893 dpts-41423.6 n129.
+- **Inert (=baseline pts/pf):** many timeout/trend/sl_cap/otp/tag probes (temd*, tmb*, teff*, tsess*, tflat*, slcap*, otp_off, *_tag, tpsl4_0).
+- **Pts-down sample:** MA probes (hma/zlema/kama) dpts -65k..-122k PF~1.2-1.7; be500/800/1000 severe; asia0_5/0_7 dilute; SL/TP denser around 1000/4000 all <= baseline.
+- **Verdict:** **NO CLEAR** - orthogonal densify (SL/TP denser, tpsl/tprm, week2/trend, MA, be/otp/seasonal/news, asia mild, timeout, sl_mode) found **no clear lifts**. Skip tick-confirm. KEEP unchanged ticks PF2.99/+156898.4 n164 max_loss7 20261001T230119Z_63cbf550.
+- **Next:** Batch CS ENTRY_FIB_RESIDUAL_CS_PF299 5m - pullback_fib/ref/anchor densify + near_box_trend residual + resume/cap + timeout_min_pullback + entry gates (uhc/rco/ematf) + hold/maxbreak/arange + seasonal/news join + mild fib compounds; avoid flat23xsls and trail revive. Tick-confirm only clear soft>=2.5 dpts>=~2k with max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-02 ~06:45 Europe/Bucharest Asia Batch CS ENTRY_FIB_RESIDUAL_CS_PF299 5m NO CLEAR; kick Batch CT
+- **Grid:** `results/overnight_5m_grid_20261002T032136Z.json` - tag `ENTRY_FIB_RESIDUAL_CS_PF299` - candles_5m - workers=2 - window 2025-01 to 2026-09 - 77 cells - errors [] - finished ~2026-10-02T03:21–03:??Z UTC (log `results/_cs_grid_run.log`; script `scripts/_entry_fib_residual_CS_pf299_20261002.py`).
+- **5m baseline:** `PF299_mb260_baseline` n164 PF2.986 / +156827.3 (seed KEEP ticks `20261001T230119Z_63cbf550` PF2.99/+156898.4 n164 max_loss7).
+- **CLEAR soft≥2.5 dpts≥~2k:** 0.
+- **Soft ≥2.5 with pts lift:** 7 (all under ~2k; best `fib040_hold15` dpts+115.5).
+  - `fib040_hold15` n164 PF **2.988** / **+156942.8** win51.2% — dpts **+115.5** dPF **+0.002** overrides {"pullback_fib":0.4,"max_hold_hours":15.0}
+  - `hold15` n164 PF **2.987** / **+156919.8** win51.2% — dpts **+92.5** dPF **+0.001** overrides {"max_hold_hours":15.0}
+  - `hold16` n164 PF **2.987** / **+156919.8** win51.2% — dpts **+92.5** dPF **+0.001** overrides {"max_hold_hours":16.0}
+  - `hold18` n164 PF **2.987** / **+156919.8** win51.2% — dpts **+92.5** dPF **+0.001** overrides {"max_hold_hours":18.0}
+  - `ematf5_fib040` n164 PF **2.987** / **+156850.3** win51.2% — dpts **+23.0** dPF **+0.001** overrides {"ema_tf_min":5,"pullback_fib":0.4}
+  - `fib040_wait14` n164 PF **2.987** / **+156850.3** win51.2% — dpts **+23.0** dPF **+0.001** overrides {"pullback_fib":0.4,"max_wait_candles":14}
+  - `fib0_4` n164 PF **2.987** / **+156850.3** win51.2% — dpts **+23.0** dPF **+0.001** overrides {"pullback_fib":0.4}
+- **Best by pts (PF under floor):** `seasonal_filter_join` n213 PF **2.431** / **+158293.1** win46.5% — dpts **+1465.8** dPF **-0.555** overrides {"seasonal_mode":"filter","seasonal_join":true} — PF 2.431 < soft ~2.5.
+- **Under-PF lifts sample:**
+  - `seasonal_filter_join` dpts+1465.8 PF2.431 n213
+- **Inert / micro:** tmpb*/rco/ematf/arange*/nbtrend_outside ≈ baseline; fib densify around 0.382 mostly flat; resume/cap dilute; maxbreak extremes cut pts.
+- **Verdict:** **NO CLEAR** — entry/fib/resume residual densify found **no clear lifts** (best soft≥2.5 dpts only +115.5; seasonal_join +1465.8 at PF2.431 under floor). Skip tick-confirm. KEEP unchanged ticks PF2.99/+156898.4 n164 max_loss7 `20261001T230119Z_63cbf550`.
+- **Next:** Batch CT `STRUCT_COMPOUND_CT_PF299` 5m — ema/wait/mb/near_box densify + mild CS micro compounds (fib0.40×hold15×ema/wait); avoid flat23×sls and trail revive. Tick-confirm only clear soft≥2.5 dpts≥~2k with max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-02 ~07:20 Europe/Bucharest Asia Batch CT STRUCT_COMPOUND_CT_PF299 5m NO CLEAR; kick Batch CU
+- **Grid:** `results/overnight_5m_grid_20261002T034848Z.json` - tag `STRUCT_COMPOUND_CT_PF299` - candles_5m - workers=2 - window 2025-01 to 2026-09 - 81 cells - errors [] - finished ~2026-10-02T03:49Z UTC (log `results/_ct_grid_run.log`; script `scripts/_struct_compound_CT_pf299_20261002.py`).
+- **5m baseline:** `PF299_mb260_baseline` n164 PF2.986 / +156827.3 (seed KEEP ticks `20261001T230119Z_63cbf550` PF2.99/+156898.4 n164 max_loss7).
+- **CLEAR soft≥2.5 dpts≥~2k:** 0.
+- **Soft ≥2.5 with pts lift:** 1 (under ~2k).
+  - `slsa2600` n163 PF **3.025** / **+157827.3** win51.5% — dpts **+1000.0** dPF **+0.039** overrides {"skip_late_short_asia_pts":2600.0}
+- **Best by pts (PF under floor):** `pb_preferred` n241 PF **2.372** / **+178027.8** win44.8% — dpts **+21200.5** dPF **-0.614** overrides {"pullback_mode":"preferred"} — PF under soft ~2.5 (known under-floor pts spike; skip).
+- **Inert (=baseline):** wick_off / otp_off / several slsa2100–2500 / sls5_2400 twins.
+- **Pts-down sample:** ema/wait/mb densify around KEEP mostly dilute; near_box denser ≤ baseline; fib040 compounds ≤ baseline; nearbox_off PF3.269 but dpts−17266 n130.
+- **Verdict:** **NO CLEAR** — structure densify (ema/wait/mb/near_box + CS micro compounds) found **no clear lifts** (best soft≥2.5 dpts only +1000 at slsa2600). Skip tick-confirm. KEEP unchanged ticks PF2.99/+156898.4 n164 max_loss7 `20261001T230119Z_63cbf550`.
+- **Next:** Batch CU `SOFT_NEAR_SLS_CU_PF299` 5m — densify around CT tip slsa2600 + sls×asia compounds (avoid wait3/4×flat23) + resume_closes/cap residual + mild tip×structure/SLTP compounds; avoid flat23×sls and trail revive. Tick-confirm only clear soft≥2.5 dpts≥~2k with max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-02 ~07:50 Europe/Bucharest Asia Batch CU SOFT_NEAR_SLS_CU_PF299 5m NO CLEAR; kick Batch CV
+- **Grid:** `results/overnight_5m_grid_20261002T042342Z.json` - tag `SOFT_NEAR_SLS_CU_PF299` - candles_5m - workers=2 - window 2025-01 to 2026-09 - 72 cells - errors [] - finished ~2026-10-02T04:24Z UTC (log `results/_cu_grid_run.log`; script `scripts/_soft_near_sls_CU_pf299_20261002.py`).
+- **5m baseline:** `PF299_mb260_baseline` n164 PF2.986 / +156827.3 (seed KEEP ticks `20261001T230119Z_63cbf550` PF2.99/+156898.4 n164 max_loss7).
+- **CLEAR soft≥2.5 dpts≥~2k:** 0.
+- **Soft ≥2.5 with pts lift:** 12 (all under ~2k; best `slsa2600_hold15`/`slsa2700_hold15` dpts+1092.5).
+  - `slsa2600_hold15` n163 PF **3.026** / **+157919.8** win51.5% — dpts **+1092.5** dPF **+0.04** overrides {"skip_late_short_asia_pts":2600.0,"max_hold_hours":15.0}
+  - `slsa2700_hold15` n163 PF **3.026** / **+157919.8** win51.5% — dpts **+1092.5** dPF **+0.04** overrides {"skip_late_short_asia_pts":2700.0,"max_hold_hours":15.0}
+  - `slsa2600_fib040` n163 PF **3.025** / **+157850.3** win51.5% — dpts **+1023.0** dPF **+0.039** overrides {"skip_late_short_asia_pts":2600.0,"pullback_fib":0.4}
+  - `sls5_2600` n163 PF **3.025** / **+157827.3** win51.5% — dpts **+1000.0** dPF **+0.039** overrides {"skip_late_short_wait":5,"skip_late_short_asia_pts":2600.0}
+  - `sls5_2700` n163 PF **3.025** / **+157827.3** win51.5% — dpts **+1000.0** dPF **+0.039** overrides {"skip_late_short_wait":5,"skip_late_short_asia_pts":2700.0}
+  - `slsa2600` n163 PF **3.025** / **+157827.3** win51.5% — dpts **+1000.0** dPF **+0.039** overrides {"skip_late_short_asia_pts":2600.0}
+  - `slsa2600_cap1400` n163 PF **3.025** / **+157827.3** win51.5% — dpts **+1000.0** dPF **+0.039** overrides {"skip_late_short_asia_pts":2600.0,"resume_max_break_pts":1400.0}
+  - `slsa2650` n163 PF **3.025** / **+157827.3** win51.5% — dpts **+1000.0** dPF **+0.039** overrides {"skip_late_short_asia_pts":2650.0}
+  - `slsa2700` n163 PF **3.025** / **+157827.3** win51.5% — dpts **+1000.0** dPF **+0.039** overrides {"skip_late_short_asia_pts":2700.0}
+  - `slsa2750` n163 PF **3.025** / **+157827.3** win51.5% — dpts **+1000.0** dPF **+0.039** overrides {"skip_late_short_asia_pts":2750.0}
+- **Best by pts (PF under floor):**   - (none)
+- **Inert (=baseline):** 13 cells (rc/cap/otp/wick twins mostly flat).
+- **Verdict:** **NO CLEAR** — soft-near densify around CT tip slsa2600 found **no clear lifts** (best soft≥2.5 dpts only +1092.5 at hold15×slsa2600/2700). Skip tick-confirm. KEEP unchanged ticks PF2.99/+156898.4 n164 max_loss7 `20261001T230119Z_63cbf550`.
+- **Next:** Batch CV `HOLD_TIP_DENSE_CV_PF299` 5m — densify CU tip hold×slsa (+ fib040×hold compounds + mild wait/ema/maxbreak/timeout); avoid flat23×sls and trail revive. Tick-confirm only clear soft≥2.5 dpts≥~2k with max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-02 ~08:19 Europe/Bucharest Asia Batch CV HOLD_TIP_DENSE_CV_PF299 5m NO CLEAR; kick Batch CW
+- **Grid:** `results/overnight_5m_grid_20261002T045824Z.json` - tag `HOLD_TIP_DENSE_CV_PF299` - candles_5m - workers=2 - window 2025-01 to 2026-09 - 76 cells - errors [] - finished ~2026-10-02T04:59Z UTC (log `results/_cv_grid_run.log`; script `scripts/_hold_tip_dense_CV_pf299_20261002.py`).
+- **5m baseline:** `PF299_mb260_baseline` n164 PF2.986 / +156827.3 (seed KEEP ticks `20261001T230119Z_63cbf550` PF2.99/+156898.4 n164 max_loss7).
+- **CLEAR soft≥2.5 dpts≥~2k:** 0.
+- **Soft ≥2.5 with pts lift:** 46 (all under ~2k; best `slsa2600_hold15_maxb16` dpts+1775.1 PF2.889).
+  - `slsa2600_hold15_maxb16` n172 PF **2.889** / **+158602.4** win50.6% — dpts **+1775.1** dPF **-0.097** overrides {"skip_late_short_asia_pts":2600.0,"max_hold_hours":15.0,"max_break_candles_after":16}
+  - `slsa2600_fib040_hold15` n163 PF **3.026** / **+157942.8** win51.5% — dpts **+1115.5** dPF **+0.04** overrides {"skip_late_short_asia_pts":2600.0,"pullback_fib":0.4,"max_hold_hours":15.0}
+  - `slsa2600_fib040_hold16` n163 PF **3.026** / **+157942.8** win51.5% — dpts **+1115.5** dPF **+0.04** overrides {"skip_late_short_asia_pts":2600.0,"pullback_fib":0.4,"max_hold_hours":16.0}
+  - `slsa2700_fib040_hold15` n163 PF **3.026** / **+157942.8** win51.5% — dpts **+1115.5** dPF **+0.04** overrides {"skip_late_short_asia_pts":2700.0,"pullback_fib":0.4,"max_hold_hours":15.0}
+  - `slsa2700_hold15_fib040` n163 PF **3.026** / **+157942.8** win51.5% — dpts **+1115.5** dPF **+0.04** overrides {"skip_late_short_asia_pts":2700.0,"max_hold_hours":15.0,"pullback_fib":0.4}
+  - `hold15_slsa2600` n163 PF **3.026** / **+157919.8** win51.5% — dpts **+1092.5** dPF **+0.04** overrides {"max_hold_hours":15.0,"skip_late_short_asia_pts":2600.0}
+  - `hold15_slsa2650` n163 PF **3.026** / **+157919.8** win51.5% — dpts **+1092.5** dPF **+0.04** overrides {"max_hold_hours":15.0,"skip_late_short_asia_pts":2650.0}
+  - `hold15_slsa2700` n163 PF **3.026** / **+157919.8** win51.5% — dpts **+1092.5** dPF **+0.04** overrides {"max_hold_hours":15.0,"skip_late_short_asia_pts":2700.0}
+  - `hold15_slsa2750` n163 PF **3.026** / **+157919.8** win51.5% — dpts **+1092.5** dPF **+0.04** overrides {"max_hold_hours":15.0,"skip_late_short_asia_pts":2750.0}
+  - `hold16_slsa2600` n163 PF **3.026** / **+157919.8** win51.5% — dpts **+1092.5** dPF **+0.04** overrides {"max_hold_hours":16.0,"skip_late_short_asia_pts":2600.0}
+- **Best by pts (PF under floor):**   - (none)
+- **Inert (=baseline):** 11 cells.
+- **Verdict:** **NO CLEAR** — hold×slsa densify found no clear lifts (closest soft `slsa2600_hold15_maxb16` dpts+1775.1 PF2.889; fib040×tip twins +1115.5). Skip tick-confirm. KEEP unchanged ticks PF2.99/+156898.4 n164 max_loss7 `20261001T230119Z_63cbf550`.
+- **Next:** Batch CW `MAXB_TIP_DENSE_CW_PF299` 5m — densify CV tip max_break~16 with slsa2600/hold15/fib040 compounds (+ mild wait/ema/mb/rc); avoid flat23×sls and trail revive. Tick-confirm only clear soft≥2.5 dpts≥~2k with max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~08:50 Europe/Bucharest Asia Batch CW MAXB_TIP_DENSE_CW_PF299 5m NO CLEAR; kick Batch CX
+- **Grid:** results/overnight_5m_grid_20261002T052316Z.json - tag MAXB_TIP_DENSE_CW_PF299 - candles_5m - workers=2 - window 2025-01 to 2026-09 - 76 cells - errors [] - finished ~2026-10-02T05:23Z UTC (log results/_cw_grid_run.log; script scripts/_maxb_tip_dense_CW_pf299_20261002.py).
+- **5m baseline:** PF299_mb260_baseline n164 PF2.986 / +156827.3 (seed KEEP ticks 20261001T230119Z_63cbf550 PF2.99/+156898.4 n164 max_loss7).
+- **CLEAR soft>=2.5 dpts>=~2k:** 0.
+- **Soft >=2.5 with pts lift:** 27 (all under ~2k; best maxb16_slsa2600/2700_fib040_hold15 dpts+1798.1 PF2.889).
+  - maxb16_slsa2600_fib040_hold15 n172 PF **2.889** / **+158625.4** win50.6% -- dpts **+1798.1** dPF **-0.097** overrides {max_break_candles_after:16, skip_late_short_asia_pts:2600, pullback_fib:0.4, max_hold_hours:15}
+  - maxb16_slsa2700_fib040_hold15 n172 PF **2.889** / **+158625.4** win50.6% -- dpts **+1798.1** dPF **-0.097** overrides {max_break_candles_after:16, skip_late_short_asia_pts:2700, pullback_fib:0.4, max_hold_hours:15}
+  - maxb16_slsa2600_hold15 n172 PF **2.889** / **+158602.4** win50.6% -- dpts **+1775.1** dPF **-0.097** overrides {max_break_candles_after:16, skip_late_short_asia_pts:2600, max_hold_hours:15}
+  - maxb16_slsa2600_hold15_cap1400 / tmpb100 twins dpts+1775.1 (inert add-ons)
+  - maxb16_slsa2600..2750 n172 PF **2.888** / **+158509.9** -- dpts **+1682.6**
+  - maxb15_slsa2600_hold15 n163 PF **3.026** / **+157919.8** -- dpts **+1092.5** (PF-champ tip, lower pts)
+- **Best by pts (PF under floor):** none among soft>=2.5.
+- **Inert (=baseline):** otp_off / wick_off / several maxb15 twins.
+- **Pts-down sample:** maxb13-14 / maxb17+ dilute; ema32/wait13/wait15/mb255/mb265/rc5/rc7/nd1500 on tip cut pts; side_short thin n68 PF3.665.
+- **Verdict:** **NO CLEAR** -- maxb tip densify found **no clear lifts** (closest soft maxb16+slsa+hold15+fib040 dpts+1798.1 PF2.889, still under ~2k). Skip tick-confirm. KEEP unchanged ticks PF2.99/+156898.4 n164 max_loss7 20261001T230119Z_63cbf550.
+- **Next:** Batch CX TIP_NEAR2K_CX_PF299 5m -- densify CW tip (~+1798) with flatten 19-22 (no flat23), SL/TP residual, near_box/timeout/sls-wait compounds; avoid flat23xsls and trail revive. Tick-confirm only clear soft>=2.5 dpts>=~2k with max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~09:18 Europe/Bucharest Asia Batch CX TIP_NEAR2K_CX_PF299 5m CLEAR tip_sls4_2600; kick CX_tick
+- **Grid:** results/overnight_5m_grid_20261002T055308Z.json - tag TIP_NEAR2K_CX_PF299 - candles_5m - workers=2 - window 2025-01 to 2026-09 - 67 cells - errors [] - finished ~2026-10-02T05:53Z UTC (log results/_cx_grid_run.log; script scripts/_tip_near2k_CX_pf299_20261002.py).
+- **5m baseline:** PF299_mb260_baseline n164 PF2.986 / +156827.3 (seed KEEP ticks 20261001T230119Z_63cbf550 PF2.99/+156898.4 n164 max_loss7).
+- **CLEAR soft>=2.5 dpts>=~2k:** 1.
+  - tip_sls4_2600 n171 PF **2.924** / **+159625.4** win50.9% -- dpts **+2798.1** dPF **-0.062** overrides {max_break_candles_after:16, skip_late_short_asia_pts:2600.0, max_hold_hours:15.0, pullback_fib:0.4, skip_late_short_wait:4}
+- **Soft >=2.5 with pts lift under ~2k:** 32 (cluster ~+1798.1 = CW tip maxb16+slsa+hold15+fib040 / timeout-near-box inert twins).
+  - tip_tmpb50 n172 PF **2.889** / **+158625.4** win50.6% -- dpts **+1798.1** dPF **-0.097** overrides {max_break_candles_after:16, skip_late_short_asia_pts:2600.0, max_hold_hours:15.0, pullback_fib:0.4, timeout_min_pullback_pts:50.0}
+  - tip_tmpb200 n172 PF **2.889** / **+158625.4** win50.6% -- dpts **+1798.1** dPF **-0.097** overrides {max_break_candles_after:16, skip_late_short_asia_pts:2600.0, max_hold_hours:15.0, pullback_fib:0.4, timeout_min_pullback_pts:200.0}
+  - tip_tmpb150 n172 PF **2.889** / **+158625.4** win50.6% -- dpts **+1798.1** dPF **-0.097** overrides {max_break_candles_after:16, skip_late_short_asia_pts:2600.0, max_hold_hours:15.0, pullback_fib:0.4, timeout_min_pullback_pts:150.0}
+  - tip_tmpb100 n172 PF **2.889** / **+158625.4** win50.6% -- dpts **+1798.1** dPF **-0.097** overrides {max_break_candles_after:16, skip_late_short_asia_pts:2600.0, max_hold_hours:15.0, pullback_fib:0.4, timeout_min_pullback_pts:100.0}
+  - tip_tmb50 n172 PF **2.889** / **+158625.4** win50.6% -- dpts **+1798.1** dPF **-0.097** overrides {max_break_candles_after:16, skip_late_short_asia_pts:2600.0, max_hold_hours:15.0, pullback_fib:0.4, timeout_min_break_pts:50.0}
+  - tip_tmb200 n172 PF **2.889** / **+158625.4** win50.6% -- dpts **+1798.1** dPF **-0.097** overrides {max_break_candles_after:16, skip_late_short_asia_pts:2600.0, max_hold_hours:15.0, pullback_fib:0.4, timeout_min_break_pts:200.0}
+  - tip_tmb150 n172 PF **2.889** / **+158625.4** win50.6% -- dpts **+1798.1** dPF **-0.097** overrides {max_break_candles_after:16, skip_late_short_asia_pts:2600.0, max_hold_hours:15.0, pullback_fib:0.4, timeout_min_break_pts:150.0}
+  - tip_tmb100 n172 PF **2.889** / **+158625.4** win50.6% -- dpts **+1798.1** dPF **-0.097** overrides {max_break_candles_after:16, skip_late_short_asia_pts:2600.0, max_hold_hours:15.0, pullback_fib:0.4, timeout_min_break_pts:100.0}
+- **Best by pts (PF under floor):** 0 none.
+- **Inert (=baseline):** 3 cells (otp_off/wick_off/pfchamp twins mostly).
+- **Pts-down sample:** tip_flat20/22_sl900_tp4000 ~-21k; tip_nb_off cuts n/pts; side_short thin n68 PF3.665.
+- **Verdict:** **CLEAR** -- tip_sls4_2600 (CW tip + skip_late_short_wait=4) dpts+2798.1 PF2.924 on 5m. Kick tick-confirm. KEEP unchanged pending ticks PF2.99/+156898.4 n164 max_loss7 20261001T230119Z_63cbf550.
+- **Next:** CX_tick tip_sls4_2600 ticks workers=2 (KEEP + maxb16 + slsa2600 + hold15 + fib0.40 + sls4; body results/_cx_tick_tip_sls4_2600_body.json; PARAM_ECHO_OK; started 2026-10-02T06:19:56Z UTC). Promote only tick dpts>=~2k PF>=~2.5 max_loss<=7-8. If reject → residual densify around tipxsls4 (sls3/5 x slsa/hold/fib) or next entry/timeout pocket; avoid flat23xsls and trail revive. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~09:48 Europe/Bucharest Asia CX_tick tip_sls4_2600 NEW KEEP; kick Batch CY
+- **Tick:** `results/overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261002T063348Z_456d59c9.json` — CX_tick tip_sls4_2600 — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — started 2026-10-02T06:19:56Z finished 2026-10-02T06:33:48Z UTC — run_id `20261002T063348Z_456d59c9` — body `results/_cx_tick_tip_sls4_2600_body.json`.
+- **Prior KEEP:** CM_tick mb260 `20261001T230119Z_63cbf550` PF2.99 / +156898.4 n164 max_loss7 (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 SL1000/TP4000 sls5/2200 near_box outside N5 D1550 wick on pullback required both fib0.382 asia trail off).
+- **Result:** n**171** PF **2.93** / **+159740.3** win50.9% max_loss**7** max_win8 avg934.2 — dpts **+2841.9** dPF **-0.06** dn +7 vs prior KEEP.
+- **Streak filter:** max_loss7 ≤7–8 OK (unlike CP flat23×sls ticks max_loss9).
+- **Param deltas vs prior KEEP:** max_break 15→16 · hold 14→15 · fib 0.382→0.40 · sls5/2200→**sls4/2600**.
+- **Verdict:** **NEW KEEP** — tick dpts≥~2k PF≥~2.5 max_loss≤7–8. Seed `_seed_pf293_tip_sls4.json` (mirror `_seed_pf293_maxb16_sls4.json`). Prior CM_tick mb260 PARKED (superseded). Prior 215k trail KEEP remains PARKED.
+- **Next:** Batch CY `TIP_SLS_DENSE_CY_PF293` 5m — densify around NEW KEEP tip (sls3/5/6 × slsa/hold/fib/maxb + mild flat/nd/SLTP); avoid flat23×sls and trail revive. Tick-confirm only clear soft≥2.5 dpts≥~2k with max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-02 ~10:18 Europe/Bucharest Asia Batch CY TIP_SLS_DENSE_CY_PF293 5m NO CLEAR; kick Batch CZ
+- **Grid:** `results/overnight_5m_grid_20261002T065322Z.json` — tag TIP_SLS_DENSE_CY_PF293 — candles_5m — workers=2 — window 2025-01 to 2026-09 — 102 cells — errors [] — finished 2026-10-02T06:54:09.853317+00:00 (log results/_cy_grid_run.log; script scripts/_tip_sls_dense_CY_pf293_20261002.py).
+- **5m baseline:** PF293_tip_sls4_baseline n171 PF2.924 / +159625.4 (seed KEEP ticks 20261002T063348Z_456d59c9 PF2.93/+159740.3 n171 max_loss7).
+- **CLEAR soft>=2.5 dpts>=~2k:** 0.
+- **Soft >=2.5 with pts lift under ~2k:** 0.
+- **Best soft/flat (pf>=2.5 by dpts):**
+  - `PF293_tip_sls4_baseline` n171 PF **2.924** / **+159625.4** win50.9% -- dpts **+0.0** dPF **+0.000** overrides {}
+  - `cap1400` n171 PF **2.924** / **+159625.4** win50.9% -- dpts **+0.0** dPF **+0.000** overrides {"resume_max_break_pts":1400.0}
+  - `hold16` n171 PF **2.924** / **+159625.4** win50.9% -- dpts **+0.0** dPF **+0.000** overrides {"max_hold_hours":16.0}
+  - `hold17` n171 PF **2.924** / **+159625.4** win50.9% -- dpts **+0.0** dPF **+0.000** overrides {"max_hold_hours":17.0}
+  - `hold18` n171 PF **2.924** / **+159625.4** win50.9% -- dpts **+0.0** dPF **+0.000** overrides {"max_hold_hours":18.0}
+  - `hold20` n171 PF **2.924** / **+159625.4** win50.9% -- dpts **+0.0** dPF **+0.000** overrides {"max_hold_hours":20.0}
+  - `otp_off` n171 PF **2.924** / **+159625.4** win50.9% -- dpts **+0.0** dPF **+0.000** overrides {"one_trade_per_day":false}
+  - `slsa2600` n171 PF **2.924** / **+159625.4** win50.9% -- dpts **+0.0** dPF **+0.000** overrides {"skip_late_short_asia_pts":2600.0}
+  - `slsa2650` n171 PF **2.924** / **+159625.4** win50.9% -- dpts **+0.0** dPF **+0.000** overrides {"skip_late_short_asia_pts":2650.0}
+  - `slsa2700` n171 PF **2.924** / **+159625.4** win50.9% -- dpts **+0.0** dPF **+0.000** overrides {"skip_late_short_asia_pts":2700.0}
+  - `slsa2750` n171 PF **2.924** / **+159625.4** win50.9% -- dpts **+0.0** dPF **+0.000** overrides {"skip_late_short_asia_pts":2750.0}
+  - `wick_off` n171 PF **2.924** / **+159625.4** win50.9% -- dpts **+0.0** dPF **+0.000** overrides {"break_on_wick":false}
+- **Best by pts (PF under floor):** 0 none.
+- **Inert (=baseline):** 12 cells (hold16-20/slsa2600-2750/cap1400/otp_off/wick_off twins).
+- **Pts-down sample:** fib0382 -23.0; flat19 -198.39999999999418; maxb15 -682.6000000000058; sls5 cluster ~-1000; side_long/short thin; ema30/wait13/15 large cuts.
+- **Verdict:** **NO CLEAR** — 0 cells dpts>0 at PF>=2.5; KEEP tip densify on sls/slsa/hold/fib/maxb/flat/nd/SLTP exhausted on 5m. KEEP unchanged tip_sls4_2600 PF2.93/+159740.3 n171 max_loss7 20261002T063348Z_456d59c9.
+- **Next:** Batch CZ `ENTRY_FIB_TIMEOUT_CZ_PF293` 5m — residual entry/fib/timeout densify around NEW KEEP (pullback_ref/anchor/mode, timeout temd/tmpb/tmb, mb/asia_range/resume/near_box trend, require_close/higher_close); avoid flat23xsls and trail revive. Tick-confirm only clear soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~10:44 Europe/Bucharest Asia Batch CZ ENTRY_FIB_TIMEOUT_CZ_PF293 5m NO CLEAR; kick Batch DA
+- **Grid:** `results/overnight_5m_grid_20261002T072217Z.json` — tag ENTRY_FIB_TIMEOUT_CZ_PF293 — candles_5m — workers=2 — window 2025-01 to 2026-09 — 118 cells — errors [] — finished 2026-10-02T07:23:14.194749+00:00 (log results/_cz_grid_run.log; script scripts/_entry_fib_timeout_CZ_pf293_20261002.py).
+- **5m baseline:** PF293_tip_sls4_baseline n171 PF2.924 / +159625.4 (seed KEEP ticks 20261002T063348Z_456d59c9 PF2.93/+159740.3 n171 max_loss7).
+- **CLEAR soft≥2.5 dpts≥~2k:** 0.
+- **Soft ≥2.5 with pts lift under ~2k:** 0.
+- **dpts>0 at PF≥2.5:** 0.
+- **Best soft/flat (pf≥2.5 by dpts):**
+  - `PF293_tip_sls4_baseline` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {}
+  - `asia_range200` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"min_asia_range_pts":200.0}
+  - `asia_range250` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"min_asia_range_pts":250.0}
+  - `asia_range350` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"min_asia_range_pts":350.0}
+  - `asia_range400` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"min_asia_range_pts":400.0}
+  - `cap1100` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"resume_max_break_pts":1100.0}
+  - `cap1300` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"resume_max_break_pts":1300.0}
+  - `cap1500` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"resume_max_break_pts":1500.0}
+  - `cap1600` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"resume_max_break_pts":1600.0}
+  - `ema_tf10` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"ema_tf_min":10}
+  - `ema_tf30` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"ema_tf_min":30}
+  - `ema_tf5` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"ema_tf_min":5}
+- **Best by pts (PF under floor):**
+  - `pmode_pref_fib040` n249 PF **2.335** / **+179825.9** — dpts **+20200.5** (under soft floor; preferred-mode recovery pocket)
+  - `pmode_preferred` n249 PF **2.335** / **+179825.9** — dpts **+20200.5** (under soft floor; preferred-mode recovery pocket)
+  - `pmode_pref_fib0382` n249 PF **2.335** / **+179802.9** — dpts **+20177.5** (under soft floor; preferred-mode recovery pocket)
+- **Inert (=baseline):** 53 cells (asia_range/cap/ema_tf/fanc/otp/wick twins; timeout/tmpb/tmb mostly flat or down).
+- **Pts-down sample:** ma_zlema -117790.6; pmode_off -110176.2; wait_from_break_off -65926.59999999999; ema29 -17466.0; mb300/nb_breakout ~−11–12k.
+- **Verdict:** **NO CLEAR** — 0 cells dpts>0 at PF≥2.5; entry/fib/timeout/resume/near_box/mb/asia_range/ma densify around tip KEEP exhausted on 5m. Notable under-floor: `pmode_preferred` / fib twins dpts ~+20.2k PF2.335 n249. KEEP unchanged tip_sls4_2600 PF2.93/+159740.3 n171 max_loss7 20261002T063348Z_456d59c9.
+- **Next:** Batch DA `PREF_RECOVERY_WEEK2_DA_PF293` 5m — densify preferred-mode recovery (lift PF toward ≥2.5 while keeping pts) + residual week2/trend/seasonal/news/be_arm/wait on tip KEEP; avoid flat23×sls and trail revive. Tick-confirm only clear soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~11:13 Europe/Bucharest Asia Batch DA PREF_RECOVERY_WEEK2_DA_PF293 5m NO CLEAR; kick Batch DB
+- **Grid:** `results/overnight_5m_grid_20261002T074944Z.json` — tag PREF_RECOVERY_WEEK2_DA_PF293 — candles_5m — workers=2 — window 2025-01 to 2026-09 — 114 cells — errors [] — finished 2026-10-02T07:50:40.635502+00:00 (log results/_da_grid_run.log; script scripts/_pref_recovery_week2_DA_pf293_20261002.py).
+- **5m baseline:** PF293_tip_sls4_baseline n171 PF2.924 / +159625.4 (seed KEEP ticks 20261002T063348Z_456d59c9 PF2.93/+159740.3 n171 max_loss7).
+- **CLEAR soft≥2.5 dpts≥~2k:** 0.
+- **Soft ≥2.5 with pts lift under ~2k:** 0.
+- **dpts>0 at PF≥2.5:** 0.
+- **Best soft/flat (pf≥2.5 by dpts):**
+  - `PF293_tip_sls4_baseline` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {}
+  - `news_tag` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"news_mode":"tag"}
+  - `otp_off` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"one_trade_per_day":false}
+  - `seasonal_tag` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"seasonal_mode":"tag"}
+  - `teff025` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"trend_efficiency_min":0.25}
+  - `teff03` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"trend_efficiency_min":0.3}
+  - `teff035` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"trend_efficiency_min":0.35}
+  - `teff04` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"trend_efficiency_min":0.4}
+  - `teff045` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"trend_efficiency_min":0.45}
+  - `tflat1000` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"trend_flat_pts":1000.0}
+  - `tflat1200` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"trend_flat_pts":1200.0}
+  - `tflat1800` n171 PF **2.924** / **+159625.4** win50.9% — dpts **+0.0** dPF **+0.000** overrides {"trend_flat_pts":1800.0}
+- **Best by pts (PF under floor):**
+  - `pref_mb255` n251 PF **2.337** / **+181441.9** — dpts **+21816.5** (under soft floor; preferred recovery)
+  - `pref_maxb17` n255 PF **2.308** / **+181397.3** — dpts **+21771.9** (under soft floor; preferred recovery)
+  - `pref_maxb15` n239 PF **2.41** / **+180143.3** — dpts **+20517.9** (under soft floor; preferred recovery)
+  - `pref_wait13` n249 PF **2.328** / **+179946.3** — dpts **+20320.9** (under soft floor; preferred recovery)
+  - `pref` n249 PF **2.335** / **+179825.9** — dpts **+20200.5** (under soft floor; preferred recovery)
+  - `pref_fib04` n249 PF **2.335** / **+179825.9** — dpts **+20200.5** (under soft floor; preferred recovery)
+- **Closest under-floor to soft≥2.5 (by PF, dpts>0):**
+  - `pref_news_filter` n221 PF **2.457** / **+168635.3** — dpts **+9009.9**
+  - `pref_temd1250` n229 PF **2.422** / **+171636.9** — dpts **+12011.5**
+  - `pref_maxb15` n239 PF **2.41** / **+180143.3** — dpts **+20517.9**
+  - `pref_temd1500` n232 PF **2.4** / **+171825.9** — dpts **+12200.5**
+  - `pref_temd2000` n242 PF **2.363** / **+176825.9** — dpts **+17200.5**
+  - `pref_mb255` n251 PF **2.337** / **+181441.9** — dpts **+21816.5**
+  - `pref_slsa3000` n242 PF **2.336** / **+176023.5** — dpts **+16398.1**
+  - `pref` n249 PF **2.335** / **+179825.9** — dpts **+20200.5**
+- **Preferred PF ladder (tmpb lifts PF but cuts pts):**
+  - `pref_tmpb300` n140 PF **3.113** / **+142652.6** — dpts **-16972.8**
+  - `pref_tmpb200` n144 PF **3.007** / **+141541.6** — dpts **-18083.8**
+  - `pref_temd1000_tmpb100` n147 PF **3.006** / **+143450.0** — dpts **-16175.4**
+  - `pref_tmpb100` n147 PF **3.006** / **+143450.0** — dpts **-16175.4**
+  - `pref_temd1500_tmpb150` n145 PF **2.965** / **+140541.6** — dpts **-19083.8**
+  - `pref_tmpb150` n145 PF **2.965** / **+140541.6** — dpts **-19083.8**
+- **Inert (=baseline):** 19 cells (week2_tag/skip, teff*, tsess*, tflat*, seasonal_tag, news_tag, otp_off).
+- **Pts-down sample:** be500 -136160.2; be500 -136160.19999999998; wait11 -31392.0; week2_filter -43423.59999999999; pref_tmpb* ~−16–19k at PF≥2.9.
+- **Verdict:** **NO CLEAR** — 0 cells dpts>0 at PF≥2.5; preferred-mode recovery still under soft floor (closest `pref_news_filter` PF2.457/+168635 dpts+9009.9; `pref_temd1250` PF2.422/+171637; `pref_maxb15` PF2.410/+180143). tmpb≥50 lifts preferred PF≥2.9 but cuts ~16–19k pts. Required-mode week2/trend/seasonal/news/be/wait residual inert or pts-down. KEEP unchanged tip_sls4_2600 PF2.93/+159740.3 n171 max_loss7 20261002T063348Z_456d59c9.
+- **Next:** Batch DB `PREF_PF_BRIDGE_DB_PF293` 5m — bridge preferred toward soft≥2.5 while keeping dpts≥~2k (mild tmpb 10–80, temd fine 1100–1600, maxb14–16 × news/temd/tmpb compounds; avoid flat23×sls and trail revive). Tick-confirm only clear soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~11:45 Europe/Bucharest Asia Batch DB `PREF_PF_BRIDGE_DB_PF293` 5m — **CLEAR**
+- **Grid:** `results/overnight_5m_grid_20261002T081623Z.json` — tag `PREF_PF_BRIDGE_DB_PF293` — seed KEEP ticks `20261002T063348Z_456d59c9` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1000/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off) — data_source=candles_5m — workers=2 — cells=88 — window 2025-01-01→2026-09-01 — created 2026-10-02T08:17:06Z.
+- **5m baseline:** `PF293_tip_sls4_baseline` n171 PF **2.924** / **+159625.4** win50.9% (tick KEEP PF2.93/+159740.3 n171 max_loss7).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; max_loss streak ≤7–8 (ticks); win% secondary.
+- **CLEAR soft≥2.5 dpts≥~2k (2):**
+  - `pref_maxb15_news` n212 PF **2.531** / **+167952.7** win46.7% — dpts **+8212.4** dPF **-0.399** overrides {"pullback_mode":"preferred","max_break_candles_after":15,"news_mode":"filter"}
+  - `pref_maxb14_news` n204 PF **2.544** / **+164178.1** win46.6% — dpts **+4437.8** dPF **-0.386** overrides {"pullback_mode":"preferred","max_break_candles_after":14,"news_mode":"filter"}
+- **Best by pts (often under floor):**
+  - `pref_mb255_maxb15` n241 PF **2.412** / **+181759.3** win45.2% — dpts **+22019.0** dPF **-0.518** overrides {"pullback_mode":"preferred","min_break_pts_above":255.0,"min_break_pts_below":255.0,"max_break_candles_after":15}
+  - `pref_maxb17` n255 PF **2.308** / **+181397.3** win44.3% — dpts **+21657.0** dPF **-0.622** overrides {"pullback_mode":"preferred","max_break_candles_after":17}
+  - `pref_maxb18` n262 PF **2.256** / **+180510.9** win43.9% — dpts **+20770.6** dPF **-0.674** overrides {"pullback_mode":"preferred","max_break_candles_after":18}
+  - `pref_maxb15` n239 PF **2.410** / **+180143.3** win45.2% — dpts **+20403.0** dPF **-0.520** overrides {"pullback_mode":"preferred","max_break_candles_after":15}
+  - `pref` n249 PF **2.335** / **+179825.9** win44.6% — dpts **+20085.6** dPF **-0.595** overrides {"pullback_mode":"preferred"}
+  - `pref_cap1100` n249 PF **2.335** / **+179825.9** win44.6% — dpts **+20085.6** dPF **-0.595** overrides {"pullback_mode":"preferred","resume_max_break_pts":1100.0}
+  - `pref_cap1400` n249 PF **2.335** / **+179825.9** win44.6% — dpts **+20085.6** dPF **-0.595** overrides {"pullback_mode":"preferred","resume_max_break_pts":1400.0}
+  - `pref_maxb16` n249 PF **2.335** / **+179825.9** win44.6% — dpts **+20085.6** dPF **-0.595** overrides {"pullback_mode":"preferred","max_break_candles_after":16}
+- **Closest under-floor (dpts>0):**
+  - `pref_maxb15_temd1200` n220 PF **2.490** / **+170954.3** win46.4% — dpts **+11214.0** dPF **-0.440** overrides {"pullback_mode":"preferred","max_break_candles_after":15,"timeout_max_ema_dist_pts":1200.0}
+  - `pref_maxb15_temd1250` n220 PF **2.490** / **+170954.3** win46.4% — dpts **+11214.0** dPF **-0.440** overrides {"pullback_mode":"preferred","max_break_candles_after":15,"timeout_max_ema_dist_pts":1250.0}
+  - `pref_maxb15_temd1300` n220 PF **2.490** / **+170954.3** win46.4% — dpts **+11214.0** dPF **-0.440** overrides {"pullback_mode":"preferred","max_break_candles_after":15,"timeout_max_ema_dist_pts":1300.0}
+  - `pref_maxb15_temd1400` n220 PF **2.490** / **+170954.3** win46.4% — dpts **+11214.0** dPF **-0.440** overrides {"pullback_mode":"preferred","max_break_candles_after":15,"timeout_max_ema_dist_pts":1400.0}
+  - `pref_maxb15_temd1500` n223 PF **2.466** / **+171143.3** win46.2% — dpts **+11403.0** dPF **-0.464** overrides {"pullback_mode":"preferred","max_break_candles_after":15,"timeout_max_ema_dist_pts":1500.0}
+  - `pref_mb255_news` n223 PF **2.458** / **+170251.3** win46.2% — dpts **+10511.0** dPF **-0.472** overrides {"pullback_mode":"preferred","min_break_pts_above":255.0,"min_break_pts_below":255.0,"news_mode":"filter"}
+  - `pref_maxb16_news` n221 PF **2.457** / **+168635.3** win46.2% — dpts **+8895.0** dPF **-0.473** overrides {"pullback_mode":"preferred","max_break_candles_after":16,"news_mode":"filter"}
+  - `pref_news_filter` n221 PF **2.457** / **+168635.3** win46.2% — dpts **+8895.0** dPF **-0.473** overrides {"pullback_mode":"preferred","news_mode":"filter"}
+- **Preferred tmpb / high-PF pts-cut sample:**
+  - `pref_news_tmpb25` n130 PF **3.134** / **+131259.4** win52.3% — dpts **-28480.9** dPF **+0.204** overrides {"pullback_mode":"preferred","news_mode":"filter","timeout_min_pullback_pts":25.0}
+  - `pref_news_tmpb35` n130 PF **3.134** / **+131259.4** win52.3% — dpts **-28480.9** dPF **+0.204** overrides {"pullback_mode":"preferred","news_mode":"filter","timeout_min_pullback_pts":35.0}
+  - `pref_tmpb75` n148 PF **2.964** / **+142450.0** win50.7% — dpts **-17290.3** dPF **+0.034** overrides {"pullback_mode":"preferred","timeout_min_pullback_pts":75.0}
+  - `pref_tmpb80` n148 PF **2.964** / **+142450.0** win50.7% — dpts **-17290.3** dPF **+0.034** overrides {"pullback_mode":"preferred","timeout_min_pullback_pts":80.0}
+  - `pref_maxb15_temd1250_tmpb25` n143 PF **2.954** / **+137767.4** win50.3% — dpts **-21972.9** dPF **+0.024** overrides {"pullback_mode":"preferred","max_break_candles_after":15,"timeout_max_ema_dist_pts":1250.0,"timeout_min_pullback_pts":25.0}
+  - `pref_maxb15_temd1500_tmpb25` n143 PF **2.954** / **+137767.4** win50.3% — dpts **-21972.9** dPF **+0.024** overrides {"pullback_mode":"preferred","max_break_candles_after":15,"timeout_max_ema_dist_pts":1500.0,"timeout_min_pullback_pts":25.0}
+  - `pref_maxb15_tmpb25` n143 PF **2.954** / **+137767.4** win50.3% — dpts **-21972.9** dPF **+0.024** overrides {"pullback_mode":"preferred","max_break_candles_after":15,"timeout_min_pullback_pts":25.0}
+  - `pref_maxb15_tmpb35` n143 PF **2.954** / **+137767.4** win50.3% — dpts **-21972.9** dPF **+0.024** overrides {"pullback_mode":"preferred","max_break_candles_after":15,"timeout_min_pullback_pts":35.0}
+- **Verdict:** **CLEAR** — preferred PF-bridge found 2 cell(s) at soft≥2.5 with dpts≥~2k (pts-champ `pref_maxb15_news` PF2.531/+167952.7 dpts+8212.4; runner `pref_maxb14_news` PF2.544/+164178.1 dpts+4437.8). Under-floor still crowded near PF~2.49 (`pref_maxb15_temd*`). Mild tmpb still lifts PF≥2.9 while cutting ~17–18k pts. KEEP unchanged tip_sls4_2600 PF2.93/+159740.3 n171 max_loss7 `20261002T063348Z_456d59c9` until ticks.
+- **Next:** tick-confirm champ `pref_maxb15_news` (overrides {"pullback_mode":"preferred","max_break_candles_after":15,"news_mode":"filter"}) on KEEP seed ticks workers=2; runner `pref_maxb14_news` if champ rejects. Promote only ticks soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~12:24 Europe/Bucharest Asia DB_tick pref_maxb15_news **NEW KEEP**; kick Batch DC
+- **Tick:** `overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261002T085814Z_6654847e.json` — DB_tick pref_maxb15_news — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — started 2026-10-02T08:44:47Z finished 2026-10-02T08:58:14Z UTC — run_id `20261002T085814Z_6654847e` — body `results/_db_tick_pref_maxb15_news_body.json`.
+- **Prior KEEP:** CX_tick tip_sls4_2600 `20261002T063348Z_456d59c9` PF2.93 / +159740.3 n171 max_loss7 (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1000/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback **required** both fib0.40 asia trail off news off).
+- **Result:** n**212** PF **2.53** / **+168043.5** win46.7% max_loss**7** max_win8 avg792.7 — dpts **+8303.2** dPF **-0.40** dn +41 vs prior KEEP.
+- **Streak filter:** max_loss7 ≤7–8 OK.
+- **Param deltas vs prior KEEP:** pullback **required→preferred** · max_break 16→**15** · news **off→filter** (scheduled).
+- **PARAM_ECHO:** preferred + maxb15 + news_filter on tip KEEP seed — OK (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 SL1000/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback_ref=both fib0.40 fib_anchor=asia trail off timeout market wait_from_break).
+- **Verdict:** **NEW KEEP** — tick soft≥2.5 dpts≥~2k max_loss≤7–8. Seed `_seed_pf253_pref_maxb15_news.json` (mirror `_seed_pf253_pref_news_maxb15.json`). Prior CX_tick tip_sls4_2600 PARKED (superseded). Prior CM_tick mb260 and 215k trail KEEP remain PARKED.
+- **Next:** Batch DC `PREF_KEEP_DENSE_DC_PF253` 5m — densify around NEW KEEP preferred+news+maxb15 (mb/wait/rc/hold/sls/maxb/fib/near_box/SLTP/temd mild + news_set); avoid flat23×sls and trail revive. Tick-confirm only clear soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~12:46 Europe/Bucharest Asia Batch DC PREF_KEEP_DENSE_DC_PF253 5m **NO CLEAR**; kick Batch DD
+- **Grid:** `results/overnight_5m_grid_20261002T092416Z.json` — tag `PREF_KEEP_DENSE_DC_PF253` — 102/102 cells — workers=2 — window 2025-01 to 2026-09 — PARAM_ECHO_OK — log `results/_dc_grid_run.log` — finished ~2026-10-02T09:25Z UTC.
+- **KEEP (unchanged):** DB_tick pref_maxb15_news `20261002T085814Z_6654847e` PF2.53 / +168043.5 n212 max_loss7 (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb15 SL1000/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback preferred both fib0.40 asia news filter/scheduled trail off).
+- **5m baseline:** `PF253_pref_maxb15_news_baseline` n212 PF **2.531** / **+167952.7** win46.7%.
+- **Soft ≥2.5 dpts≥~2k:** **0** cells.
+- **Best soft (under ~2k):** `mb255` n214 PF **2.531** / **+169568.7** — dpts **+1616.0** dPF **+0.000**.
+- **Tiny soft:** `flat22` dpts+259.0 PF2.528; `wait13` dpts+120.4 PF2.521.
+- **Under-floor big pts:** `news_off`/`news_tag` n239 PF2.410 / +180143.3 dpts+12190.6; `maxb16_mb255` n223 PF2.458 / +170251.3 dpts+2298.6; `maxb17` n227 PF2.422 / +170206.7 dpts+2254.0.
+- **PF-up pts-cut:** temd1200–1500 PF~2.58–2.61 but pts ≤157.9k; tmpb10–35 PF~3.16–3.18 pts ~127k.
+- **Verdict:** **NO CLEAR** — no soft≥2.5 dpts≥~2k; skip tick-confirm. KEEP unchanged.
+- **Next:** Batch DD `RESIDUAL_PREF_DD_PF253` 5m — fine mb around 255 + mb255×wait13/flat22/maxb14 compounds + mild temd/tmpb/news_set residual; avoid flat23×sls, trail revive, parked tip/CM. Tick-confirm only clear soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~13:17 Europe/Bucharest Asia Batch DD `RESIDUAL_PREF_DD_PF253` 5m — **CLEAR**; kick DD_tick
+- **Grid:** `results/overnight_5m_grid_20261002T095027Z.json` — tag `RESIDUAL_PREF_DD_PF253` — seed KEEP ticks `20261002T085814Z_6654847e` — data_source=candles_5m — workers=2 — cells=80/80 — window 2025-01-01→2026-09-01 — created 2026-10-02T09:51:05Z — log `results/_dd_grid_run.log`.
+- **KEEP (unchanged pending ticks):** DB_tick pref_maxb15_news `20261002T085814Z_6654847e` PF2.53 / +168043.5 n212 max_loss7 (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb15 SL1000/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback preferred both fib0.40 asia news filter/scheduled trail off).
+- **5m baseline:** `PF253_pref_maxb15_news_baseline` n212 PF **2.531** / **+167952.7** win46.7%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; max_loss streak ≤7–8 (ticks); win% secondary.
+- **CLEAR soft≥2.5 dpts≥~2k vs KEEP ticks (4):**
+  - `mb256_flat22` n213 PF **2.552** / **+170929.9** win46.9% — dpts **+2886.4** dPF **+0.022** overrides {"min_break_pts_above": 256.0, "min_break_pts_below": 256.0, "flatten_hour": 22}
+  - `mb255_sl1050` n214 PF **2.504** / **+170870.5** win47.7% — dpts **+2827.0** dPF **-0.026** overrides {"min_break_pts_above":255.0,"min_break_pts_below":255.0,"sl_fixed_pts":1050.0}
+  - `mb256` n213 PF **2.554** / **+170568.7** win46.9% — dpts **+2525.2** dPF **+0.024** overrides {"min_break_pts_above": 256.0, "min_break_pts_below": 256.0}
+  - `mb257` n213 PF **2.554** / **+170568.7** win46.9% — dpts **+2525.2** dPF **+0.024** (twin of mb256)
+- **Near soft (under ~2k):** `mb254/255_flat22` dpts+1886 PF2.529; `mb254/255` dpts+1525 PF2.531; `sl1050` dpts+1261 PF2.505.
+- **Verdict:** **CLEAR** — residual mb densify found 4 soft≥2.5 dpts≥~2k cells (pts-champ `mb256_flat22`; cleaner runner `mb256`/`mb257` higher PF). KEEP unchanged until ticks.
+- **Next:** tick-confirm champ `mb256_flat22` on KEEP seed ticks workers=2; runner `mb256` if champ rejects. Promote only ticks soft≥2.5 dpts≥~2k max_loss≤7–8. PARAM_ECHO_OK=True started=2026-10-02T10:19:56.644195+00:00. Body `results/_dd_tick_mb256_flat22_body.json`. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~13:45 Europe/Bucharest Asia DD_tick mb256_flat22 **NEW KEEP**; kick Batch DE
+- **Tick:** `overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261002T103312Z_a8c6fd0c.json` — DD_tick mb256_flat22 — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — started 2026-10-02T10:19:56Z finished 2026-10-02T10:33:12Z UTC — run_id `20261002T103312Z_a8c6fd0c` — body `results/_dd_tick_mb256_flat22_body.json`.
+- **Prior KEEP:** DB_tick pref_maxb15_news `20261002T085814Z_6654847e` PF2.53 / +168043.5 n212 max_loss7 (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb15 SL1000/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback preferred both fib0.40 asia news filter/scheduled trail off).
+- **Result:** n**213** PF **2.55** / **+170956.6** win46.9% max_loss**7** max_win8 avg802.6 — dpts **+2913.1** dPF **+0.02** dn +1 vs prior KEEP.
+- **Streak filter:** max_loss7 ≤7–8 OK.
+- **Param deltas vs prior KEEP:** mb 260→**256** · flatten 21→**22**.
+- **PARAM_ECHO:** mb256 + flat22 on pref+maxb15+news KEEP seed — OK (asia0-6 ema31 wait14 rc6 cap1200 maxb15 SL1000/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback preferred both fib0.40 asia news filter/scheduled trail off timeout market wait_from_break).
+- **Verdict:** **NEW KEEP** — tick soft≥2.5 dpts≥~2k max_loss≤7–8. Seed `_seed_pf255_mb256_flat22.json` (mirror `_seed_pf255_flat22_mb256.json`). Prior DB_tick pref_maxb15_news PARKED (superseded). Prior CX_tick tip_sls4_2600, CM_tick mb260, and 215k trail KEEP remain PARKED.
+- **Next:** Batch DE `PREF_KEEP_DENSE_DE_PF255` 5m — densify around NEW KEEP mb256+flat22 (fine mb/flat/wait/rc/hold/maxb/sls/SLTP/temd/tmpb residual); avoid flat23×sls and trail/parked tip/CM revive. Tick-confirm only clear soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~14:19 Europe/Bucharest Asia Batch DE PREF_KEEP_DENSE_DE_PF255 5m **NO CLEAR**; kick Batch DF
+- **Grid:** 
+esults/overnight_5m_grid_20261002T104507Z.json — tag PREF_KEEP_DENSE_DE_PF255 — 83/83 cells — workers=2 — window 2025-01 to 2026-09 — PARAM_ECHO_OK — log 
+esults/_de_grid_run.log — finished ~2026-10-02T10:45Z UTC.
+- **KEEP (unchanged):** DD_tick mb256_flat22 20261002T103312Z_a8c6fd0c PF2.55 / +170956.6 n213 max_loss7 (asia0-6 ema31 wait14 rc6 cap1200 flat22 mb256 maxb15 SL1000/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback preferred both fib0.40 asia news filter/scheduled trail off).
+- **5m baseline:** PF255_mb256_flat22_baseline n213 PF **2.552** / **+170929.9** win46.9%.
+- **Soft ≥2.5 dpts≥~2k:** **0** cells.
+- **Best soft (under ~2k):** sl1050 / mb256_sl1050 n213 PF **2.514** / **+171738.4** — dpts **+808.5** dPF **-0.038**.
+- **Tiny soft:** hold14/16/17 / mb256_hold14 dpts+62–65 PF2.553.
+- **Under-floor big pts:** maxb17 n228 PF2.440 / +172992.0 dpts+2062.1.
+- **PF-up pts-cut:** tmpb5–20 PF~3.08 pts ~125k; temd1200–1400 PF~2.64 pts ~160.9k; temd1250_maxb14 PF2.669 / +157544.
+- **Verdict:** **NO CLEAR** — no soft≥2.5 dpts≥~2k; skip tick-confirm. KEEP unchanged.
+- **Next:** Batch DF RESIDUAL_PREF_DF_PF255 5m — residual densify around DE soft-near sl1050 (+808) + fine SL ladder/compounds + hold14/16 + mild maxb16–17×sl1050 / mb neighbors; avoid flat23×sls and trail/parked tip/CM/DB revive. Tick-confirm only clear soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+## 2026-10-02 14:29 Europe/Bucharest — KEEP switch + Batch DG kick
+- Igor: back to best pullback-**required** KEEP + densify different MAs.
+- KEEP restored to CX tip_sls4_2600 ticks 61002T063348Z_456d59c9\ PF2.93/+159740.3 n171 max_loss7 (seed esults/_seed_pf293_tip_sls4_required.json\). Prior preferred DD_tick mb256_flat22 PARKED.
+- Batch DF residual preferred scored earlier this hour NO CLEAR (kept quiet); no promote.
+- Kicked Batch DG \REQ_MA_DENSE_DG_PF293\ 5m 104 cells workers=2 PARAM_ECHO_OK (script \scripts/_req_ma_dense_DG_pf293_20261002.py\, log esults/_dg_grid_run.log\, pid 4852): ema period + kama/hma/zlema ladders + thin MA×fib/ref compounds.
+
+### 2026-10-02 ~14:42 Europe/Bucharest Asia Batch DF RESIDUAL_PREF_DF_PF255 5m — PARKED soft clear (preferred lineage); no promote
+- **Grid:** `results/overnight_5m_grid_20261002T112136Z.json` — tag `RESIDUAL_PREF_DF_PF255` — 92/92 cells — workers=2 — window 2025-01 to 2026-09 — log `results/_df_grid_run.log` — finished ~2026-10-02T11:21Z UTC.
+- **5m baseline (preferred KEEP):** `PF255_mb256_flat22_baseline` n213 PF **2.552** / **+170929.9** win46.9%.
+- **Soft ≥2.5 dpts≥~2k:** **1** cell — `sl1030` n213 PF **2.562** / **+173858.4** — dpts **+2928.5** dPF **+0.010** overrides {"sl_fixed_pts":1030.0}.
+- **Near soft:** `sl1040` dpts+1868.5 PF2.538; `sl1050_flat21` dpts+990.6 PF2.528.
+- **Verdict:** **PARKED** — preferred lineage parked per Igor KEEP switch to required tip; do **not** tick-confirm or promote. Note only for bookkeeping (corrects earlier “DF NO CLEAR” note).
+- **KEEP (unchanged):** CX tip_sls4_2600 `20261002T063348Z_456d59c9` PF2.93 / +159740.3 n171 max_loss7.
+
+### 2026-10-02 ~14:42 Europe/Bucharest Asia Batch DG REQ_MA_DENSE_DG_PF293 5m **NO CLEAR**; kick Batch DH
+- **Grid:** `results/overnight_5m_grid_20261002T112926Z.json` — tag `REQ_MA_DENSE_DG_PF293` — 104/104 cells — workers=2 — window 2025-01 to 2026-09 — PARAM_ECHO_OK — log `results/_dg_grid_run.log` — finished ~2026-10-02T11:31Z UTC.
+- **KEEP (unchanged):** CX tip_sls4_2600 `20261002T063348Z_456d59c9` PF2.93 / +159740.3 n171 max_loss7 (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1000/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia news off trail off).
+- **5m baseline:** `PF293_tip_required_baseline` n171 PF **2.924** / **+159625.4** win50.9%.
+- **Soft ≥2.5 dpts≥~2k:** **0** cells.
+- **Best soft (all negative dpts):** `ema32` / `ema32_fib04_both` n169 PF **2.914** / **+156881.5** — dpts **−2743.9**; `ema33` dpts−6549.6 PF2.868; `ema32_fib0382_both` dpts−2766.9 PF2.914.
+- **Under-floor:** kama/hma/zlema ladders and fib_ref compounds well below baseline pts; `ema31_fib040_roll_both` dpts−23477 PF2.366.
+- **Verdict:** **NO CLEAR** — MA densify found no soft≥2.5 dpts≥~2k; skip tick-confirm. KEEP unchanged.
+- **Next:** Batch DH `RESIDUAL_REQ_DH_PF293` 5m — residual densify on required tip (mb/near_box/hold/flat/wait/rc/cap/maxb/SL mild/sls light/temd/tmpb/news/wick/arange + mild compounds); avoid flat23×sls, trail, preferred park revive, heavy MA re-sweep. Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8.
+
+### 2026-10-02 ~15:21 Europe/Bucharest Asia Batch DH scored `RESIDUAL_REQ_DH_PF293` 5m — **CLEAR**
+- **Grid:** `results/overnight_5m_grid_20261002T114741Z.json` — tag `RESIDUAL_REQ_DH_PF293` — seed KEEP ticks `20261002T063348Z_456d59c9` (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1000/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off) — data_source=candles_5m — workers=2 — cells=79 — window 2025-01-01→2026-09-01 — created 2026-10-02T11:48:19Z — script `scripts/_residual_req_DH_pf293_20261002.py` — log `results/_dh_grid_run.log`.
+- **5m baseline:** `PF293_tip_required_baseline` n171 PF **2.924** / **+159625.4** win50.9% (tick KEEP PF2.93/+159740.3 n171 max_loss7).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; max_loss streak ≤7–8 (ticks); win% secondary.
+- **CLEAR soft≥2.5 dpts≥~2k (1):**
+  - `sl1050` n171 PF **2.904** / **+161771.7** win52.0% — dpts **+2031.4** dPF **-0.026** overrides {"sl_fixed_pts":1050.0}
+- **Near soft PF≥2.5 0<dpts<2k:**
+  - `sl1050_hold14` n171 PF **2.903** / **+161679.2** win52.0% — dpts **+1938.9** dPF **-0.027** overrides {"sl_fixed_pts":1050.0,"max_hold_hours":14.0}
+- **Best by pts:**
+  - `sl1050` n171 PF **2.904** / **+161771.7** win52.0% — dpts **+2031.4** dPF **-0.026** overrides {"sl_fixed_pts":1050.0}
+  - `sl1050_hold14` n171 PF **2.903** / **+161679.2** win52.0% — dpts **+1938.9** dPF **-0.027** overrides {"sl_fixed_pts":1050.0,"max_hold_hours":14.0}
+  - `sl1050_mb255` n173 PF **2.834** / **+159671.7** win51.4% — dpts **-68.6** dPF **-0.096** overrides {"sl_fixed_pts":1050.0,"min_break_pts_above":255.0,"min_break_pts_below":255.0}
+  - `PF293_tip_required_baseline` n171 PF **2.924** / **+159625.4** win50.9% — dpts **-114.9** dPF **-0.006** overrides {}
+  - `asia_range275` n171 PF **2.924** / **+159625.4** win50.9% — dpts **-114.9** dPF **-0.006** overrides {"min_asia_range_pts":275.0}
+  - `asia_range325` n171 PF **2.924** / **+159625.4** win50.9% — dpts **-114.9** dPF **-0.006** overrides {"min_asia_range_pts":325.0}
+  - `asia_range350` n171 PF **2.924** / **+159625.4** win50.9% — dpts **-114.9** dPF **-0.006** overrides {"min_asia_range_pts":350.0}
+  - `cap1100` n171 PF **2.924** / **+159625.4** win50.9% — dpts **-114.9** dPF **-0.006** overrides {"resume_max_break_pts":1100.0}
+- **High-PF pts-cut sample (PF≥2.9 dpts<0):**
+  - `nb_off` n133 PF **3.379** / **+146359.1** win53.4% — dpts **-13381.2** dPF **+0.449** overrides {"near_box_bars":0,"near_box_pts":0.0}
+  - `news_filter` n151 PF **3.150** / **+150434.8** win53.0% — dpts **-9305.5** dPF **+0.220** overrides {"news_mode":"filter","news_set":"scheduled"}
+  - `news_all` n150 PF **3.093** / **+146434.8** win52.7% — dpts **-13305.5** dPF **+0.163** overrides {"news_mode":"filter","news_set":"all"}
+  - `maxb15` n162 PF **3.065** / **+158942.8** win51.9% — dpts **-797.5** dPF **+0.135** overrides {"max_break_candles_after":15}
+  - `hold14_maxb15` n162 PF **3.064** / **+158850.3** win51.9% — dpts **-890.0** dPF **+0.134** overrides {"max_hold_hours":14.0,"max_break_candles_after":15}
+  - `maxb14` n156 PF **3.051** / **+153738.2** win51.3% — dpts **-6002.1** dPF **+0.121** overrides {"max_break_candles_after":14}
+  - `mb255_maxb15` n164 PF **2.988** / **+156942.8** win51.2% — dpts **-2797.5** dPF **+0.058** overrides {"min_break_pts_above":255.0,"min_break_pts_below":255.0,"max_break_candles_after":15}
+  - `mb265_maxb15` n162 PF **2.974** / **+153849.6** win51.2% — dpts **-5890.7** dPF **+0.044** overrides {"min_break_pts_above":265.0,"min_break_pts_below":265.0,"max_break_candles_after":15}
+- **Under-floor (dpts>0):**
+  - (none)
+- **Verdict:** **CLEAR** — mild SL bump `sl1050` is sole soft clear (dpts+2031.4 PF2.904); near-miss `sl1050_hold14` dpts+1938.9. Most residual axes inert vs 5m baseline (cap/temd/tmpb/wick/arange). news/nb_off lift PF but cut ~9–13k pts. KEEP unchanged tip_sls4_2600 PF2.93/+159740.3 n171 max_loss7 `20261002T063348Z_456d59c9` until ticks.
+- **Next:** DH_tick `sl1050` ticks kicked ~2026-10-02T12:21Z UTC workers=2 PARAM_ECHO_OK (sl_fixed_pts=1050); promote only ticks soft≥2.5 dpts≥~2k max_loss≤7–8. Runner `sl1050_hold14` if champ rejects. Then next residual densify on required tip. stop_auto_tick=FALSE. No reaktor / no push. Parked preferred (DD/DB/DF) and CM/trail untouched.
+
+### 2026-10-02 ~15:50 Europe/Bucharest Asia DH_tick sl1050 **NEW KEEP**; kick Batch DI
+- **Tick:** `results/overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261002T123429Z_7ef998ad.json` — DH_tick sl1050 — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — started 2026-10-02T12:21:14Z finished 2026-10-02T12:34:29Z UTC — run_id `20261002T123429Z_7ef998ad`.
+- **Prior KEEP:** CX tip_sls4_2600 `20261002T063348Z_456d59c9` PF2.93 / +159740.3 n171 max_loss7 (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1000/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia news off trail off).
+- **Result:** n**171** PF **2.91** / **+161886.9** win52.0% max_loss**7** max_win8 avg946.7 — dpts **+2146.6** dPF **-0.02** dn +0 vs prior KEEP.
+- **vs 5m screen** `sl1050` PF2.904/+161771.7 dpts_base+2031.4: tick **confirms** (pts lift holds; PF~matches).
+- **Streak filter:** max_loss=7 (prefer <=7-8) — PASS.
+- **Param deltas vs prior KEEP:** sl_fixed **1000→1050**.
+- **PARAM_ECHO:** sl1050 on tip KEEP seed — OK (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off timeout market wait_from_break).
+- **Verdict:** **NEW KEEP** — tick soft>=2.5 dpts>=~2k max_loss<=7-8. Seed `_seed_pf291_sl1050.json` (mirror `_seed_pf291_tip_sls4_sl1050.json`). Prior CX tip_sls4_2600 PARKED (superseded). Parked preferred (DD/DB/DF), CM_tick mb260, and 215k trail KEEP remain PARKED.
+- **Next:** Batch DI `SL_SOFT_DENSE_DI_PF291` 5m — densify around NEW KEEP SL1050 (fine SL ladder + hold14 near-miss + mild mb/nd/maxb/flat/wait/rc/tp/sls compounds); avoid flat23xsls, trail, preferred park revive. Tick-confirm only clear soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~16:21 Europe/Bucharest Asia Batch DI SL_SOFT_DENSE_DI_PF291 5m **NO CLEAR**; kick Batch DJ
+- **Grid:** 
+esults/overnight_5m_grid_20261002T125013Z.json — tag SL_SOFT_DENSE_DI_PF291 — 71/71 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script scripts/_sl_soft_dense_DI_pf291_20261002.py — log 
+esults/_di_grid_run.log.
+- **KEEP (unchanged):** DH_tick sl1050 ticks 20261002T123429Z_7ef998ad PF **2.91** / **+161886.9** n171 max_loss**7** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **5m baseline:** PF291_sl1050_baseline n171 PF **2.904** / **+161771.7** win52.0%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k:** **0**
+- **Near soft PF>=2.5 0<dpts<2k (top):**
+  - sl1030 n171 PF **2.960** / **+163371.7** win52.0% — dpts **+1600.0** dPF **+0.056** overrides {"sl_fixed_pts":1030.0}
+  - sl1030_hold14 n171 PF **2.959** / **+163279.2** win52.0% — dpts **+1507.5** dPF **+0.055** overrides {"sl_fixed_pts":1030.0,"max_hold_hours":14.0}
+  - sl1040 n171 PF **2.932** / **+162571.7** win52.0% — dpts **+800.0** dPF **+0.028** overrides {"sl_fixed_pts":1040.0}
+  - sl1040_hold14 n171 PF **2.931** / **+162479.2** win52.0% — dpts **+707.5** dPF **+0.027** overrides {"sl_fixed_pts":1040.0,"max_hold_hours":14.0}
+- **Best by pts:** same as near soft (sl1030 family); many residual axes inert (temd/tmpb/sls4_2700/hold16 = baseline).
+- **High-PF pts-cut sample:** maxb15 n162 PF **3.052** / **+161389.1** — dpts **-382.6**; maxb14 n156 PF **3.042** / **+156284.5** — dpts **-5487.2**.
+- **Verdict:** **NO CLEAR** — soft champ sl1030 only +1600 under ~2k floor; no tick. KEEP unchanged DH_tick sl1050 PF2.91/+161886.9 n171 max_loss7.
+- **Next:** Batch DJ SOFT_NEAR_SL_DJ_PF291 5m — soft-near densify around DI near-miss sl1030/1040 (fine SL 1010-1065 + hold/maxb/mb/flat/nd/ema/cap residual compounds) on required tip SL1050; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. Avoid flat23xsls, trail, preferred (DD/DB/DF), CX/CM revive. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~16:43 Europe/Bucharest Asia Batch DJ SOFT_NEAR_SL_DJ_PF291 5m **NO CLEAR**; kick Batch DK
+- **Grid:** `results/overnight_5m_grid_20261002T132419Z.json` — tag `SOFT_NEAR_SL_DJ_PF291` — 56/56 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_soft_near_sl_DJ_pf291_20261002.py` — log `results/_dj_grid_run.log` — finished ~2026-10-02T13:24Z UTC.
+- **KEEP (unchanged):** DH_tick sl1050 ticks `20261002T123429Z_7ef998ad` PF **2.91** / **+161886.9** n171 max_loss**7** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **5m baseline:** `PF291_sl1050_baseline` n171 PF **2.904** / **+161771.7** win52.0%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8; win% secondary.
+- **CLEAR soft≥2.5 dpts≥~2k:** **0**
+- **Near soft PF≥2.5 0<dpts<2k (top):**
+  - `sl1030` / `sl1030_cap1100` / `sl1030_hold16` / `sl1030_sls4_2700` n171 PF **2.960** / **+163371.7** — dpts **+1600.0** dPF **+0.056**
+  - `sl1030_fib0382` n171 PF **2.960** / **+163348.7** — dpts **+1577.0**
+  - `sl1030_hold14` n171 PF **2.959** / **+163279.2** — dpts **+1507.5**
+  - `sl1035` n171 PF **2.946** / **+162971.7** — dpts **+1200.0**
+  - `sl1030_maxb15` n162 PF **3.110** / **+162869.1** — dpts **+1097.4**
+- **Best by pts:** same sl1030 family; many residual axes inert (cap/arange/tmb/wick/close_outside = baseline).
+- **Verdict:** **NO CLEAR** — soft champ stuck at sl1030 dpts+1600 (same as DI) under ~2k; no tick. KEEP unchanged DH_tick sl1050 PF2.91/+161886.9 n171 max_loss7.
+- **Next:** Batch DK `RESIDUAL_TIP_DK_PF291` 5m — residual densify on required tip SL1050 locked (mb/nd/hold/flat/wait/rc/cap/maxb/sls/TP/temd/tmpb/fib/asia + thin compounds); avoid SL soft re-ladder, flat23xsls, trail, preferred (DD/DB/DF), CX/CM revive. Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~17:19 Europe/Bucharest Asia Batch DK RESIDUAL_TIP_DK_PF291 5m **NO CLEAR**; kick Batch DL
+- **Grid:** 
+esults/overnight_5m_grid_20261002T134711Z.json — tag RESIDUAL_TIP_DK_PF291 — 138/138 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script scripts/_residual_tip_DK_pf291_20261002.py — log 
+esults/_dk_grid_run.log — finished ~2026-10-02T13:48Z UTC.
+- **KEEP (unchanged):** DH_tick sl1050 ticks 20261002T123429Z_7ef998ad PF **2.91** / **+161886.9** n171 max_loss**7** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **5m baseline:** PF291_sl1050_baseline n171 PF **2.904** / **+161771.7** win52.0%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8; win% secondary.
+- **CLEAR soft≥2.5 dpts≥~2k:** **0**
+- **Near soft PF≥2.5 0<dpts<2k:** **0** (nothing ≥1k)
+- **Best by pts / soft champ:**
+  - lat19 n171 PF **2.971** / **+162060.5** win52.0% — dpts **+288.8** dPF **+0.067** overrides {"flatten_hour":19}
+- **Best runners:** most residual axes inert (=baseline 161771.7): temd/tmpb/tmb/asia_range/fib_anchor_break; fib densify cut pts (fib035 −1113.8; fib042+ −5066).
+- **Verdict:** **NO CLEAR** — sole soft champ flat19 only +289 under ~2k; no tick. KEEP unchanged DH_tick sl1050 PF2.91/+161886.9 n171 max_loss7. DI/DJ sl1030 soft (+1600) remains parked under ~2k.
+- **Next:** Batch DL FLAT_SOFT_DENSE_DL_PF291 5m — flatten soft-near densify around DK champ flat19 (flat 17–22 + flat19 compounds with mb/nd/hold/maxb/wait/rc/cap/sls/ema) + wait/ema/sls/nb-trend residual on required tip SL1050; tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8. Avoid SL soft re-ladder, flat23xsls, trail, preferred (DD/DB/DF), CX/CM revive. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~17:49 Europe/Bucharest Asia Batch DL FLAT_SOFT_DENSE_DL_PF291 5m **NO CLEAR**; kick Batch DM
+- **Grid:** `results/overnight_5m_grid_20261002T142316Z.json` — tag `FLAT_SOFT_DENSE_DL_PF291` — 110/110 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_flat_soft_dense_DL_pf291_20261002.py` — log `results/_dl_grid_run.log` — finished ~2026-10-02T14:24Z UTC.
+- **KEEP (unchanged):** DH_tick sl1050 ticks `20261002T123429Z_7ef998ad` PF **2.91** / **+161886.9** n171 max_loss**7** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **5m baseline:** `PF291_sl1050_baseline` n171 PF **2.904** / **+161771.7** win52.0%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8; win% secondary.
+- **CLEAR soft≥2.5 dpts≥~2k (vs KEEP ticks):** **0**
+- **Near soft PF≥2.5 0<dpts_KEEP<2k (top):**
+  - `flat19` / `flat19_cap1100` / `flat19_cap1300` / `flat19_hold14` / `flat19_hold16` / `flat19_sls4_2700` n171 PF **2.971** / **+162060.5** — dpts **+173.6** dPF **+0.061** (vs 5m baseline dpts **+288.8**)
+  - `flat19_fib0382` n171 PF **2.971** / **+162037.5** — dpts **+150.6**
+  - `flat19_maxb15` / `flat19_hold14_maxb15` n162 PF **3.122** / **+161972.7** — dpts **+85.8**
+  - `flat19_mb263` n171 PF **2.968** / **+161967.3** — dpts **+80.4**
+- **Best by pts:** flat19 family only; flat19 compounds inert vs bare flat19; ema/wait/sls/nb-trend/hold/rc/cap residual mostly = baseline or worse.
+- **Verdict:** **NO CLEAR** — flatten densify stuck at flat19 dpts+174 under ~2k; no tick. KEEP unchanged DH_tick sl1050 PF2.91/+161886.9 n171 max_loss7. Parked: DI/DJ sl1030 soft (+1600), DK/DL flat19 soft (+289/+174).
+- **Next:** Batch DM `ORTHO_TIP_DM_PF291` 5m — ortho tip residual densify on required tip SL1050 (mb×nd×maxb×nbars crosses, ma_type, TP×hold, trend/seasonal light, timeout compounds); avoid SL soft re-ladder, flat19 re-dense, flat23xsls, trail, preferred (DD/DB/DF). Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8.
+
+### 2026-10-02 ~18:16 Europe/Bucharest Asia Batch DM ORTHO_TIP_DM_PF291 5m **NO CLEAR**; kick Batch DN
+- **Grid:** `results/overnight_5m_grid_20261002T145411Z.json` ? tag `ORTHO_TIP_DM_PF291` ? 117/117 cells ? data_source=candles_5m ? workers=2 ? window 2025-01 to 2026-09 ? script `scripts/_ortho_tip_DM_pf291_20261002.py` ? log `results/_dm_grid_run.log` ? finished ~2026-10-02T14:55Z UTC.
+- **KEEP (unchanged):** DH_tick sl1050 ticks `20261002T123429Z_7ef998ad` PF **2.91** / **+161886.9** n171 max_loss**7** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **5m baseline:** `PF291_sl1050_baseline` n171 PF **2.904** / **+161771.7** win52.0%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft?2.5 dpts?~2k max_loss?7?8; win% secondary.
+- **CLEAR soft?2.5 dpts?~2k:** **0**
+- **Near soft PF?2.5 0<dpts<2k:** **0** (nothing dpts>0 at all)
+- **Best by pts:** baseline / 18 inert cells (=161771.7): ema_tf5/30, ma_sma, temd/tmpb/tmb family, trend_eff/flat/sess, week2, fib040_anchor_break.
+- **Closest cuts:** fib039 dpts?12.8; fib037 ?38.3; tp4000_hold14 ?92.5; maxb15 PF3.052 dpts?382.6 (n162).
+- **High damage:** ma_hma/kama/zlema family dpts ?57k to ?119k (do not revive non-ema ma_type).
+- **Verdict:** **NO CLEAR** ? ortho tip residual fully inert / negative; no tick. KEEP unchanged DH_tick sl1050 PF2.91/+161886.9 n171 max_loss7. Parked: DI/DJ sl1030 soft (+1600), DK/DL flat19 soft (+289/+174).
+- **Next:** Batch DN `ENTRY_GATE_DN_PF291` 5m ? entry-gate residual densify on required tip SL1050 (skip_late wait?asia, resume rc?cap, wait?ema, near_box_trend/close/wick/higher_close gates, asia_range + thin compounds); avoid SL soft re-ladder, flat19 re-dense, flat23xsls, trail, preferred (DD/DB/DF), CX/CM revive. Tick-confirm only soft?2.5 dpts?~2k max_loss?7?8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~18:48 Europe/Bucharest Asia Batch DN ENTRY_GATE_DN_PF291 5m **NO CLEAR**; kick Batch DO
+- **Grid:** `results/overnight_5m_grid_20261002T152046Z.json` · tag `ENTRY_GATE_DN_PF291` · 91/91 cells · data_source=candles_5m · workers=2 · window 2025-01 to 2026-09 · script `scripts/_entry_gate_DN_pf291_20261002.py` · log `results/_dn_grid_run.log` · finished ~2026-10-02T15:21Z UTC.
+- **KEEP (unchanged):** DH_tick sl1050 ticks `20261002T123429Z_7ef998ad` PF **2.91** / **+161886.9** n171 max_loss**7** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **5m baseline:** `PF291_sl1050_baseline` n171 PF **2.904** / **+161771.7** win52.0%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k:** **0**
+- **Near soft PF>=2.5 0<dpts<2k:** **0** (nothing dpts>0 at all)
+- **Best by pts:** baseline / 14 inert cells (=161771.7): wick_off, close_outside, sls4_2700, cap1100/1300/1400/1500, asia_range200-400.
+- **Closest cuts:** sls5/sls5_2600/sls4_2200-2500 family dpts-1050 PF2.869; ema32 dpts-2694 PF2.896; nb_off dpts-3573 PF2.668.
+- **Verdict:** **NO CLEAR** — entry-gate residual fully inert / negative; no tick. KEEP unchanged DH_tick sl1050 PF2.91/+161886.9 n171 max_loss7. Parked: DI/DJ sl1030 soft (+1600), DK/DL flat19 soft (+289/+174).
+- **Next:** Batch DO `EXIT_BE_SIDE_DO_PF291` 5m — exit/be/side residual densify on required tip SL1050 (be_arm ladder, side_filter, multi_day, wait_from_break off, sl_cap, news/seasonal light, flatten extremes, hold×be / tp×be compounds); avoid SL soft re-ladder, flat19 re-dense, flat23xsls, trail, preferred (DD/DB/DF), CX/CM revive, non-ema ma_type. Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~19:17 Europe/Bucharest Asia Batch DO EXIT_BE_SIDE_DO_PF291 5m **NO CLEAR**; kick Batch DP
+- **Grid:** `results/overnight_5m_grid_20261002T155324Z.json` · tag `EXIT_BE_SIDE_DO_PF291` · 65/65 cells · data_source=candles_5m · workers=2 · window 2025-01 to 2026-09 · script `scripts/_exit_be_side_DO_pf291_20261002.py` · log `results/_do_grid_run.log` · finished ~2026-10-02T15:53Z UTC.
+- **KEEP (unchanged):** DH_tick sl1050 ticks `20261002T123429Z_7ef998ad` PF **2.91** / **+161886.9** n171 max_loss**7** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **5m baseline:** `PF291_sl1050_baseline` n171 PF **2.904** / **+161771.7** win52.0%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k:** **0**
+- **Near soft PF>=2.5 0<dpts_KEEP<2k:**
+  - `flat23` n171 PF **2.917** / **+163357.0** — dpts **+1470.1** dPF **+0.007** (vs 5m baseline dpts **+1585.3**)
+- **Best by pts after flat23:** inert slcap*/multi_day/seasonal_tag/news_tag (=baseline); be_arm ladder catastrophic (be200 PF0.86 to be2000 dpts~-30k); side_short PF4.13 but pts +92k (half book); news_scheduled PF3.15 pts −8.7k.
+- **Verdict:** **NO CLEAR** — exit/be/side residual dead; only flat23 soft +1470 under ~2k (park; do not densify flat23xsls). No tick. KEEP unchanged DH_tick sl1050 PF2.91/+161886.9 n171 max_loss7. Parked: DI/DJ sl1030 soft (+1600), DK/DL flat19 soft (+289/+174), DO flat23 soft (+1470).
+- **Next:** Batch DP `NEARBOX_TIMEOUT_DP_PF291` 5m — near_box D/N densify + timeout gates + TP/hold/fib fine + mb asymmetric on required tip SL1050; avoid SL soft, flat19 re-dense, flat23xsls, trail, preferred (DD/DB/DF), CX/CM revive, be_arm revive, non-ema. Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~19:46 Europe/Bucharest Asia Batch DP NEARBOX_TIMEOUT_DP_PF291 5m **NO CLEAR**; kick Batch DQ
+- **Grid:** `results/overnight_5m_grid_20261002T162031Z.json` — tag `NEARBOX_TIMEOUT_DP_PF291` — 94/94 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_nearbox_timeout_DP_pf291_20261002.py` — log `results/_dp_grid_run.log` — finished ~2026-10-02T16:21Z UTC.
+- **KEEP (unchanged):** DH_tick sl1050 ticks `20261002T123429Z_7ef998ad` PF **2.91** / **+161886.9** n171 max_loss**7** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **5m baseline:** `PF291_sl1050_baseline` n171 PF **2.904** / **+161771.7** win52.0%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k:** **0**
+- **Near soft PF>=2.5 0<dpts<2k:** **0** (nothing dpts>0 at all)
+- **Best by pts:** baseline / 27 inert cells (=161771.7): hold16-18, full temd/tmb/tmpb timeout-gate family (gates inert under required+near_box).
+- **Closest cuts:** fib038 dpts-25.5; fib036 -51; hold14 -92.5; nbars3 -734.5; nd densify hurts (nd1600 -3150; nd1450 -4000; nd1200 -18395).
+- **High damage:** fib_ref_fib -100k; fib_anchor_roll -30k; tp4600/4800 ~-22k; nb_closes_dir PF3.23 but dpts-15.5k (n135).
+- **Verdict:** **NO CLEAR** — nearbox/timeout residual fully inert / negative; no tick. KEEP unchanged DH_tick sl1050 PF2.91/+161886.9 n171 max_loss7. Parked: DI/DJ sl1030 soft (+1600), DK/DL flat19 soft (+289/+174), DO flat23 soft (+1470).
+- **Next:** Batch DQ `ASIA_STRUCT_DQ_PF291` 5m — asia hour window + asia_range + wait/ema fine + sl_mode(range/m12_frac)/tp_r/week2/seasonal + resume densify on required tip SL1050; avoid SL soft re-ladder, flat19 re-dense, flat23xsls, nearbox D re-dense, trail, preferred (DD/DB/DF), CX/CM revive, be_arm, non-ema. Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~20:19 Europe/Bucharest Asia Batch DQ ASIA_STRUCT_DQ_PF291 5m **NO CLEAR**; kick Batch DR
+- **Grid:** `results/overnight_5m_grid_20261002T165034Z.json` · tag `ASIA_STRUCT_DQ_PF291` · 104/104 cells · data_source=candles_5m · workers=2 · window 2025-01 to 2026-09 · script `scripts/_asia_struct_DQ_pf291_20261002.py` · log `results/_dq_grid_run.log` · finished ~2026-10-02T16:50Z UTC.
+- **KEEP (unchanged):** DH_tick sl1050 ticks `20261002T123429Z_7ef998ad` PF **2.91** / **+161886.9** n171 max_loss**7** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **5m baseline:** `PF291_sl1050_baseline` n171 PF **2.904** / **+161771.7** win52.0%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k:** **0**
+- **Near soft PF>=2.5 0<dpts<2k:** **0** (cells with dpts>0: **0**)
+- **Best by pts:** baseline / 16 inert cells (=161771.7): PF291_sl1050_baseline, arange150, arange200, arange250, arange275, arange325, arange350, arange400, cap1100, cap1300, cap1400, cap1600, seasonal_tag, seasonal_tag_join, week2_tag, week2_trend_on.
+- **Closest cuts:** cap1000 dpts-2027 PF2.88; cap900 dpts-2027 PF2.88; arange450 dpts-2244 PF2.878; arange500 dpts-2244 PF2.878; ema32 dpts-2694 PF2.896; rc5 dpts-3110 PF2.866.
+- **Verdict:** **NO CLEAR** — asia/struct residual fully inert / negative; no tick. KEEP unchanged DH_tick sl1050 PF2.91/+161886.9 n171 max_loss7. Parked: DI/DJ sl1030 soft (+1600), DK/DL flat19 soft (+289/+174), DO flat23 soft (+1470); DP nearbox/timeout NO CLEAR (0 dpts>0).
+- **Next:** Batch DR `EMA_TF_SLS_DR_PF291` 5m — ema_tf densify + sls densify + asymmetric mb + trend×week2_filter + use_higher_close residual on required tip SL1050; avoid SL soft re-ladder, flat19 re-dense, flat23xsls, nearbox D re-dense, asia-hour re-dense (DQ), trail, preferred (DD/DB/DF), CX/CM revive, be_arm, non-ema. Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~20:44 Europe/Bucharest Asia Batch DR EMA_TF_SLS_DR_PF291 5m **NO CLEAR**; kick Batch DS
+- **Grid:** 
+esults/overnight_5m_grid_20261002T172341Z.json — tag EMA_TF_SLS_DR_PF291 — 108/108 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script scripts/_ema_tf_sls_DR_pf291_20261002.py — log 
+esults/_dr_grid_run.log — finished ~2026-10-02T17:24Z UTC.
+- **KEEP (unchanged):** DH_tick sl1050 ticks 20261002T123429Z_7ef998ad PF **2.91** / **+161886.9** n171 max_loss**7** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **5m baseline:** PF291_sl1050_baseline n171 PF **2.904** / **+161771.7** win52.0%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k:** **0**
+- **Near soft PF>=2.5 0<dpts<2k:** **0** (cells with dpts>0: **0**)
+- **Best by pts:** baseline / 15 inert cells (=161771.7): wait14_tf20, wait14_tf10, mb_up260_dn250, ema_tf5/10/12/20/25/30/45/60, ema31_tf10/12/20/25.
+- **Closest cuts:** sls4_3500 dpts-502.4 PF3.050 n161; sls4_2200/2400/2500/sls5_2600 family dpts-1050 PF2.869; mb_up265_dn255 dpts-1143 PF2.868.
+- **High damage:** week2_filter family (w2f_sess6 dpts-55.6k; w2f_flat* dpts-47.7k).
+- **Verdict:** **NO CLEAR** — ema_tf/sls/asym-mb/week2/higher_close residual fully inert / negative; no tick. KEEP unchanged DH_tick sl1050 PF2.91/+161886.9 n171 max_loss7. Parked: DI/DJ sl1030 soft (+1600), DK/DL flat19 soft (+289/+174), DO flat23 soft (+1470); DP nearbox/timeout NO CLEAR; DQ asia/struct NO CLEAR.
+- **Next:** Batch DS TP_HOLD_WAIT_DS_PF291 5m — TP/hold/wait/maxb residual densify (+ light rc/cap + symmetric mb tip) on required tip SL1050; avoid SL soft re-ladder, flat19 re-dense, flat23xsls, nearbox D re-dense, asia-hour re-dense (DQ), ema_tf/sls/asym re-dense (DR), trail, preferred (DD/DB/DF), CX/CM revive, be_arm, non-ema. Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+- **Kick:** Batch DS started ~2026-10-02T17:44Z UTC workers=2 PARAM_ECHO_OK (122 cells; script scripts/_tp_hold_wait_DS_pf291_20261002.py; log 
+esults/_ds_grid_run.log; pid 16208).
+
+### 2026-10-02 ~20:47 Europe/Bucharest Asia Batch DS TP_HOLD_WAIT_DS_PF291 5m **NO CLEAR**; kick Batch DT
+- **Grid:** 
+esults/overnight_5m_grid_20261002T174634Z.json — tag TP_HOLD_WAIT_DS_PF291 — 122/122 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script scripts/_tp_hold_wait_DS_pf291_20261002.py — log 
+esults/_ds_grid_run.log — finished ~2026-10-02T17:47Z UTC.
+- **KEEP (unchanged):** DH_tick sl1050 ticks 20261002T123429Z_7ef998ad PF **2.91** / **+161886.9** n171 max_loss**7** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **5m baseline:** PF291_sl1050_baseline n171 PF **2.904** / **+161771.7** win52.0%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k:** **0**
+- **Near soft PF>=2.5 0<dpts<2k:** **0** (cells with dpts>0: **0**)
+- **Best by pts:** baseline / 8 inert cells (=161771.7): hold16-20, cap1100/1300/1400.
+- **Closest cuts:** hold14 dpts-92.5 PF2.903; mb262 / mb262_hold15 dpts-93.2 PF2.903; hold13 dpts-373.6; maxb15 family dpts-382.6 PF3.052 n162.
+- **Verdict:** **NO CLEAR** — TP/hold/wait/maxb/rc/cap/sym-mb residual fully inert / negative; no tick. KEEP unchanged DH_tick sl1050 PF2.91/+161886.9 n171 max_loss7. Parked: DI/DJ sl1030 soft (+1600), DK/DL flat19 soft (+289/+174), DO flat23 soft (+1470); DP/DQ/DR NO CLEAR.
+- **Prior same fire:** Batch DR EMA_TF_SLS_DR_PF291 also **NO CLEAR** (0 dpts>0; 15 inert ema_tf ties) — logged above; DS kicked then finished mid-fire and scored here.
+- **Next:** Batch DT PB_SLMODE_DT_PF291 5m — pullback_fib/ref + sl_mode/tp_mode structural residual densify on required tip SL1050; avoid SL soft re-ladder, flat19 re-dense, flat23xsls, nearbox D, asia-hour, ema_tf/sls/asym, TP/hold/wait/maxb re-dense, trail, preferred (DD/DB/DF), CX/CM revive, be_arm, non-ema. Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+- **Kick:** Batch DT started ~2026-10-02T17:48Z UTC workers=2 PARAM_ECHO_OK (89 cells; script scripts/_pb_slmode_DT_pf291_20261002.py; log 
+esults/_dt_grid_run.log).
+
+### 2026-10-02 ~21:16 Europe/Bucharest Asia Batch DT PB_SLMODE_DT_PF291 5m **NO CLEAR**; kick Batch DU
+- **Grid:** `results/overnight_5m_grid_20261002T175013Z.json` — tag `PB_SLMODE_DT_PF291` — 89/89 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_pb_slmode_DT_pf291_20261002.py` — log `results/_dt_grid_run.log` — finished ~2026-10-02T17:50Z UTC.
+- **KEEP (unchanged):** DH_tick sl1050 ticks `20261002T123429Z_7ef998ad` PF **2.91** / **+161886.9** n171 max_loss**7** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **5m baseline:** `PF291_sl1050_baseline` n171 PF **2.904** / **+161771.7** win52.0%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k:** **0**
+- **Near soft PF>=2.5 0<dpts<2k:** **0**
+- **Cells dpts>0 (vs KEEP tick):** **1** — `slcap3000_range1` n171 PF **2.345** / **+164864.6** — dpts **+2977.7** (under soft PF floor; no tick).
+- **Best by pts after underfloor champ:** baseline / inert ties (=161771.7): PF291_sl1050_baseline, anchor_break, close_outside, fib040_anchor_break, multi_day, seasonal_tag, wick_off.
+- **Closest cuts:** fib0p39 dpts-128; fib0382 family dpts-138; fib densify / ref swaps inert-to-negative; tp_sl_m* and tp_range_m* cut pts hard; news_filter PF3.15 but pts -8.7k.
+- **Verdict:** **NO CLEAR** — pullback_fib/ref + sl_mode/tp_mode residual fully inert / underfloor; only pts lift fails soft PF. No tick. KEEP unchanged DH_tick sl1050 PF2.91/+161886.9 n171 max_loss7. Parked: DI/DJ sl1030 soft (+1600), DK/DL flat19 soft (+289/+174), DO flat23 soft (+1470); DP/DQ/DR/DS NO CLEAR; DT underfloor `slcap3000_range1` (+2978 PF2.345) → densify next.
+- **Next:** Batch DU `SLRANGE_CAP_DU_PF291` 5m — densify DT underfloor pts-champ slcap3000_range1 (range-SL × cap around 3000 + hold/tp/mb/fib/rc/sls/wait/maxb/flat light compounds + trend_efficiency residual) on required tip SL1050 to lift PF≥2.5 while keeping pts; avoid SL fixed soft, flat19 re-dense, flat23xsls, nearbox D, asia-hour, ema_tf/sls/asym alone, TP/hold/wait/maxb alone, pb/slmode/tpmode re-dense, trail, preferred (DD/DB/DF), CX/CM revive, be_arm, non-ema. Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+- **Kick:** Batch DU started ~2026-10-02T18:21Z UTC workers=2 PARAM_ECHO_OK (145 cells; script `scripts/_slrange_cap_DU_pf291_20261002.py`; log `results/_du_grid_run.log`; pid 14280).
+
+### 2026-10-02 ~21:50 Europe/Bucharest Asia Batch DU `SLRANGE_CAP_DU_PF291` 5m — **CLEAR**; kick tick `rm0p85_cap4000`
+- **Grid:** `results/overnight_5m_grid_20261002T182121Z.json` — tag `SLRANGE_CAP_DU_PF291` — 145/145 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_slrange_cap_DU_pf291_20261002.py` — log `results/_du_grid_run.log` — finished ~2026-10-02T18:22Z UTC.
+- **KEEP (unchanged until ticks):** DH_tick sl1050 ticks `20261002T123429Z_7ef998ad` PF **2.91** / **+161886.9** n171 max_loss**7** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL1050/TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **5m baseline:** `PF291_sl1050_baseline` n171 PF **2.904** / **+161771.7** win52.0%.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k (1):**
+  - `rm0p85_cap4000` n171 PF **2.558** / **+179252.0** win62.6% — dpts **+17365.1** dPF **-0.352** overrides `{"sl_mode":"range","sl_range_mult":0.85,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}`
+- **Near soft PF>=2.5 0<dpts<2k:**
+  - (none)
+- **Near-underfloor PF>=2.45 dpts>0 (no tick):**
+  - `rm1p25_cap3000_mb255` n173 PF **2.497** / **+178233.3** win65.9% — dpts **+16346.4** dPF **-0.413** overrides `{"sl_mode":"range","sl_range_mult":1.25,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0,"min_break_pts_above":255.0,"min_break_pts_below":255.0}`
+  - `rm1p1_cap3000_mb255` n173 PF **2.490** / **+177629.3** win64.7% — dpts **+15742.4** dPF **-0.420** overrides `{"sl_mode":"range","sl_range_mult":1.1,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0,"min_break_pts_above":255.0,"min_break_pts_below":255.0}`
+  - `rm0p9_cap4000` n171 PF **2.491** / **+176652.5** win63.2% — dpts **+14765.6** dPF **-0.419** overrides `{"sl_mode":"range","sl_range_mult":0.9,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p25_cap3000` n171 PF **2.496** / **+175805.2** win66.1% — dpts **+13918.3** dPF **-0.414** overrides `{"sl_mode":"range","sl_range_mult":1.25,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p25_cap3000_hold16` n171 PF **2.496** / **+175805.2** win66.1% — dpts **+13918.3** dPF **-0.414** overrides `{"sl_mode":"range","sl_range_mult":1.25,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0,"max_hold_hours":16.0}`
+  - `rm1p1_cap3000` n171 PF **2.485** / **+175012.6** win64.9% — dpts **+13125.7** dPF **-0.425** overrides `{"sl_mode":"range","sl_range_mult":1.1,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p1_cap3000_hold16` n171 PF **2.485** / **+175012.6** win64.9% — dpts **+13125.7** dPF **-0.425** overrides `{"sl_mode":"range","sl_range_mult":1.1,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0,"max_hold_hours":16.0}`
+  - `rm1p2_cap3000` n171 PF **2.477** / **+174665.7** win65.5% — dpts **+12778.8** dPF **-0.433** overrides `{"sl_mode":"range","sl_range_mult":1.2,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0}`
+- **Best by pts:**
+  - `rm0p85_cap4000` n171 PF **2.558** / **+179252.0** win62.6% — dpts **+17365.1** dPF **-0.352** overrides `{"sl_mode":"range","sl_range_mult":0.85,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p25_cap3000_mb255` n173 PF **2.497** / **+178233.3** win65.9% — dpts **+16346.4** dPF **-0.413** overrides `{"sl_mode":"range","sl_range_mult":1.25,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0,"min_break_pts_above":255.0,"min_break_pts_below":255.0}`
+  - `rm1p1_cap4000` n171 PF **2.447** / **+177882.2** win66.1% — dpts **+15995.3** dPF **-0.463** overrides `{"sl_mode":"range","sl_range_mult":1.1,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p1_cap3000_mb255` n173 PF **2.490** / **+177629.3** win64.7% — dpts **+15742.4** dPF **-0.420** overrides `{"sl_mode":"range","sl_range_mult":1.1,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0,"min_break_pts_above":255.0,"min_break_pts_below":255.0}`
+  - `rm1p25_cap4000` n171 PF **2.418** / **+176685.3** win67.3% — dpts **+14798.4** dPF **-0.492** overrides `{"sl_mode":"range","sl_range_mult":1.25,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}`
+  - `rm0p9_cap4000` n171 PF **2.491** / **+176652.5** win63.2% — dpts **+14765.6** dPF **-0.419** overrides `{"sl_mode":"range","sl_range_mult":0.9,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p15_cap4000` n171 PF **2.422** / **+176633.5** win66.1% — dpts **+14746.6** dPF **-0.488** overrides `{"sl_mode":"range","sl_range_mult":1.15,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p2_cap4000` n171 PF **2.410** / **+176092.3** win66.7% — dpts **+14205.4** dPF **-0.500** overrides `{"sl_mode":"range","sl_range_mult":1.2,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p25_cap3000` n171 PF **2.496** / **+175805.2** win66.1% — dpts **+13918.3** dPF **-0.414** overrides `{"sl_mode":"range","sl_range_mult":1.25,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p25_cap3000_hold16` n171 PF **2.496** / **+175805.2** win66.1% — dpts **+13918.3** dPF **-0.414** overrides `{"sl_mode":"range","sl_range_mult":1.25,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0,"max_hold_hours":16.0}`
+- **Under-floor dpts>0 sample:**
+  - `rm1p25_cap3000_mb255` n173 PF **2.497** / **+178233.3** win65.9% — dpts **+16346.4** dPF **-0.413** overrides `{"sl_mode":"range","sl_range_mult":1.25,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0,"min_break_pts_above":255.0,"min_break_pts_below":255.0}`
+  - `rm1p1_cap4000` n171 PF **2.447** / **+177882.2** win66.1% — dpts **+15995.3** dPF **-0.463** overrides `{"sl_mode":"range","sl_range_mult":1.1,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p1_cap3000_mb255` n173 PF **2.490** / **+177629.3** win64.7% — dpts **+15742.4** dPF **-0.420** overrides `{"sl_mode":"range","sl_range_mult":1.1,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0,"min_break_pts_above":255.0,"min_break_pts_below":255.0}`
+  - `rm1p25_cap4000` n171 PF **2.418** / **+176685.3** win67.3% — dpts **+14798.4** dPF **-0.492** overrides `{"sl_mode":"range","sl_range_mult":1.25,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}`
+  - `rm0p9_cap4000` n171 PF **2.491** / **+176652.5** win63.2% — dpts **+14765.6** dPF **-0.419** overrides `{"sl_mode":"range","sl_range_mult":0.9,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p15_cap4000` n171 PF **2.422** / **+176633.5** win66.1% — dpts **+14746.6** dPF **-0.488** overrides `{"sl_mode":"range","sl_range_mult":1.15,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p2_cap4000` n171 PF **2.410** / **+176092.3** win66.7% — dpts **+14205.4** dPF **-0.500** overrides `{"sl_mode":"range","sl_range_mult":1.2,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p25_cap3000` n171 PF **2.496** / **+175805.2** win66.1% — dpts **+13918.3** dPF **-0.414** overrides `{"sl_mode":"range","sl_range_mult":1.25,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p25_cap3000_hold16` n171 PF **2.496** / **+175805.2** win66.1% — dpts **+13918.3** dPF **-0.414** overrides `{"sl_mode":"range","sl_range_mult":1.25,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0,"max_hold_hours":16.0}`
+  - `rm1p1_cap3000` n171 PF **2.485** / **+175012.6** win64.9% — dpts **+13125.7** dPF **-0.425** overrides `{"sl_mode":"range","sl_range_mult":1.1,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0}`
+  - `rm1p1_cap3000_hold16` n171 PF **2.485** / **+175012.6** win64.9% — dpts **+13125.7** dPF **-0.425** overrides `{"sl_mode":"range","sl_range_mult":1.1,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0,"max_hold_hours":16.0}`
+  - `rm1p2_cap3000` n171 PF **2.477** / **+174665.7** win65.5% — dpts **+12778.8** dPF **-0.433** overrides `{"sl_mode":"range","sl_range_mult":1.2,"sl_cap_pts":3000.0,"sl_fixed_pts":1050.0}`
+- **Verdict:** **CLEAR** — found 1 cell soft>=2.5 dpts>=~2k — pts-champ `rm0p85_cap4000` PF2.558/+179252.0 dpts+17365.1 (5m). Many underfloor range-SL cells lift pts hard but miss soft PF (best underfloor `rm1p25_cap3000_mb255` PF2.497/+178233.3). KEEP unchanged DH_tick sl1050 PF2.91/+161886.9 n171 max_loss7 until tick. Parked: DI/DJ sl1030 soft, DK/DL flat19 soft, DO flat23 soft; DP/DQ/DR/DS/DT NO CLEAR (DT underfloor densified here).
+- **Next:** tick-confirm champ `rm0p85_cap4000` overrides `{"sl_mode":"range","sl_range_mult":0.85,"sl_cap_pts":4000.0,"sl_fixed_pts":1050.0}` on KEEP seed ticks workers=2. Promote only ticks soft>=2.5 dpts>=~2k max_loss<=7-8. If reject: park DU soft underfloor near-misses (rm1p25_cap3000_mb255 / rm0p9_cap4000 / rm1p1_cap3000_mb255) — do NOT densify DT/DU slmode/range again unless Igor asks; next residual densify on required tip SL1050 elsewhere. stop_auto_tick=FALSE. No reaktor / no push.
+- **Kick:** DU_tick `rm0p85_cap4000` started ~2026-10-02T18:49Z UTC workers=2 PARAM_ECHO_OK (sl_mode=range rm=0.85 cap=4000; seed results/_seed_pf291_sl1050.json).
+
+### 2026-10-02 ~22:15 Europe/Bucharest Asia DU_tick `rm0p85_cap4000` ticks — **NEW KEEP**; kick Batch DV
+- **Run:** `20261002T190356Z_946cbf4b` — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — saved `C:\Users\user\strateg\results\overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261002T190356Z_946cbf4b.json` — started ~2026-10-02T18:49:40Z finished ~2026-10-02T19:03:56Z UTC — seed `results/_seed_pf291_sl1050.json` + overrides sl_mode=range rm=0.85 cap=4000.
+- **Prior KEEP:** DH_tick sl1050 ticks `20261002T123429Z_7ef998ad` PF **2.91** / **+161886.9** n171 max_loss**7**.
+- **DU_tick:** n171 PF **2.56** / **+179531.9** win62.6% max_loss**4** — dpts **+17645.0** dPF **-0.35** — exits {"sl":51,"flatten":62,"tp":58}.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick promote soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **Verdict:** **NEW KEEP** — tick confirms 5m champ; PF soft floor ok (2.56>=2.5), huge pts lift (+17645), streak max_loss4<=8. Demote prior DH_tick sl1050 (park as prior KEEP). Park DU underfloor near-misses (no further tick): rm1p25_cap3000_mb255 / rm0p9_cap4000 / rm1p1_cap3000_mb255. Do NOT densify DT/DU slmode/range again unless Igor asks.
+- **NEW KEEP params:** asia0-6 · ema31 · wait14 · rc6 · cap1200 · flat21 · mb260 · maxb16 · SL range rm0.85/cap4000 (fixed_pts1050) · TP4000 fixed · sls4/2600 · hold15 · near_box outside N5 D1550 · wick on · pullback required · pullback_ref=both · pullback_fib=0.40 · fib_anchor=asia · ma_type=ema · news off · trail off · timeout market · wait_from_break.
+- **Seed:** `results/_seed_pf256_rm085_cap4000.json` (mirror `_seed_pf256_rm085_cap4000.json` at repo root).
+- **Next:** Batch DV `ORTHO_RESIDUAL_DV_PF256` 5m — orthogonal residual densify on NEW KEEP range tip (mb/flat/hold/wait/ema/rc/cap/sls/maxb/arange/timeout/trend_eff/resume light; avoid range-SL re-ladder, pb/slmode re-dense, preferred/trail/CX/CM/DI-DJ/DK-DL/DO revive, be_arm, non-ema). Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+- **Kick:** Batch DV started ~2026-10-02T19:15Z UTC workers=2 (script `scripts/_residual_ortho_DV_pf256_20261002.py`; log `results/_dv_grid_run.log`).
+
+## 2026-10-02 ~22:29 Europe/Bucharest — Batch DW SLCAP_DENSE_DW_PF256 scored + trail policy
+- KEEP DU_tick rm0.85/cap4000 PF2.56/+179531.9 n171 max_loss4.
+- DW 5m 44 cells: lower SL caps on rm0.85 — **no improve vs cap4000** (best lower `cap3600` pts 181106.2 dpts +1854.2). Cap4000 stays.
+- Igor: trail only on **ticks** (not 5m). Cancelled DX 5m trail densify. Promote trail only if tick dpts>=~10k vs KEEP.
+- Kicking first trail tick screen: fixed arm/width ladder via overnight API workers=2.
+
+### 2026-10-02 ~22:53 Europe/Bucharest Asia DX_tick trail arm2500/w160 **REJECT**; DV soft CLEAR → kick DV_tick mb255
+- **KEEP (unchanged):** DU_tick rm0.85/cap4000 ticks `20261002T190356Z_946cbf4b` PF **2.56** / **+179531.9** n171 max_loss**4** (asia0-6 ema31 wait14 rc6 cap1200 flat21 mb260 maxb16 SL range rm0.85/cap4000 TP4000 sls4/2600 hold15 near_box outside N5 D1550 wick on pullback required both fib0.40 asia trail off news off).
+- **Trail tick screen:** run `20261002T194301Z_c3f2cd02` ticks workers=2 window 2025-01→2026-09 — overrides trail_arm_mode=fixed trail_arm_pts=2500 trail_pts=160 (KEEP range-SL seed) — n171 PF **2.37** / **+144032.3** win66.7% max_loss**4** — dpts **-35499.6** dPF **-0.19** — exits {"sl":48,"flatten":36,"trail":86,"tp":1}.
+- **Trail verdict:** **REJECT** — PF under soft floor (~2.5) and deep pts cut vs KEEP; fails trail promote bar (≥~+10k pts). Park further trail arm/width ladder on this KEEP unless Igor asks (classic arm2500/w160 crushed). DX 5m trail densify stays cancelled.
+- **Batch DV ORTHO_RESIDUAL_DV_PF256 5m (already finished, scoring now):** `results/overnight_5m_grid_20261002T191530Z.json` — tag ORTHO_RESIDUAL_DV_PF256 — 80/80 cells — candles_5m workers=2 — 5m baseline PF2.558/+179252.0.
+- **CLEAR soft≥2.5 dpts≥~2k (vs KEEP tick pts):** mb255 / mb255_hold16 PF2.569/+182183.1 dpts+2651; mb250 PF2.568/+182110.6 dpts+2579; rc5 PF2.614/+182096.9 dpts+2565; flat22_hold16 PF2.536/+181970.3 dpts+2438; flat22 PF2.535/+181905.8 dpts+2374.
+- **Underfloor pts:** maxb20 PF2.349/+183203.4 dpts+3672 (no tick — PF floor fail).
+- **DW note (prior):** lower caps no pure improve; park DW CLEAR compounds `cap3800_mb255` / `rm0p8_cap4000` — do not re-dense DT/DU range-SL.
+- **Next:** tick-confirm DV soft champ **mb255** (overrides min_break 255/255) on KEEP seed ticks workers=2. Promote only soft≥2.5 dpts≥~2k max_loss≤7–8. Then runners rc5 / flat22 if needed. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~23:16 Europe/Bucharest Asia DV_tick mb255 ticks — **NEW KEEP**; kick Batch DY
+- **Run:** 20261002T200610Z_cf546b90 — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — saved C:\Users\user\strateg\results\overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261002T200610Z_cf546b90.json — started ~2026-10-02T19:53:04Z finished ~2026-10-02T20:06:10Z UTC — seed 
+esults/_seed_pf256_rm085_cap4000.json + overrides min_break 255/255 trail off.
+- **Prior KEEP:** DU_tick rm0p85_cap4000 ticks 20261002T190356Z_946cbf4b PF **2.56** / **+179531.9** n171 max_loss**4**.
+- **DV_tick mb255:** n173 PF **2.57** / **+182463.0** win62.4% max_loss**4** — dpts **+2931.1** dPF **+0.01** — exits {"sl":52,"flatten":62,"tp":59}.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick promote soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **Verdict:** **NEW KEEP** — tick confirms DV soft champ mb255; PF soft floor ok (2.57>=2.5), dpts +2931.1 (>=~2k), streak max_loss4<=8. Demote prior DU_tick rm0p85_cap4000 (park as prior KEEP). Park DV soft runners (rc5 / flat22) — no further DV soft tick unless Igor asks. Park trail / DW range / DT-DU range-SL densify remains.
+- **NEW KEEP params:** asia0-6 · ema31 · wait14 · rc6 · cap1200 · flat21 · mb255 · maxb16 · SL range rm0.85/cap4000 (fixed_pts1050) · TP4000 fixed · sls4/2600 · hold15 · near_box outside N5 D1550 · wick on · pullback required · pullback_ref=both · pullback_fib=0.40 · fib_anchor=asia · ma_type=ema · news off · trail off · timeout market · wait_from_break.
+- **Seed:** 
+esults/_seed_pf257_mb255_rm085_cap4000.json (mirror at repo root). BEST_REQUIRED_KEEP.json refreshed.
+- **Next:** Batch DY ORTHO_RESIDUAL_DY_PF257 5m — residual densify on NEW KEEP mb255 tip (flat/hold/wait/ema/rc/cap/sls/maxb/arange/timeout/trend_eff/resume light + soft compounds; avoid mb re-ladder, range-SL, pb/slmode, preferred/trail/CX/CM/DI-DJ/DK-DL/DO/DP/DQ/DR/DS/DT/DU/DW revive, be_arm, non-ema). Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+- **Kick:** Batch DY started ~2026-10-02T20:16Z UTC workers=2 (script scripts/_residual_ortho_DY_pf257_20261002.py; log 
+esults/_dy_grid_run.log).
+
+### 2026-10-02 ~23:17 Europe/Bucharest Asia Batch DY ORTHO_RESIDUAL_DY_PF257 5m — **CLEAR**; kick DY_tick rc5_flat22
+- **KEEP:** DV_tick mb255 ticks 20261002T200610Z_cf546b90 PF **2.57** / **+182463.0** n173 max_loss**4**.
+- **Grid:** 
+esults/overnight_5m_grid_20261002T201617Z.json — tag ORTHO_RESIDUAL_DY_PF257 — 81/81 cells — candles_5m workers=2 — 5m baseline PF2.569/+182183.1.
+- **CLEAR soft≥2.5 dpts≥~2k (vs KEEP tick pts):** rc5_flat22 PF2.596/+187767.8 dpts+5304.8; rc5 / rc5_hold16 PF2.624/+185028.0 dpts+2565; mb250_rc5 PF2.624/+184955.5 dpts+2492.5; flat22_hold16 PF2.547/+184901.4 dpts+2438.4; flat22 PF2.546/+184836.9 dpts+2373.9.
+- **Underfloor pts:** maxb20 PF2.380/+187407.9 dpts+4944.9 (no tick — PF floor fail).
+- **Next:** tick-confirm DY soft champ **rc5_flat22** (overrides resume_closes=5 flatten_hour=22) on KEEP seed ticks workers=2. Promote only soft≥2.5 dpts≥~2k max_loss≤7–8. Then runners rc5 / flat22 if needed. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-02 ~23:48 Europe/Bucharest Asia DY_tick rc5_flat22 ticks — **NEW KEEP**; kick Batch DZ
+- **Run:** `20261002T203056Z_b4895afc` — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — saved `C:\Users\user\strateg\results\overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261002T203056Z_b4895afc.json` — started ~2026-10-02T20:17:44Z finished ~2026-10-02T20:30:56Z UTC — seed `results/_seed_pf257_mb255_rm085_cap4000.json` + overrides resume_closes=5 flatten_hour=22 trail off.
+- **Prior KEEP:** DV_tick mb255 ticks `20261002T200610Z_cf546b90` PF **2.57** / **+182463.0** n173 max_loss**4**.
+- **DY_tick rc5_flat22:** n172 PF **2.6** / **+187995.2** win64.5% max_loss**4** — dpts **+5532.2** dPF **+0.03** — exits {"flatten":62,"sl":50,"tp":60}.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick promote soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **Verdict:** **NEW KEEP** — tick confirms DY soft champ rc5_flat22; PF soft floor ok (2.6>=2.5), dpts +5532.2 (>=~2k), streak max_loss4<=8. Demote prior DV_tick mb255 (park as prior KEEP). Park DY soft runners (rc5 / flat22 alone) — no further DY soft tick unless Igor asks. Park trail / DW range / DT-DU range-SL / preferred / CX / CM / DI-DJ / DK-DL / DO / DP / DQ / DR / DS densify remains closed.
+- **NEW KEEP params:** asia0-6 · ema31 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb16 · SL range rm0.85/cap4000 (fixed_pts1050) · TP4000 fixed · sls4/2600 · hold15 · near_box outside N5 D1550 · wick on · pullback required · pullback_ref=both · pullback_fib=0.40 · fib_anchor=asia · ma_type=ema · news off · trail off · timeout market · wait_from_break.
+- **Seed:** `results/_seed_pf260_rc5_flat22_mb255_rm085_cap4000.json` (mirror at repo root). BEST_REQUIRED_KEEP.json refreshed.
+- **Next:** Batch DZ `ORTHO_RESIDUAL_DZ_PF260` 5m — residual densify on NEW KEEP rc5+flat22 tip (hold/wait/ema/rc/flat/cap/sls/maxb/arange/timeout/trend_eff/resume light + soft compounds; avoid mb re-ladder, range-SL, pb/slmode, preferred/trail/CX/CM/DI-DJ/DK-DL/DO/DP/DQ/DR/DS/DT/DU/DW/DY-runner revive, be_arm, non-ema, flat23 dedicated). Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+- **Kick:** Batch DZ started ~2026-10-02T20:48Z UTC workers=2 (script `scripts/_residual_ortho_DZ_pf260_20261002.py`; log `results/_dz_grid_run.log`); PARAM_ECHO_OK).
+
+
+
+### 2026-10-03 ~00:21 Europe/Bucharest Asia Batch DZ ORTHO_RESIDUAL_DZ_PF260 5m — **NO CLEAR**; park soft; kick Batch EA
+- **KEEP (unchanged):** DY_tick rc5_flat22 ticks `20261002T203056Z_b4895afc` PF **2.6** / **+187995.2** n172 win64.5% max_loss**4** — asia0-6 · ema31 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb16 · SL range rm0.85/cap4000 · TP4000 · sls4/2600 · hold15 · near_box outside N5 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market.
+- **Grid:** `overnight_5m_grid_20261002T204827Z.json` — tag `ORTHO_RESIDUAL_DZ_PF260` — 81/81 cells — candles_5m workers=2 — window 2025-01→2026-09 — finished 2026-10-02T20:49:03.208674+00:00 — seed `results/_seed_pf260_rc5_flat22_mb255_rm085_cap4000.json`.
+- **5m baseline:** `PF260_rc5_flat22_baseline` n172 PF2.596 / +187767.8 (vs KEEP tick pts 187995.2).
+- **Best soft≥2.5:** `hold13` n172 PF **2.625** / **+189802.0** win65.1% — dpts **+1806.8** dPF **+0.025** overrides {"max_hold_hours":13.0}.
+- **Soft pos (park):** `hold13` PF2.625/+189802.0 dpts+1806.8 n172; `ema32` PF2.660/+188357.0 dpts+361.8 n170; `hold14` PF2.598/+188051.3 dpts+56.1 n172.
+- **Underfloor pts (no tick):** `maxb20` PF2.395/+192611.6 dpts+4616.4.
+- **Verdict:** **NO CLEAR** — 0 cells soft≥2.5 dpts≥~2k vs KEEP tick; best soft `hold13` dpts+1806.8 under ~2k clear bar (prior BC/CQ precedent: skip tick). Park DZ soft (hold13 / ema32 / hold14). Do not tick maxb20 (PF2.395 under floor). KEEP unchanged.
+- **Next:** Batch EA `ORTHO_RESIDUAL_EA_PF260` 5m — residual densify on KEEP tip for axes still open: timeout_min_pullback + temd/tmb compounds, week2/trend_flat/sessions, entry gates (rco/wick/uhc), asym mb, fib fine + fib_anchor, sl_m12, otp/side, ma_type light, near_box bars (not D), soft tip compounds. Avoid revive of preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP-D/DQ/DR/DS/DT/DU-DW/DY-runners/be_arm/flat23/mb-re-ladder/range-SL. Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+- **Kick:** Batch EA started ~2026-10-02T21:21Z UTC workers=2 cells=83 (script `scripts/_residual_ortho_EA_pf260_20261003.py`; log `results/_ea_grid_run.log`); PARAM_ECHO_OK).
+
+
+### 2026-10-03 ~00:52 Europe/Bucharest Asia Batch EA ORTHO_RESIDUAL_EA_PF260 5m — **CLEAR**; kick EA_tick hold13_ema32
+- **KEEP (unchanged):** DY_tick rc5_flat22 ticks `20261002T203056Z_b4895afc` PF **2.60** / **+187995.2** n172 win64.5% max_loss**4** — asia0-6 · ema31 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb16 · SL range rm0.85/cap4000 · TP4000 · sls4/2600 · hold15 · near_box outside N5 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market.
+- **Grid:** `results/overnight_5m_grid_20261002T212156Z.json` — tag `ORTHO_RESIDUAL_EA_PF260` — 83/83 cells — candles_5m workers=2 — window 2025-01→2026-09 — finished ~2026-10-02T21:23Z UTC — seed `results/_seed_pf260_rc5_flat22_mb255_rm085_cap4000.json`.
+- **5m baseline:** `PF260_rc5_flat22_baseline` n172 PF2.596 / +187767.8 (vs KEEP tick pts 187995.2).
+- **CLEAR soft≥2.5 dpts≥~2k (vs 5m baseline / vs KEEP tick pts):**
+  - `hold13_ema32` n170 PF **2.692** / **+190540.3** win65.3% — dpts **+2772.5** vs 5m base / **+2545.1** vs KEEP tick — overrides {"max_hold_hours":13.0,"ema_period":32}
+  - `hold13_tmpb50` n172 PF **2.625** / **+189802.0** win65.1% — dpts **+2034.2** vs 5m base / **+1806.8** vs KEEP tick (under ~2k vs tick KEEP; runner only if champ promotes)
+- **Note:** DZ parked soft singles hold13/ema32/hold14 were under ~2k alone; EA soft tip **compound** hold13_ema32 clears — not a revive of DZ singles.
+- **Underfloor / flat:** most timeout/trend/fib/ma/nbars/side cells flat or underfloor; no other soft≥2.5 dpts≥~2k.
+- **Next:** tick-confirm EA soft champ **hold13_ema32** (overrides max_hold_hours=13 ema_period=32) on KEEP seed ticks workers=2. Promote only soft≥2.5 dpts≥~2k max_loss≤7–8. Then runner hold13_tmpb50 only if champ promotes and still needed. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~01:19 Europe/Bucharest Asia EB_tick hold13_ema32 ticks — **NEW KEEP**; kick Batch EB
+- **Run:** `20261002T220537Z_437800c5` — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — saved `C:\Users\user\strateg\results\overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261002T220537Z_437800c5.json` — started ~2026-10-02T21:52:51Z finished ~2026-10-02T22:05:37Z UTC — seed `results/_seed_pf260_rc5_flat22_mb255_rm085_cap4000.json` + overrides max_hold_hours=13 ema_period=32 trail off (EA soft champ tick-confirm).
+- **Prior KEEP:** DY_tick rc5_flat22 ticks `20261002T203056Z_b4895afc` PF **2.6** / **+187995.2** n172 max_loss**4**.
+- **EB_tick hold13_ema32:** n170 PF **2.69** / **+190788.3** win65.3% max_loss**4** — dpts **+2793.1** dPF **+0.09** — exits {"flatten":62,"sl":49,"tp":59}.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick promote soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **Verdict:** **NEW KEEP** — tick confirms EA soft champ hold13_ema32; PF soft floor ok (2.69>=2.5), dpts +2793.1 (>=~2k), streak max_loss4<=8. Demote prior DY_tick rc5_flat22 (park as prior KEEP). Skip runner hold13_tmpb50 (5m +189802 under new KEEP tick pts). Park EA other soft / DZ singles / DY runners / trail / range-SL / preferred / CX / CM / DI-DJ / DK-DL / DO / DP / DQ / DR / DS densify remains closed.
+- **NEW KEEP params:** asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb16 · SL range rm0.85/cap4000 (fixed_pts1050) · TP4000 fixed · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required · pullback_ref=both · pullback_fib=0.40 · fib_anchor=asia · ma_type=ema · news off · trail off · timeout market · wait_from_break.
+- **Seed:** `results/_seed_pf269_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json` (mirror at repo root). BEST_REQUIRED_KEEP.json refreshed.
+- **Next:** Batch EB `ORTHO_RESIDUAL_EB_PF269` 5m — residual densify on NEW KEEP hold13+ema32 tip (hold/ema neighbors · wait/maxb/rc/cap/flat light · sls · arange/tp mild · timeout/tmpb/temd · teff · near_box light · tip compounds; avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23/DP-D/DQ/DR/DS/DT/DU/DW/DY-runners/EA-tmpb-alone/be_arm/range-SL/mb-re-ladder/non-ema). Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~01:52 Europe/Bucharest Asia Batch EB ORTHO_RESIDUAL_EB_PF269 5m scored — **CLEAR**; kick tick maxb20
+- **Grid:** `results/overnight_5m_grid_20261002T221958Z.json` — tag `ORTHO_RESIDUAL_EB_PF269` — 91/91 cells — candles_5m workers=2 — window 2025-01 to 2026-09 — script `scripts/_residual_ortho_EB_pf269_20261003.py` — log `results/_eb_grid_run.log` — finished ~2026-10-02T22:20Z UTC — seed `results/_seed_pf269_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **KEEP (unchanged until ticks):** EB_tick hold13_ema32 ticks `20261002T220537Z_437800c5` PF **2.69** / **+190788.3** n170 max_loss**4** — asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb16 · SL range rm0.85/cap4000 · TP4000 · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market.
+- **5m baseline:** `PF269_hold13_ema32_baseline` n170 PF **2.692** / **+190540.3** win65.3% (vs KEEP tick pts 190788.3).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick (2):**
+  - `maxb20` n188 PF **2.545** / **+199388.2** win63.8% — dpts **+8599.9** dPF **-0.145** overrides `{"max_break_candles_after":20}`
+  - `maxb17` n172 PF **2.701** / **+193445.1** win65.1% — dpts **+2656.8** dPF **+0.011** overrides `{"max_break_candles_after":17}`
+- **Near soft PF>=2.5 0<dpts<2k:**
+  - (none)
+- **Best by pts:**
+  - `maxb20` n188 PF **2.545** / **+199388.2** win63.8% — dpts **+8599.9** dPF **-0.145** overrides `{"max_break_candles_after":20}`
+  - `maxb17` n172 PF **2.701** / **+193445.1** win65.1% — dpts **+2656.8** dPF **+0.011** overrides `{"max_break_candles_after":17}`
+  - `maxb18` n177 PF **2.576** / **+190653.4** win64.4% — dpts **-134.9** dPF **-0.114** overrides `{"max_break_candles_after":18}`
+  - `PF269_hold13_ema32_baseline` n170 PF **2.692** / **+190540.3** win65.3% — dpts **-248.0** dPF **+0.002** overrides `{}`
+  - `arange250` n170 PF **2.692** / **+190540.3** win65.3% — dpts **-248.0** dPF **+0.002** overrides `{"min_asia_range_pts":250.0}`
+  - `arange350` n170 PF **2.692** / **+190540.3** win65.3% — dpts **-248.0** dPF **+0.002** overrides `{"min_asia_range_pts":350.0}`
+  - `arange400` n170 PF **2.692** / **+190540.3** win65.3% — dpts **-248.0** dPF **+0.002** overrides `{"min_asia_range_pts":400.0}`
+  - `cap1100` n170 PF **2.692** / **+190540.3** win65.3% — dpts **-248.0** dPF **+0.002** overrides `{"resume_max_break_pts":1100.0}`
+  - `cap1400` n170 PF **2.692** / **+190540.3** win65.3% — dpts **-248.0** dPF **+0.002** overrides `{"resume_max_break_pts":1400.0}`
+  - `m12f0p25` n170 PF **2.692** / **+190540.3** win65.3% — dpts **-248.0** dPF **+0.002** overrides `{"sl_m12_frac":0.25}`
+- **Under-floor dpts>0 sample:**
+  - (none)
+- **Verdict:** **CLEAR** — found 2 cells soft>=2.5 dpts>=~2k vs KEEP tick — pts-champ `maxb20` PF2.545/+199388.2 dpts+8599.9 (5m). Runner `maxb17` PF2.701/+193445.1 dpts+2656.8. maxb20 previously underfloor on DY tip (DZ); on EB hold13+ema32 tip clears soft PF. Most other axes flat or under KEEP. KEEP unchanged until tick.
+- **Next:** tick-confirm pts-champ `maxb20` overrides `{"max_break_candles_after":20}` on KEEP seed ticks workers=2 (PARAM_ECHO_OK kicked ~2026-10-02T22:51Z UTC). Promote only ticks soft>=2.5 dpts>=~2k max_loss<=7-8. Runner maxb17 only if champ promotes. If reject: park EB soft maxb17/maxb20; next residual densify on KEEP tip. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~02:20 Europe/Bucharest Asia EC_tick maxb20 ticks — **NEW KEEP**; kick Batch EC; skip maxb17 tick
+- **Run:** `20261002T230427Z_0c7ec913` — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — saved `C:\Users\user\strateg\results\overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261002T230427Z_0c7ec913.json` — started ~2026-10-02T22:51:10Z finished ~2026-10-02T23:04:27Z UTC — seed `results/_seed_pf269_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json` + override max_break_candles_after=20 (EB soft champ tick-confirm).
+- **Prior KEEP:** EB_tick hold13_ema32 ticks `20261002T220537Z_437800c5` PF **2.69** / **+190788.3** n170 max_loss**4**.
+- **EC_tick maxb20:** n188 PF **2.55** / **+199665.2** win63.8% max_loss**5** — dpts **+8876.9** dPF **-0.14** — exits {"flatten":66,"sl":57,"tp":65}.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick promote soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **Verdict:** **NEW KEEP** — tick confirms EB soft champ maxb20; PF soft floor ok (2.55>=2.5), dpts +8876.9 (>=~2k), streak max_loss5<=8. Demote prior EB_tick hold13_ema32 (park as prior KEEP). Skip runner maxb17 tick (5m +193445.1 under new KEEP tick pts +199665.2). Park maxb17 soft under EC tip.
+- **NEW KEEP params:** asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb20 · SL range rm0.85/cap4000 (fixed_pts1050) · TP4000 fixed · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required · pullback_ref=both · pullback_fib=0.40 · fib_anchor=asia · ma_type=ema · news off · trail off · timeout market · wait_from_break.
+- **Seed:** `results/_seed_pf255_maxb20_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json` (mirror at repo root). BEST_REQUIRED_KEEP.json refreshed.
+- **Next:** Batch EC `ORTHO_RESIDUAL_EC_PF255` 5m — residual densify on NEW KEEP maxb20 tip (maxb neighbors · hold/ema/wait/rc/cap/flat light · tip compounds with maxb20 locked; avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS densify closed except live maxb path /DT/DU/DW/DY-runners/EA-tmpb/DZ-singles/be_arm/range-SL/mb-re-ladder). Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~02:51 Europe/Bucharest Asia Batch EC `ORTHO_RESIDUAL_EC_PF255` 5m scored - **CLEAR**; kick tick `maxb19`
+- **Grid:** `results/overnight_5m_grid_20261002T232043Z.json` - tag `ORTHO_RESIDUAL_EC_PF255` - 60/60 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_EC_pf255_20261003.py` - log `results/_ec_grid_run.log` - finished ~2026-10-02T23:21Z UTC - seed `results/_seed_pf255_maxb20_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **KEEP (unchanged until ticks):** EC_tick maxb20 ticks `20261002T230427Z_0c7ec913` PF **2.55** / **+199665.2** n188 max_loss**5** - asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb20 · SL range rm0.85/cap4000 · TP4000 · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market.
+- **5m baseline:** `PF255_maxb20_baseline` n188 PF **2.545** / **+199388.2** win63.8% (vs KEEP tick pts 199665.2).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick (2):**
+  - `maxb19` n183 PF **2.679** / **+205331.3** win64.5% - dpts_keep **+5666.1** dpts_5m **+5943.1** dPF **+0.129** overrides `{"max_break_candles_after":19}`
+  - `maxb19_hold14` n183 PF **2.653** / **+203431.5** win63.9% - dpts_keep **+3766.3** dpts_5m **+4043.3** dPF **+0.103** overrides `{"max_break_candles_after":19,"max_hold_hours":14.0}`
+- **Near soft PF>=2.5 0<dpts<2k:**
+  - (none)
+- **Best by pts:**
+  - `maxb19` n183 PF **2.679** / **+205331.3** win64.5% - dpts_keep **+5666.1** dpts_5m **+5943.1** dPF **+0.129** overrides `{"max_break_candles_after":19}`
+  - `maxb19_hold14` n183 PF **2.653** / **+203431.5** win63.9% - dpts_keep **+3766.3** dpts_5m **+4043.3** dPF **+0.103** overrides `{"max_break_candles_after":19,"max_hold_hours":14.0}`
+  - `maxb24` n206 PF **2.387** / **+203192.2** win62.6% - dpts_keep **+3527.0** dpts_5m **+3804.0** dPF **-0.163** overrides `{"max_break_candles_after":24}`
+  - `maxb23` n202 PF **2.415** / **+202082.4** win62.9% - dpts_keep **+2417.2** dpts_5m **+2694.2** dPF **-0.135** overrides `{"max_break_candles_after":23}`
+  - `maxb22` n200 PF **2.428** / **+201654.0** win63.0% - dpts_keep **+1988.8** dpts_5m **+2265.8** dPF **-0.122** overrides `{"max_break_candles_after":22}`
+  - `maxb21` n196 PF **2.477** / **+200672.7** win63.3% - dpts_keep **+1007.5** dpts_5m **+1284.5** dPF **-0.073** overrides `{"max_break_candles_after":21}`
+  - `maxb22_hold12` n200 PF **2.423** / **+199488.8** win63.0% - dpts_keep **-176.4** dpts_5m **+100.6** dPF **-0.127** overrides `{"max_break_candles_after":22,"max_hold_hours":12.0}`
+  - `PF255_maxb20_baseline` n188 PF **2.545** / **+199388.2** win63.8% - dpts_keep **-277.0** dpts_5m **+0.0** dPF **-0.005** overrides `{}`
+  - `cap1100` n188 PF **2.545** / **+199388.2** win63.8% - dpts_keep **-277.0** dpts_5m **+0.0** dPF **-0.005** overrides `{"resume_max_break_pts":1100.0}`
+  - `cap1400` n188 PF **2.545** / **+199388.2** win63.8% - dpts_keep **-277.0** dpts_5m **+0.0** dPF **-0.005** overrides `{"resume_max_break_pts":1400.0}`
+- **Under-floor dpts>0 sample:**
+  - `maxb24` n206 PF **2.387** / **+203192.2** win62.6% - dpts_keep **+3527.0** dpts_5m **+3804.0** dPF **-0.163** overrides `{"max_break_candles_after":24}`
+  - `maxb23` n202 PF **2.415** / **+202082.4** win62.9% - dpts_keep **+2417.2** dpts_5m **+2694.2** dPF **-0.135** overrides `{"max_break_candles_after":23}`
+  - `maxb22` n200 PF **2.428** / **+201654.0** win63.0% - dpts_keep **+1988.8** dpts_5m **+2265.8** dPF **-0.122** overrides `{"max_break_candles_after":22}`
+  - `maxb21` n196 PF **2.477** / **+200672.7** win63.3% - dpts_keep **+1007.5** dpts_5m **+1284.5** dPF **-0.073** overrides `{"max_break_candles_after":21}`
+- **Verdict:** **CLEAR** - found 2 cells soft>=2.5 dpts>=~2k vs KEEP tick - pts-champ `maxb19` PF2.679/+205331.3 dpts_keep+5666.1 dpts_5m+5943.1. maxb19_hold14 runner also CLEAR. maxb21-24 lift pts but underfloor PF. Most other axes flat/under. KEEP unchanged until tick.
+- **Kick:** maxb19 tick-confirm started ~2026-10-02T23:51:10.112954+00:00 UTC workers=2 PARAM_ECHO_OK=True echo maxb=19 ema=32 hold=13.0 data=ticks. Runner `maxb19_hold14` PF2.653/+203431.5 dpts+3766.3 only if champ promotes.
+- **Next:** score maxb19 ticks when done; promote only soft>=2.5 dpts>=~2k max_loss<=7-8. If reject: park EC soft maxb19/maxb19_hold14; next residual densify on KEEP tip (avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS/DT/DU/DW/DY-runners/DZ-singles/EA-tmpb/EB-maxb17/be_arm/range-SL; live maxb neighborhood still ok). stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~03:16 Europe/Bucharest Asia ED_tick maxb19 ticks — **NEW KEEP**; kick Batch ED; skip maxb19_hold14 tick
+- **Run:** `20261003T000359Z_c4e21041` — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — saved `C:\Users\user\strateg\results\overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261003T000359Z_c4e21041.json` — started ~2026-10-02T23:51:10Z finished ~2026-10-03T00:03:59Z UTC — seed `results/_seed_pf255_maxb20_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json` + override max_break_candles_after=19 (EC soft champ tick-confirm).
+- **Prior KEEP:** EC_tick maxb20 ticks `20261002T230427Z_0c7ec913` PF **2.55** / **+199665.2** n188 max_loss**5**.
+- **ED_tick maxb19:** n183 PF **2.68** / **+205591.6** win64.5% max_loss**4** — dpts **+5926.4** dPF **+0.13** — exits {"flatten":64,"sl":54,"tp":65}.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick promote soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **Verdict:** **NEW KEEP** — tick confirms EC soft champ maxb19; PF soft floor ok (2.68>=2.5), dpts +5926.4 (>=~2k), streak max_loss4<=8. Demote prior EC_tick maxb20 (park as prior KEEP). Skip runner maxb19_hold14 tick (5m +203431.5 under new KEEP tick pts +205591.6). Park EC soft maxb19_hold14 under ED tip.
+- **NEW KEEP params:** asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 (fixed_pts1050) · TP4000 fixed · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required · pullback_ref=both · pullback_fib=0.40 · fib_anchor=asia · ma_type=ema · news off · trail off · timeout market · wait_from_break.
+- **Seed:** `results/_seed_pf268_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json` (mirror at repo root). BEST_REQUIRED_KEEP.json refreshed.
+- **Next:** Batch ED `ORTHO_RESIDUAL_ED_PF268` 5m — residual densify on NEW KEEP maxb19 tip (maxb neighbors · hold/ema/wait/rc/cap/flat light · tip compounds with maxb19 locked · light timeout/trend/nbars/arange; avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS/DT/DU/DW/DY-runners/DZ-singles/EA-tmpb-alone/EB-maxb17/EC-maxb19_hold14 revive/be_arm/range-SL/mb-re-ladder). Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-03 ~03:41 Europe/Bucharest Asia Batch ED ORTHO_RESIDUAL_ED_PF268 5m — **NO CLEAR**; park ED soft; kick Batch EE
+- **KEEP (unchanged):** ED_tick maxb19 ticks `20261003T000359Z_c4e21041` PF **2.68** / **+205591.6** n183 win64.5% max_loss**4** — asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 · TP4000 · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market.
+- **Grid:** `results/overnight_5m_grid_20261003T001600Z.json` — tag `ORTHO_RESIDUAL_ED_PF268` — 66/66 cells — candles_5m workers=2 — window 2025-01→2026-09 — script `scripts/_residual_ortho_ED_pf268_20261003.py` — finished ~2026-10-03T00:16Z UTC — seed `results/_seed_pf268_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **5m baseline:** `PF268_maxb19_baseline` n183 PF **2.679** / **+205331.3** win64.5% (vs KEEP tick pts 205591.6).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8; win% secondary.
+- **CLEAR soft≥2.5 dpts≥~2k vs 5m base / KEEP tick:** (none)
+- **Near soft PF≥2.5 0<dpts<2k:** (none)
+- **Best by pts (all ≤ baseline):**
+  - `PF268_maxb19_baseline` / flat no-ops (arange250/350, cap1100/1400, teff030/040, temd400, tflat1200/1800, tmpb50, tmpb50_temd400, nbars4) n183 PF2.679 / +205331.3 — dpts_5m **0.0** / dpts_tick **−260.3**
+  - `fib0382` n183 PF2.679 / +205308.4 — dpts_5m **−22.9**
+  - next cells all negative (sls5 −1813.6, hold14 −1899.8, …)
+- **Underfloor / flat:** every nonzero override ≤ baseline; maxb neighbors / hold/ema/wait/rc/cap/flat/sls/tp/near_box/fib all under or flat. No soft lift.
+- **Verdict:** **NO CLEAR** — park ED soft (no candidate). KEEP unchanged ED_tick maxb19 PF2.68/+205591.6.
+- **Next:** Batch EE `ORTHO_RESIDUAL_EE_PF268` 5m — residual densify on KEEP tip open axes not closed by ED (mb neighborhood · rco/wick/uhc/otpd · timeout_min_break · near_box_trend modes · pullback_ref/fib_anchor · ma_type alts · sl_m12_frac · mild tip compounds; avoid preferred/CX/CM densify revive/trail/DI-DJ/DK-DL/DO/DP-D/DQ/DR/DS/DT/DU/DW/DY-runners/DZ-singles/EA-tmpb/EB-maxb17/EC-maxb19_hold14/be_arm/range-SL/mb-re-ladder as KEEP lineage). Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-03 ~04:20 Europe/Bucharest Asia Batch EE ORTHO_RESIDUAL_EE_PF268 5m — **NO CLEAR**; park EE soft; kick Batch EF
+- **KEEP (unchanged):** ED_tick maxb19 ticks 20261003T000359Z_c4e21041 PF **2.68** / **+205591.6** n183 win64.5% max_loss**4** — asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 · TP4000 · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market.
+- **Grid:** 
+esults/overnight_5m_grid_20261003T004505Z.json — tag ORTHO_RESIDUAL_EE_PF268 — 54/54 cells — candles_5m workers=2 — window 2025-01→2026-09 — script scripts/_residual_ortho_EE_pf268_20261003.py — finished ~2026-10-03T00:46Z UTC — seed 
+esults/_seed_pf268_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json.
+- **5m baseline:** PF268_maxb19_baseline n183 PF **2.679** / **+205331.3** win64.5% (vs KEEP tick pts 205591.6).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8; win% secondary.
+- **CLEAR soft≥2.5 dpts≥~2k vs 5m base / KEEP tick:** (none)
+- **Near soft PF≥2.5 0<dpts<2k:** (none)
+- **Best by pts (all ≤ baseline):**
+  - PF268_maxb19_baseline / flat no-ops (rco_on, wick_off, otpd_off, tmb*, m12f*, tmb400_tmpb50) n183 PF2.679 / +205331.3 — dpts_5m **0.0** / dpts_tick **−260.3**
+  - next nonzero under: mb250 / mb250_rco n184 PF2.655 / +204138.9 — dpts_5m **−1192.4**
+  - mb260 / mb260_rco n180 PF2.685 / +203090.2 — dpts_5m **−2241.1**
+  - pbref_ema / pbref_ema_roll / pbref_ema_tmb400 n182 PF2.637 / +200129.8 — dpts_5m **−5201.5**
+  - uhc_off n183 PF2.589 / +197950.5 — dpts_5m **−7380.8**
+  - ma_type alts / ntrend / pbref_fib / side splits all under or thin
+- **Underfloor / flat:** every nonzero override ≤ baseline; mb / rco / wick / uhc / tmb / ntrend / pbref / fib_anchor / ma_type / m12f all under or flat. No soft lift.
+- **Verdict:** **NO CLEAR** — park EE soft (no candidate). KEEP unchanged ED_tick maxb19 PF2.68/+205591.6.
+- **Next:** Batch EF ORTHO_RESIDUAL_EF_PF268 5m — residual densify on KEEP tip open axes not closed by ED/EE (seasonal/week2 · news · ema_tf tip residual · trend_sessions/teff · temd/tmpb ladder · skip_late compounds · nearbox off/micro-D · fib finer · wfb/timeout_skip/rc extremes/arange · mild tip compounds; avoid preferred/CX/CM densify revive/trail/DI-DJ/DK-DL/DO/DP densify/DQ/DR densify/DS/DT/DU/DW/DY-runners/DZ-singles/EA-tmpb/EB-maxb17/EC-maxb19_hold14/ED-EE soft revive/be_arm/range-SL/mb-re-ladder). Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-03 ~04:47 Europe/Bucharest Asia Batch EF ORTHO_RESIDUAL_EF_PF268 5m — **NO CLEAR**; park EF soft; kick Batch EG
+- **KEEP (unchanged):** ED_tick maxb19 ticks 20261003T000359Z_c4e21041 PF **2.68** / **+205591.6** n183 win64.5% max_loss**4** — asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 · TP4000 · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market.
+- **Grid:** 
+esults/overnight_5m_grid_20261003T012339Z.json — tag ORTHO_RESIDUAL_EF_PF268 — 82/82 cells — candles_5m workers=2 — window 2025-01→2026-09 — script scripts/_residual_ortho_EF_pf268_20261003.py — finished ~2026-10-03T01:24Z UTC — seed 
+esults/_seed_pf268_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json.
+- **5m baseline:** PF268_maxb19_baseline n183 PF **2.679** / **+205331.3** win64.5% (vs KEEP tick pts 205591.6).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8; win% secondary.
+- **CLEAR soft≥2.5 dpts≥~2k vs 5m base / KEEP tick:** (none)
+- **Near soft PF≥2.5 0<dpts<2k:** (none)
+- **Best by pts (all ≤ baseline):**
+  - PF268_maxb19_baseline / flat no-ops (43 flat) n183 PF2.679 / +205331.3 — dpts_5m **0.0** / dpts_tick **-260.3
+  - temd600_sls5 n185 PF **2.640** / **+203517.7** win63.8% — dpts_5m **-1813.6** overrides {"timeout_max_ema_dist_pts":600.0,"skip_late_short_wait":5}
+  - arange450 n182 PF **2.661** / **+203074.8** win64.3% — dpts_5m **-2256.5** overrides {"min_asia_range_pts":450.0}
+  - slsa2200 n185 PF **2.625** / **+202787.0** win63.8% — dpts_5m **-2544.3** overrides {"skip_late_short_asia_pts":2200.0}
+  - sls5_2400 n186 PF **2.595** / **+201345.8** win63.4% — dpts_5m **-3985.5** overrides {"skip_late_short_wait":5,"skip_late_short_asia_pts":2400.0}
+  - nbars7 n182 PF **2.647** / **+201331.3** win64.3% — dpts_5m **-4000.0** overrides {"near_box_bars":7}
+  - nd1450 n182 PF **2.647** / **+201331.3** win64.3% — dpts_5m **-4000.0** overrides {"near_box_pts":1450.0}
+  - nd1500 n182 PF **2.647** / **+201331.3** win64.3% — dpts_5m **-4000.0** overrides {"near_box_pts":1500.0}
+  - fib035_tmpb50 n184 PF **2.592** / **+201168.2** win64.1% — dpts_5m **-4163.1** overrides {"pullback_fib":0.35,"timeout_min_pullback_pts":50.0}
+- **Underfloor / flat:** every nonzero override ≤ baseline; seasonal/week2/news/ematf/teff/tsess/temd/tmpb/skip_late/nearbox/fib/wfb/timeout_skip/rc/arange all under or flat. No soft lift. nearbox_off lifts PF to 3.10 but drops pts (−11890).
+- **Verdict:** **NO CLEAR** — park EF soft (no candidate). KEEP unchanged ED_tick maxb19 PF2.68/+205591.6.
+- **Next:** Batch EG ORTHO_RESIDUAL_EG_PF268 5m — residual densify on KEEP tip open axes not closed by ED/EE/EF (live maxb neighborhood singles · tip wait/ema/hold/rc/cap singles · otpd_false · pb_off · tp r_mult/range_mult tip · sl_fixed tip light · mild tip compounds; avoid preferred/CX/CM densify revive/trail/DI-DJ densify/DK-DL/DO/DP densify/DQ/DR densify/DS densify/DT/DU/DW/DY-runners/DZ-singles/EA-tmpb/EB-maxb17 soft revive/EC-maxb19_hold14/ED-EE-EF soft revive/be_arm/range-SL/mb-re-ladder/flat densify/asia-hour). Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~05:17 Europe/Bucharest Asia Batch EG ORTHO_RESIDUAL_EG_PF268 5m — **NO CLEAR**; park EG soft; kick Batch EH
+- **KEEP (unchanged):** ED_tick maxb19 ticks `20261003T000359Z_c4e21041` PF **2.68** / **+205591.6** n183 win64.5% max_loss**4** — asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 · TP4000 · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market.
+- **Grid:** `results/overnight_5m_grid_20261003T014710Z.json` — tag `ORTHO_RESIDUAL_EG_PF268` — 55/55 cells — candles_5m workers=2 — window 2025-01→2026-09 — script `scripts/_residual_ortho_EG_pf268_20261003.py` — finished ~2026-10-03T01:47Z UTC — seed `results/_seed_pf268_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **5m baseline:** `PF268_maxb19_baseline` n183 PF **2.679** / **+205331.3** win64.5% (vs KEEP tick pts 205591.6).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8; win% secondary.
+- **CLEAR soft≥2.5 dpts≥~2k vs 5m base / KEEP tick:** (none)
+- **Near soft PF≥2.5 0<dpts<2k:** (none)
+- **Pts-above-baseline underfloor (PF soft miss):**
+  - `tpm_range20` n183 PF **2.455** / **+216971.5** win59.6% — dpts_5m **+11640.2** dpts_keep **+11379.9** dPF **-0.224** overrides `{"tp_mode":"range_mult","tp_range_mult":2.0}` — **underfloor PF** (soft floor ~2.5); no tick (promote needs soft≥2.5).
+- **Best by pts (rest ≤ baseline):**
+  - `PF268_maxb19_baseline` / flat no-ops (`cap1300`, `otpd_false`) n183 PF2.679 / +205331.3 — dpts_5m **0.0** / dpts_tick **-260.3**
+  - `hold14` / `hold14_rc5` n183 PF2.653 / +203431.5 — dpts_5m **-1899.8**
+  - `cap1500` n185 PF2.637 / +203351.8 — dpts_5m **-1979.5**
+  - `cap1000` / `cap900` n182 PF2.663 / +203312.8 — dpts_5m **-2018.5**
+  - `maxb24` n206 PF2.387 / +203192.2 — dpts_5m **-2139.1** (underfloor PF)
+  - `hold12` / `hold12_rc5` n183 PF2.676 / +203166.1 — dpts_5m **-2165.2**
+- **Underfloor / flat:** maxb neighborhood singles, tip wait/ema/hold/rc/cap, otpd_false, pb_off, tp r_mult, sl_fixed tip, mild compounds all under or flat except underfloor `tpm_range20`. No soft≥2.5 lift.
+- **Verdict:** **NO CLEAR** — park EG soft (no candidate). Note underfloor pts-champ `tpm_range20` PF2.455 (do not revive DS TP densify; no tick). KEEP unchanged ED_tick maxb19 PF2.68/+205591.6.
+- **Next:** Batch EH `ORTHO_RESIDUAL_EH_PF268` 5m — residual densify on KEEP tip open axes not closed by ED/EE/EF/EG (outer wait/ema/hold/rc/cap rings · hold half-hours · tp_fixed tip mids · tpr mid gaps · fib extremes · arange mids · sl_fixed outer tip · kama fast/slow · sls outer · nearbox micro outer · trend/tsess/teff outer · tmb outer · mild tip compounds; avoid preferred/CX/CM densify revive/trail/DI-DJ densify/DK-DL/DO/DP densify/DQ/DR densify/DS densify/DT/DU/DW/DY-runners/DZ-singles/EA-tmpb/EB-maxb17/EC-maxb19_hold14/ED-EE-EF-EG soft revive/be_arm/range-SL/mb-re-ladder/flat densify/asia-hour). Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-03 ~05:51 Europe/Bucharest Asia Batch EH ORTHO_RESIDUAL_EH_PF268 5m - **NO CLEAR**; park soft; kick Batch EI
+- **KEEP (unchanged):** ED_tick maxb19 ticks `20261003T000359Z_c4e21041` PF **2.68** / **+205591.6** n183 win64.5% max_loss**4** - asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **Grid:** `overnight_5m_grid_20261003T022034Z.json` - tag `ORTHO_RESIDUAL_EH_PF268` - 80 cells - candles_5m workers=2 - window 2025-01→2026-09 - finished 2026-10-03T02:21:13.508933+00:00 - seed `results/_seed_pf268_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **5m baseline:** `PF268_maxb19_baseline` n183 PF2.679 / +205331.3 (vs KEEP tick pts 205591.6).
+- **Best soft≥2.5:** `fib0p28` n190 PF **2.536** / **+207248.1** win63.2% - dpts5m **+1916.8** dpts_keep **+1656.5** dPF **-0.144** overrides {"pullback_fib":0.28}.
+- **Soft pos / near (park):** `fib0p28` PF2.536/+207248.1 dpts5m+1916.8 n190; `hold12p5` PF2.686/+205657.3 dpts5m+326.0 n183.
+- **Underfloor pts (no tick):** none.
+- **Best under:** `hold14p5` PF2.654/+203610.2 dpts5m-1721.1; `hold135_rc5` PF2.653/+203537.4 dpts5m-1793.9; `hold13p5` PF2.653/+203537.4 dpts5m-1793.9; `cap800` PF2.665/+203394.8 dpts5m-1936.5; `cap800_rc5` PF2.665/+203394.8 dpts5m-1936.5.
+- **Counts:** clear=0 near=2 flat=17 nonzero_under=61.
+- **Verdict:** **NO_CLEAR** - 0 cells soft≥2.5 dpts≥~2k vs 5m baseline; best soft `fib0p28` dpts5m+1916.8 under ~2k (also under vs KEEP tick); `hold12p5` +326.0. Park EH soft. Do not tick. Do not revive DT pb densify around fib0.28. KEEP unchanged.
+- **Next:** Batch EI `ORTHO_RESIDUAL_EI_PF268` 5m - residual densify on KEEP tip for axes still open: sls asia-pts mid gaps, hma/zlema/kama_er period tip, near_box bars extremes (not D), trend_flat mids, maxb neighborhood compounds, timeout gate compounds (not tmpb-alone), entry-gate mild compounds, fib_anchor tip, news_set light, side+tip compounds. Avoid revive of preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS (incl. EG underfloor tpm_range20)/DT/DU-DW/DY-DZ/EA-EH parked/be_arm/asym-mb. Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+- **Kick:** Batch EI started ~2026-10-03T02:51Z UTC workers=2 cells=74 (script `scripts/_residual_ortho_EI_pf268_20261003.py`; log `results/_ei_grid_run.log`); PARAM_ECHO_OK).
+
+
+
+### 2026-10-03 ~06:13 Europe/Bucharest Asia Batch EI ORTHO_RESIDUAL_EI_PF268 5m - **NO CLEAR**; park soft; kick Batch EJ
+- **KEEP (unchanged):** ED_tick maxb19 ticks `20261003T000359Z_c4e21041` PF **2.68** / **+205591.6** n183 win64.5% max_loss**4** - asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **Grid:** `results/overnight_5m_grid_20261003T025115Z.json` - tag `ORTHO_RESIDUAL_EI_PF268` - 74/74 cells - candles_5m workers=2 - window 2025-01→2026-09 - finished 2026-10-03T02:53:20Z UTC - script `scripts/_residual_ortho_EI_pf268_20261003.py` - seed `results/_seed_pf268_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **5m baseline:** `PF268_maxb19_baseline` n183 PF **2.679** / **+205331.3** win64.5% (vs KEEP tick pts 205591.6).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8; win% secondary.
+- **CLEAR soft≥2.5 dpts≥~2k vs 5m base / KEEP tick:** (none)
+- **Near soft PF≥2.5 0<dpts<2k:** (none)
+- **Best by pts (all ≤ baseline):** flat no-ops dpts0 (incl. `nbars10` PF2.736 same pts; timeout/tflat/slsa2700/news_tag flats); next under `slsa2900` PF2.689/+202539.5 dpts5m **-2791.8**; `slsa2300` PF2.625/+202787.0 dpts5m **-2544.3**; `nbars8` PF2.647/+201331.3 dpts5m **-4000.0**.
+- **Underfloor / flat:** 20 flat / 54 under / 0 soft lift. Worst: `pbref_fib_anchor_asia` PF1.877/+91109; side splits; hma/zlema period swaps; `rco_on_wick_off`. MA period densify and maxb compounds all under tip.
+- **Verdict:** **NO CLEAR** - park EI soft (no candidate). Do not tick. Do not revive MA densify / maxb compound / nearbox-bars / slsa mid densify from this batch. KEEP unchanged ED_tick maxb19 PF2.68/+205591.6.
+- **Next:** Batch EJ `ORTHO_RESIDUAL_EJ_PF268` 5m - residual densify on KEEP tip open axes not closed by ED–EI: sl_m12_frac mid gaps + compounds · ema_tf tip compounds/outer · tp_fixed micro tip gaps · hold quarter-hours · rc/cap extremes · wait outer extremes · fib mid gaps (not around parked fib0.28) · near_box_trend×tip compounds · MA period mids · otpd compounds · mild tip compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS (incl. EG underfloor tpm_range20)/DT/DU-DW/DY-DZ/EA–EI parked/be_arm/range-SL/mb-re-ladder/flat densify/asia-hour. Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+- **Kick:** Batch EJ started ~2026-10-03T03:17Z UTC workers=2 cells=86 (script scripts/_residual_ortho_EJ_pf268_20261003.py; log results/_ej_grid_run.log; grid results/overnight_5m_grid_20261003T031715Z.json); PARAM_ECHO_OK rc=5 flat=22 mb=255 maxb=19).
+
+
+### 2026-10-03 ~06:41 Europe/Bucharest Asia Batch EJ ORTHO_RESIDUAL_EJ_PF268 5m - **NO CLEAR**; park soft; kick Batch EK
+- **KEEP (unchanged):** ED_tick maxb19 ticks 20261003T000359Z_c4e21041 PF **2.68** / **+205591.6** n183 win64.5% max_loss**4** - asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **Grid:** 
+esults/overnight_5m_grid_20261003T031715Z.json - tag ORTHO_RESIDUAL_EJ_PF268 - 86/86 cells - candles_5m workers=2 - window 2025-01→2026-09 - finished ~2026-10-03T03:17Z UTC - script scripts/_residual_ortho_EJ_pf268_20261003.py - seed 
+esults/_seed_pf268_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json.
+- **5m baseline:** PF268_maxb19_baseline n183 PF **2.679** / **+205331.3** win64.5% (vs KEEP tick pts 205591.6).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8; win% secondary.
+- **CLEAR soft≥2.5 dpts≥~2k vs 5m base / KEEP tick:** (none)
+- **Near soft PF≥2.5 0<dpts<2k:** hold125_maxb19 PF2.686/+205657.3 dpts5m **+326.0** (same as EH hold12p5); hold12p25 PF2.691/+205421.0 dpts5m **+89.7**.
+- **Best under (closest):** ib0p37 / ib037_rc5 −69.6; hold13p25 −341.2; hold14p25 −1919.8; cap1700 −1979.5; cap850/950 −2018.5.
+- **Underfloor / flat:** 28 flat (m12f*/ematf*/otpd/cap1250–1350 no-ops) / 56 under / 0 soft≥2k. Worst: side splits; hma/zlema period mids.
+- **Verdict:** **NO CLEAR** - park EJ soft (no candidate). Do not tick. Do not revive hold12.5 densify / m12f / ema_tf / MA period mids from this batch. KEEP unchanged ED_tick maxb19 PF2.68/+205591.6.
+- **Next:** Batch EK ORTHO_RESIDUAL_EK_PF268 5m - residual densify on KEEP tip open axes not closed by ED–EJ: tp_sl_mult tip (new) · wait_from_break tip compounds · seasonal/week2×tip compounds · sls wait outer+tip · hold micro residual · ema fine residual · rc/cap micro · fib tiny gaps (not fib0.28 densify) · ntrend×tip · rco/uhc tip compounds · news tip compounds · mild tip compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS (incl. EG underfloor tpm_range20)/DT/DU-DW/DY-DZ/EA–EJ parked/be_arm/range-SL/mb-re-ladder/flat densify/asia-hour. Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+- **Kick:** Batch EK started ~2026-10-03T03:45Z UTC workers=2 cells=94 pid 1020 (script scripts/_residual_ortho_EK_pf268_20261003.py; log 
+esults/_ek_grid_run.log; grid 
+esults/overnight_5m_grid_20261003T034538Z.json); PARAM_ECHO_OK rc=5 flat=22 mb=255 maxb=19).
+
+### 2026-10-03 ~06:41 Europe/Bucharest Asia Batch EK ORTHO_RESIDUAL_EK_PF268 5m - **NO CLEAR**; park soft; kick Batch EL
+- **KEEP (unchanged):** ED_tick maxb19 ticks `20261003T000359Z_c4e21041` PF **2.68** / **+205591.6** n183 win64.5% max_loss**4** - asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **Grid:** `results/overnight_5m_grid_20261003T034538Z.json` - tag `ORTHO_RESIDUAL_EK_PF268` - 94/94 cells - candles_5m workers=2 - window 2025-01→2026-09 - finished ~2026-10-03T03:45Z UTC - script `scripts/_residual_ortho_EK_pf268_20261003.py` - seed `results/_seed_pf268_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **5m baseline:** `PF268_maxb19_baseline` n183 PF **2.679** / **+205331.3** win64.5% (vs KEEP tick pts 205591.6).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8; win% secondary.
+- **CLEAR soft≥2.5 dpts≥~2k vs 5m base / KEEP tick:** (none)
+- **Near soft PF≥2.5 0<dpts<2k:** `hold12p75` / `hold1275_maxb19` PF2.683/+205748.4 dpts5m **+417.1** dpts_keep **+156.8**.
+- **Best under (closest):** `fib0p39` −12.7; `fib0p36` −120.1; `fib0p41` −1201.5; `hold14p75` −1865.1; `cap1600` −1979.5.
+- **Underfloor / flat:** 13 flat / 79 under / 0 soft≥2k. Early EL peek: `tpm12_*` PF~2.469/+222k underfloor (no tick; do not revive DS TP densify). Worst EK: side×tpsl; tpsl×wfb; ema40/42.
+- **Verdict:** **NO CLEAR** - park EK soft (no candidate). Do not tick. KEEP unchanged ED_tick maxb19 PF2.68/+205591.6.
+- **Next:** Batch EL `ORTHO_RESIDUAL_EL_PF268` 5m - residual densify: tp_mode m12 · sl_mode m12_frac tip · arange residual · tmb denser · kama fast/slow compounds · wait mid · ema_tf gaps · pbref tip · hold12.6–12.9 soft-near micro · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS (incl. EG underfloor tpm_range20)/DT/DU-DW/DY-DZ/EA–EK parked/be_arm/range-SL/mb-re-ladder/flat densify/asia-hour. Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE. No reaktor / no push.
+
+- **Kick:** Batch EL started ~2026-10-03T03:47Z UTC workers=2 cells=87 pid 8768 (script `scripts/_residual_ortho_EL_pf268_20261003.py`; log `results/_el_grid_run.log`; grid `results/overnight_5m_grid_20261003T034747Z.json`); PARAM_ECHO_OK rc=5 flat=22 mb=255 maxb=19).
+
+### 2026-10-03 ~06:41 Europe/Bucharest Asia Batch EL ORTHO_RESIDUAL_EL_PF268 5m - **NO CLEAR**; park soft; kick Batch EM
+- **KEEP (unchanged):** ED_tick maxb19 ticks `20261003T000359Z_c4e21041` PF **2.68** / **+205591.6** n183 win64.5% max_loss**4**.
+- **Grid:** `results/overnight_5m_grid_20261003T034747Z.json` - tag `ORTHO_RESIDUAL_EL_PF268` - 87/87 cells - candles_5m workers=2 - finished ~2026-10-03T03:47Z UTC - script `scripts/_residual_ortho_EL_pf268_20261003.py`.
+- **5m baseline:** PF268_maxb19_baseline n183 PF **2.679** / **+205331.3**.
+- **CLEAR soft≥2.5 dpts≥~2k:** (none)
+- **Near soft:** `hold12p8` / `hold128_ema32` PF2.684/+205831.6 dpts5m **+500.3**; `hold12p7` +417.1; `hold12p6` +142.5.
+- **Underfloor pts (no tick):** `tpm12_*` family PF **2.469** / **+222239.7** dpts5m **+16908.4** (same class as EG `tpm_range20`; do not tick; do not revive DS TP densify); `tpm12_15_slm12_033` PF2.263/+214870.6.
+- **Counts:** clear=0 near=5 flat=30 under=38 underfloor=14.
+- **Verdict:** **NO CLEAR** - park EL soft. Do not tick underfloor tpm12. KEEP unchanged.
+- **Next:** Batch EM `ORTHO_RESIDUAL_EM_PF268` 5m - wick/uhc/rco tip · timeout_skip compounds · temd/tmpb gaps · tp_fixed micro gaps · wait/ema/cap micro · trend micro · news tip · mild compounds. Avoid parked densifies incl. EL tpm12 underfloor / EG tpm_range20 / hold12.6–12.9 densify revive. Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE.
+
+- **Kick:** Batch EM started ~2026-10-03T03:51Z UTC workers=2 cells=89 pid 2968 (script `scripts/_residual_ortho_EM_pf268_20261003.py`; log `results/_em_grid_run.log`; grid `results/overnight_5m_grid_20261003T035103Z.json`); PARAM_ECHO_OK rc=5 flat=22 mb=255 maxb=19).
+
+### 2026-10-03 ~06:41 Europe/Bucharest Asia Batch EM ORTHO_RESIDUAL_EM_PF268 5m - **NO CLEAR**; park soft; kick Batch EN
+- **KEEP (unchanged):** ED_tick maxb19 ticks `20261003T000359Z_c4e21041` PF **2.68** / **+205591.6** n183 win64.5% max_loss**4**.
+- **Grid:** `results/overnight_5m_grid_20261003T035103Z.json` - tag `ORTHO_RESIDUAL_EM_PF268` - 89/89 cells - candles_5m workers=2 - finished ~2026-10-03T03:51Z UTC - script `scripts/_residual_ortho_EM_pf268_20261003.py`.
+- **5m baseline:** PF268_maxb19_baseline n183 PF **2.679** / **+205331.3**.
+- **CLEAR / Near soft≥2.5 dpts>0:** (none)
+- **Underfloor pts:** (none)
+- **Counts:** clear=0 near=0 flat=53 under=36 underfloor=0. All wick/timeout_skip/temd/tmpb/tp_fixed micro/trend/news tip ≤ baseline or under.
+- **Verdict:** **NO CLEAR** - park EM soft (blank tip residual). KEEP unchanged.
+- **Next:** Batch EN `ORTHO_RESIDUAL_EN_PF268` 5m - hold outer · tpr gaps (not DS/tpm_range) · sl_fixed outer tip (not DI/DJ) · maxb outer · nearbox D/bars residual · otpd/pb_off tip · fib extremes not fib0.28 · mild compounds. Avoid parked densifies. Tick-confirm only soft≥2.5 dpts≥~2k max_loss≤7–8. stop_auto_tick=FALSE.
+
+- **Kick:** Batch EN started ~2026-10-03T03:53Z UTC workers=2 cells=68 pid 6176 (script scripts/_residual_ortho_EN_pf268_20261003.py; log results/_en_grid_run.log; grid results/overnight_5m_grid_20261003T035339Z.json); PARAM_ECHO_OK).
+
+
+### 2026-10-03 ~07:19 Europe/Bucharest Asia Batch EN `ORTHO_RESIDUAL_EN_PF268` 5m scored - **CLEAR**; kick tick `nbars11`
+- **Grid:** `results/overnight_5m_grid_20261003T035339Z.json` - tag `ORTHO_RESIDUAL_EN_PF268` - 68/68 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_EN_pf268_20261003.py` - log `results/_en_grid_run.log` - finished ~2026-10-03T03:54Z UTC - seed `results/_seed_pf268_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **KEEP (unchanged until ticks):** ED_tick maxb19 ticks `20261003T000359Z_c4e21041` PF **2.68** / **+205591.6** n183 win64.5% max_loss**4** - asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold13 · near_box outside N5 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF268_maxb19_baseline` n183 PF **2.679** / **+205331.3** win64.5% (vs KEEP tick pts 205591.6).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick (2):**
+  - `nbars11` n180 PF **2.810** / **+208437.2** win65.0% - dpts_keep **+2845.6** dpts_5m **+3105.9** dPF **+0.130** overrides `{"near_box_bars":11}`
+  - `nbars12` n179 PF **2.807** / **+208079.2** win64.8% - dpts_keep **+2487.6** dpts_5m **+2747.9** dPF **+0.127** overrides `{"near_box_bars":12}`
+- **Near soft PF>=2.5 0<dpts<2k:**
+  - (none)
+- **Best by pts:**
+  - `nbars11` n180 PF **2.810** / **+208437.2** win65.0% - dpts_keep **+2845.6** dpts_5m **+3105.9** dPF **+0.130** overrides `{"near_box_bars":11}`
+  - `nbars12` n179 PF **2.807** / **+208079.2** win64.8% - dpts_keep **+2487.6** dpts_5m **+2747.9** dPF **+0.127** overrides `{"near_box_bars":12}`
+  - `PF268_maxb19_baseline` n183 PF **2.679** / **+205331.3** win64.5% - dpts_keep **-260.3** dpts_5m **+0.0** dPF **-0.001** overrides `{}`
+  - `nbars4` n185 PF **2.626** / **+205331.3** win64.3% - dpts_keep **-260.3** dpts_5m **+0.0** dPF **-0.054** overrides `{"near_box_bars":4}`
+  - `nbars4_nd1550` n185 PF **2.626** / **+205331.3** win64.3% - dpts_keep **-260.3** dpts_5m **+0.0** dPF **-0.054** overrides `{"near_box_bars":4,"near_box_pts":1550.0}`
+  - `otpd_off_ema32` n183 PF **2.679** / **+205331.3** win64.5% - dpts_keep **-260.3** dpts_5m **+0.0** dPF **-0.001** overrides `{"one_trade_per_day":false,"ema_period":32}`
+  - `otpd_off_wait14` n183 PF **2.679** / **+205331.3** win64.5% - dpts_keep **-260.3** dpts_5m **+0.0** dPF **-0.001** overrides `{"one_trade_per_day":false,"max_wait_candles":14}`
+  - `tpr2p75` n183 PF **2.356** / **+205115.0** win59.0% - dpts_keep **-476.6** dpts_5m **-216.3** dPF **-0.324** overrides `{"tp_mode":"r_mult","tp_r_mult":2.75}`
+  - `nbars1` n201 PF **2.412** / **+204479.3** win63.2% - dpts_keep **-1112.3** dpts_5m **-852.0** dPF **-0.268** overrides `{"near_box_bars":1}`
+  - `nd2200` n214 PF **2.298** / **+203674.3** win62.6% - dpts_keep **-1917.3** dpts_5m **-1657.0** dPF **-0.382** overrides `{"near_box_pts":2200.0}`
+- **Under-floor dpts>0 sample:**
+  - (none)
+- **Counts:** clear=2 near=0 flat_vs_5m~=5 under_vs_5m=61 underfloor_vs_KEEP=0.
+- **Verdict:** **CLEAR** - found 2 cells soft>=2.5 dpts>=~2k vs KEEP tick - pts-champ `nbars11` PF2.810/+208437.2 dpts_keep+2845.6 dpts_5m+3105.9. near_box_bars tip path (N5 KEEP -> N11/N12). Other EN axes mostly under/flat. KEEP unchanged until tick.
+- **Kick:** nbars11 tick-confirm started ~2026-10-03T04:18:49.967913+00:00 UTC workers=2 PARAM_ECHO_OK=True echo nbars=11 maxb=19 ema=32 hold=13.0 data=ticks. Runner `nbars12` PF2.807/+208079.2 dpts_keep+2487.6 only if champ promotes.
+- **Next:** score nbars11 ticks when done; promote only soft>=2.5 dpts>=~2k max_loss<=7-8. If reject: park EN soft nbars11/nbars12; next residual densify on KEEP tip (avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-EH/EJ-EM parked/be_arm/range-SL/mb-re-ladder/flat densify/asia-hour/fib0.28 densify; live maxb neighborhood and near_box_bars tip path ok after tick). stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~07:53 Europe/Bucharest Asia EO_tick nbars11 ticks — **NEW KEEP**; kick Batch EO; skip nbars12 tick
+- **Run:** `20261003T043142Z_d3a9e4cc` — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — saved `overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261003T043142Z_d3a9e4cc.json` — started ~2026-10-03T04:18:49Z finished ~2026-10-03T04:31:42Z UTC — seed `results/_seed_pf268_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json` + override near_box_bars=11 (EN soft champ tick-confirm).
+- **Prior KEEP:** ED_tick maxb19 ticks `20261003T000359Z_c4e21041` PF **2.68** / **+205591.6** n183 max_loss**4**.
+- **EO_tick nbars11:** n180 PF **2.81** / **+208697.5** win65.0% max_loss**4** — dpts **+3105.9** dPF **+0.13** — exits {"flatten":64,"sl":52,"tp":64}.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick promote soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **Verdict:** **NEW KEEP** — tick confirms EN soft champ nbars11; PF soft floor ok (2.81>=2.5), dpts +3105.9 (>=~2k), streak max_loss4<=8. Demote prior ED_tick maxb19 (park as prior KEEP). Skip runner nbars12 tick (5m +208079.2 under new KEEP tick pts +208697.5). Park EN soft nbars12 under EO tip.
+- **NEW KEEP params:** asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 (fixed_pts1050) · TP4000 fixed · sls4/2600 · hold13 · near_box outside N11 D1550 · wick on · pullback required · pullback_ref=both · pullback_fib=0.40 · fib_anchor=asia · ma_type=ema · news off · trail off · timeout market · wait_from_break.
+- **Seed:** `results/_seed_pf281_nbars11_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json` (mirror at repo root). BEST_REQUIRED_KEEP.json refreshed.
+- **Next:** Batch EO `ORTHO_RESIDUAL_EO_PF281` 5m — residual densify on NEW KEEP nbars11 tip (nbars neighborhood around 11 · nd×nbars11 · ntrend tip · maxb×nbars11 · wait/ema/hold/rc/cap×nbars11 · mild compounds; avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA–EN parked/be_arm/range-SL/mb-re-ladder/flat densify/asia-hour/fib0.28 densify). Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~08:19 Europe/Bucharest Asia Batch EO `ORTHO_RESIDUAL_EO_PF281` 5m scored - **CLEAR**; kick tick `nd1850_nbars11`
+- **Grid:** `results/overnight_5m_grid_20261003T045318Z.json` - tag `ORTHO_RESIDUAL_EO_PF281` - 60/60 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_EO_pf281_20261003.py` - log `results/_eo_grid_run.log` - finished ~2026-10-03T04:54Z UTC - seed `results/_seed_pf281_nbars11_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **KEEP (unchanged until ticks):** EO_tick nbars11 ticks `20261003T043142Z_d3a9e4cc` PF **2.81** / **+208697.5** n180 win65.0% max_loss**4** - asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold13 · near_box outside N11 D1550 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF281_nbars11_baseline` n180 PF **2.810** / **+208437.2** win65.0% (vs KEEP tick pts 208697.5).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick (4):**
+  - `nd1850_nbars11` n191 PF **2.835** / **+220929.4** win65.4% - dpts_keep **+12231.9** dpts_5m **+12492.2** dPF **+0.025** overrides `{"near_box_pts":1850.0,"near_box_bars":11}`
+  - `nd1750_nbars11` n187 PF **2.821** / **+215098.1** win65.2% - dpts_keep **+6400.6** dpts_5m **+6660.9** dPF **+0.011** overrides `{"near_box_pts":1750.0,"near_box_bars":11}`
+  - `nd1650_nbars11` n183 PF **2.800** / **+210895.7** win65.0% - dpts_keep **+2198.2** dpts_5m **+2458.5** dPF **-0.010** overrides `{"near_box_pts":1650.0,"near_box_bars":11}`
+  - `nd1650_nbars13` n183 PF **2.800** / **+210895.7** win65.0% - dpts_keep **+2198.2** dpts_5m **+2458.5** dPF **-0.010** overrides `{"near_box_pts":1650.0,"near_box_bars":13}`
+- **Near soft PF>=2.5 0<dpts<2k:**
+  - `hold12p5_nbars11` n180 PF **2.817** / **+208763.2** win64.4% - dpts_keep **+65.7** dpts_5m **+326.0** dPF **+0.007** overrides `{"max_hold_hours":12.5,"near_box_bars":11}`
+- **Best by pts:**
+  - `nd1850_nbars11` n191 PF **2.835** / **+220929.4** win65.4% - dpts_keep **+12231.9** dpts_5m **+12492.2** dPF **+0.025** overrides `{"near_box_pts":1850.0,"near_box_bars":11}`
+  - `nd1750_nbars11` n187 PF **2.821** / **+215098.1** win65.2% - dpts_keep **+6400.6** dpts_5m **+6660.9** dPF **+0.011** overrides `{"near_box_pts":1750.0,"near_box_bars":11}`
+  - `nd1650_nbars11` n183 PF **2.800** / **+210895.7** win65.0% - dpts_keep **+2198.2** dpts_5m **+2458.5** dPF **-0.010** overrides `{"near_box_pts":1650.0,"near_box_bars":11}`
+  - `nd1650_nbars13` n183 PF **2.800** / **+210895.7** win65.0% - dpts_keep **+2198.2** dpts_5m **+2458.5** dPF **-0.010** overrides `{"near_box_pts":1650.0,"near_box_bars":13}`
+  - `hold12p5_nbars11` n180 PF **2.817** / **+208763.2** win64.4% - dpts_keep **+65.7** dpts_5m **+326.0** dPF **+0.007** overrides `{"max_hold_hours":12.5,"near_box_bars":11}`
+  - `PF281_nbars11_baseline` n180 PF **2.810** / **+208437.2** win65.0% - dpts_keep **-260.3** dpts_5m **+0.0** dPF **+0.000** overrides `{}`
+  - `cap1100_nbars11` n180 PF **2.810** / **+208437.2** win65.0% - dpts_keep **-260.3** dpts_5m **+0.0** dPF **+0.000** overrides `{"resume_max_break_pts":1100.0,"near_box_bars":11}`
+  - `cap1300_nbars11` n180 PF **2.810** / **+208437.2** win65.0% - dpts_keep **-260.3** dpts_5m **+0.0** dPF **+0.000** overrides `{"resume_max_break_pts":1300.0,"near_box_bars":11}`
+  - `cap1400_nbars11` n180 PF **2.810** / **+208437.2** win65.0% - dpts_keep **-260.3** dpts_5m **+0.0** dPF **+0.000** overrides `{"resume_max_break_pts":1400.0,"near_box_bars":11}`
+  - `ntrend_breakout_nbars11` n172 PF **2.879** / **+207456.5** win65.7% - dpts_keep **-1241.0** dpts_5m **-980.7** dPF **+0.069** overrides `{"near_box_trend":"breakout","near_box_bars":11}`
+- **Under-floor dpts>0 sample:**
+  - (none)
+- **Counts:** clear=4 near=1 flat_vs_5m~=4 under_vs_5m=51 underfloor_vs_KEEP=0.
+- **Verdict:** **CLEAR** - found 4 cells soft>=2.5 dpts>=~2k vs KEEP tick - pts-champ `nd1850_nbars11` PF2.835/+220929.4 dpts_keep+12231.9 dpts_5m+12492.2. near_box_pts tip path (D1550 KEEP -> D1850/D1750/D1650 on N11). Other EO axes mostly under/flat. KEEP unchanged until tick.
+- **Kick:** `nd1850_nbars11` tick-confirm on KEEP seed + overrides `{"near_box_pts":1850.0,"near_box_bars":11}` workers=2.
+- **Next:** score `nd1850_nbars11` ticks when done; promote only soft>=2.5 dpts>=~2k max_loss<=7-8. Runner `nd1750_nbars11` PF2.821/+215098.1 dpts_keep+6400.6 only if champ promotes. If reject: park EO soft nd tip; next residual densify on KEEP tip (avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-EN parked/be_arm/range-SL/mb-re-ladder/flat densify/asia-hour/fib0.28 densify; live maxb neighborhood and near_box_bars tip path ok after tick). stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~08:49 Europe/Bucharest Asia EP_tick nd1850 ticks — **NEW KEEP**; kick Batch EP; skip nd1750 tick
+- **Run:** `20261003T053918Z_99a5e4c2` — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — saved `overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261003T053918Z_99a5e4c2.json` — started ~2026-10-03T05:19:09Z finished ~2026-10-03T05:39:18Z UTC — seed `results/_seed_pf281_nbars11_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json` + override near_box_pts=1850 near_box_bars=11 (EO CLEAR champ tick-confirm).
+- **Prior KEEP:** EO_tick nbars11 ticks `20261003T043142Z_d3a9e4cc` PF **2.81** / **+208697.5** n180 max_loss**4**.
+- **EP_tick nd1850:** n191 PF **2.84** / **+221185.9** win65.4% max_loss**4** — dpts **+12488.4** dPF **+0.03** — exits {"flatten":70,"sl":54,"tp":67}.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick promote soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **Verdict:** **NEW KEEP** — tick confirms EO CLEAR champ nd1850_nbars11; PF soft floor ok (2.84>=2.5), dpts +12488.4 (>=~2k), streak max_loss4<=8. Demote prior EO_tick nbars11 (park as prior KEEP). Skip runner nd1750 tick (5m +215098.1 under new KEEP tick pts +221185.9). Park EO soft residual axes under EP tip.
+- **NEW KEEP params:** asia0-6 — ema32 — wait14 — rc5 — cap1200 — flat22 — mb255 — maxb19 — SL range rm0.85/cap4000 (fixed_pts1050) — TP4000 fixed — sls4/2600 — hold13 — near_box outside N11 D1850 — wick on — pullback required — pullback_ref=both — pullback_fib=0.40 — fib_anchor=asia — ma_type=ema — news off — trail off — timeout market — wait_from_break.
+- **Seed:** `results/_seed_pf284_nd1850_nbars11_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json` (mirror at repo root). BEST_REQUIRED_KEEP.json refreshed.
+- **Next:** Batch EP `ORTHO_RESIDUAL_EP_PF284` 5m — residual densify on NEW KEEP nd1850 tip (fine D around 1850 — nbars×nd1850 — ntrend tip — maxb×nd1850 — wait/ema/hold/rc/cap×nd1850 — mild compounds + light teff/arange/tflat probes; avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA–EO parked/be_arm/range-SL/mb-re-ladder/flat densify/asia-hour/fib0.28 densify). Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~10:20 Europe/Bucharest Asia Batch EP `ORTHO_RESIDUAL_EP_PF284` 5m scored - **NO CLEAR**; park EP soft; kick Batch EQ
+- **Grid:** `results/overnight_5m_grid_20261003T054933Z.json` - tag `ORTHO_RESIDUAL_EP_PF284` - 67/67 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_EP_pf284_20261003.py` - log `results/_ep_grid_run.log` - finished ~2026-10-03T05:50Z UTC - seed `results/_seed_pf284_nd1850_nbars11_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **KEEP (unchanged):** EP_tick nd1850 ticks `20261003T053918Z_99a5e4c2` PF **2.84** / **+221185.9** n191 win65.4% max_loss**4** - asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold13 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF284_nd1850_baseline` n191 PF **2.835** / **+220929.4** win65.4% (vs KEEP tick pts 221185.9).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts<2k (3 unique):**
+  - `cap1400_nd1850` n190 PF **2.858** / **+221893.0** win65.8% - dpts_keep **+707.1** dpts_5m **+963.6** dPF **+0.018** overrides `{"resume_max_break_pts":1400.0,"near_box_pts":1850.0}`
+  - `hold12p5_nd1850` / `nd1850_hold12p5` n191 PF **2.842** / **+221255.4** win64.9% - dpts_keep **+69.5** dpts_5m **+326.0** dPF **+0.002** overrides `{"max_hold_hours":12.5,"near_box_pts":1850.0}`
+- **Best by pts:**
+  - `cap1400_nd1850` n190 PF **2.858** / **+221893.0** - dpts_keep **+707.1** dpts_5m **+963.6**
+  - `hold12p5_nd1850` n191 PF **2.842** / **+221255.4** - dpts_keep **+69.5** dpts_5m **+326.0**
+  - `PF284_nd1850_baseline` n191 PF **2.835** / **+220929.4** - dpts_keep **-256.5** dpts_5m **+0.0**
+- **Under-floor dpts>0 sample:** (none)
+- **Counts:** clear=0 near=3 (2 unique axes) flat_vs_5m~=12 under_vs_5m=52 underfloor_vs_KEEP=0.
+- **Verdict:** **NO CLEAR** - no cell soft>=2.5 dpts>=~2k vs KEEP tick. Best near `cap1400_nd1850` +707 under ~2k (do not tick). Park EP soft residual (D/N/ntrend/maxb/wait/ema/hold/rc/cap/teff/arange/tflat + mild compounds). KEEP unchanged EP_tick nd1850 PF2.84/+221185.9 n191 max_loss4.
+- **Kick:** Batch EQ `ORTHO_RESIDUAL_EQ_PF284` 5m — open axes not closed by EP on KEEP tip (mb neighborhood · entry/close gates · timeout_min_break · remaining ntrend · pbref/fib_anchor · ma_type alts · sl_m12_frac · near-soft micro follow cap/hold · mild compounds). Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA–EP parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify. Live near_box tip path still open for compounds only.
+- **Next:** score Batch EQ when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~10:49 Europe/Bucharest Asia Batch EQ `ORTHO_RESIDUAL_EQ_PF284` 5m scored - **NO CLEAR**; park EQ soft; kick Batch ER
+- **Grid:** `results/overnight_5m_grid_20261003T072238Z.json` - tag `ORTHO_RESIDUAL_EQ_PF284` - 60/60 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_EQ_pf284_20261003.py` - log `results/_eq_grid_run.log` - finished ~2026-10-03T07:24Z UTC - seed `results/_seed_pf284_nd1850_nbars11_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **KEEP (unchanged):** EP_tick nd1850 ticks `20261003T053918Z_99a5e4c2` PF **2.84** / **+221185.9** n191 win65.4% max_loss**4** - asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold13 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF284_nd1850_baseline` n191 PF **2.835** / **+220929.4** win65.4% (vs KEEP tick pts 221185.9).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_5m<2k:**
+  - `cap1400_hold12p5_nd1850` n190 PF **2.865** / **+222219.0** win65.3% - dpts_5m **+1289.6** dpts_keep **+1033.1** overrides `{"resume_max_break_pts":1400.0,"max_hold_hours":12.5,"near_box_pts":1850.0}`
+  - `mb250_260_nd1850` n191 PF **2.856** / **+221767.0** win65.4% - dpts_5m **+837.6** dpts_keep **+581.1** overrides `{"min_break_pts_above":250.0,"min_break_pts_below":260.0,"near_box_pts":1850.0}`
+  - `hold12p75_nd1850` n191 PF **2.839** / **+221346.5** win65.4% - dpts_5m **+417.1** dpts_keep **+160.6**
+  - `hold12p25_nd1850` n191 PF **2.849** / **+221145.7** win64.9% - dpts_5m **+216.3** dpts_keep **-40.2**
+  - `mb245_265_nd1850` n192 PF **2.838** / **+221019.3** win65.1% - dpts_5m **+89.9** dpts_keep **-166.6**
+- **Best by pts:** `cap1400_hold12p5_nd1850` +1289.6 vs 5m / +1033.1 vs KEEP (under ~2k; do not tick).
+- **Counts:** clear=0 near=5 (soft under 2k) — mb/entry/tmb/ntrend-remaining/pbref/ma/sl_m12 mostly flat or under; ma alts and pbref_fib underfloor.
+- **Verdict:** **NO CLEAR** - no cell soft>=2.5 dpts>=~2k. Park EQ soft (mb neighborhood · entry/close gates · timeout_min_break · remaining ntrend · pbref/fib_anchor · ma_type alts · sl_m12_frac · near-soft micro follow · mild compounds). KEEP unchanged EP_tick nd1850 PF2.84/+221185.9 n191 max_loss4.
+- **Kick:** Batch ER `ORTHO_RESIDUAL_ER_PF284` 5m (script `scripts/_residual_ortho_ER_pf284_20261003.py`, pid 7616, log `results/_er_grid_run.log`, grid `overnight_5m_grid_20261003T075423Z.json`, 73 cells — live near_box tip path DxN compounds on KEEP tip (D around 1850 × N around 11 compounds · DxN×maxb · soft-near EQ follow cap1400/hold12p5/mb250_260 × N · wait/ema tip compounds · temd/tsess open probes). Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA–EQ parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify. EP D/N/ntrend/maxb/wait/ema/hold/rc/cap/teff/arange/tflat singles remain parked.
+- **Next:** score Batch ER when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~11:14 Europe/Bucharest Asia Batch ER `ORTHO_RESIDUAL_ER_PF284` 5m scored - **NO CLEAR**; park ER soft; kick Batch ES
+- **Grid:** `results/overnight_5m_grid_20261003T075423Z.json` - tag `ORTHO_RESIDUAL_ER_PF284` - 73/73 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_ER_pf284_20261003.py` - log `results/_er_grid_run.log` - finished ~2026-10-03T07:55Z UTC - seed `results/_seed_pf284_nd1850_nbars11_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **KEEP (unchanged):** EP_tick nd1850 ticks `20261003T053918Z_99a5e4c2` PF **2.84** / **+221185.9** n191 win65.4% max_loss**4** - asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold13 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF284_nd1850_baseline` n191 PF **2.835** / **+220929.4** win65.4% (vs KEEP tick pts 221185.9).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k (4):**
+  - `nd1850_nbars12_cap1400_hold12p5` n190 PF **2.865** / **+222219.0** win65.3% - dpts_keep **+1033.1** dpts_5m **+1289.6** dPF **+0.025** overrides `{"near_box_pts":1850.0,"near_box_bars":12,"resume_max_break_pts":1400.0,"max_hold_hours":12.5}`
+  - `nd1850_nbars12_cap1400` n190 PF **2.858** / **+221893.0** win65.8% - dpts_keep **+707.1** dpts_5m **+963.6**
+  - `nd1850_nbars12_mb250_260` n191 PF **2.856** / **+221767.0** win65.4% - dpts_keep **+581.1** dpts_5m **+837.6**
+  - `nd1850_nbars12_hold12p5` n191 PF **2.842** / **+221255.4** win64.9% - dpts_keep **+69.5** dpts_5m **+326.0**
+- **Best by pts:** `nd1850_nbars12_cap1400_hold12p5` +1289.6 vs 5m / +1033.1 vs KEEP (under ~2k; do not tick). Same soft-near cluster as EQ; N=12 compounds did not clear.
+- **Counts:** clear=0 near=4 flat_vs_5m~=13 over_vs_5m=4 under_vs_5m=56 underfloor_vs_KEEP=0.
+- **Verdict:** **NO CLEAR** - no cell soft>=2.5 dpts>=~2k. Park ER soft (DxN compounds · DxNxmaxb · soft-near EQ follow x N · wait/ema tip compounds · temd/tsess). Live near_box tip path DxN compounds now parked with ER. KEEP unchanged EP_tick nd1850 PF2.84/+221185.9 n191 max_loss4.
+- **Kick:** Batch ES `ORTHO_RESIDUAL_ES_PF284` 5m (script `scripts/_residual_ortho_ES_pf284_20261003.py`, pid 2760, log `results/_es_grid_run.log`, grid `overnight_5m_grid_20261003T081912Z.json`, 62 cells — seasonal/week2 x tip · wfb_false tip · news tip · fib micro around 0.40 not 0.28 · soft-near triples without N · tmpb denser · kama fast/slow mild · mild compounds). Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-ER parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify. EP D/N/ntrend/maxb/wait/ema/hold/rc/cap/teff/arange/tflat singles remain parked; EQ axes parked; ER DxN tip path parked.
+- **Next:** score Batch ES when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~11:20 Europe/Bucharest Asia Batch ES `ORTHO_RESIDUAL_ES_PF284` 5m scored - **NO CLEAR**; park ES soft; kick Batch ET
+- **Grid:** `results/overnight_5m_grid_20261003T081912Z.json` - tag `ORTHO_RESIDUAL_ES_PF284` - 62/62 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_ES_pf284_20261003.py` - log `results/_es_grid_run.log` - finished ~2026-10-03T08:19Z UTC - seed `results/_seed_pf284_nd1850_nbars11_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **KEEP (unchanged):** EP_tick nd1850 ticks `20261003T053918Z_99a5e4c2` PF **2.84** / **+221185.9** n191 win65.4% max_loss**4** - asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold13 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF284_nd1850_baseline` n191 PF **2.835** / **+220929.4** win65.4% (vs KEEP tick pts 221185.9).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k (9):**
+  - `cap1400_hold12p5_mb250_260_nd1850` n190 PF **2.886** / **+223056.6** win65.3% - dpts_keep **+1870.7** dpts_5m **+2127.2** dPF **+0.046** (closest; under ~2k — do not tick)
+  - `cap1400_mb250_260_nd1850` n190 PF **2.879** / **+222730.6** - dpts_keep **+1544.7**
+  - `cap1400_hold12p75_nd1850` n190 PF **2.862** / **+222310.1** - dpts_keep **+1124.2**
+  - `cap1400_hold12p5_fib038_nd1850` n190 PF **2.865** / **+222193.4** - dpts_keep **+1007.5**
+  - `hold12p5_mb250_260_nd1850` n191 PF **2.863** / **+222093.0** - dpts_keep **+907.1**
+  - `tmpb75_cap1400_nd1850` +707.1; `fib039_mb250_260_nd1850` +568.4; `tmpb50_hold12p5_nd1850` +69.5; `fib038_hold12p5_nd1850` +43.9
+- **Best by pts:** `cap1400_hold12p5_mb250_260_nd1850` +1870.7 vs KEEP (under ~2k). Seasonal/week2/wfb/news/kama mostly under or flat; fib/tmpb singles flat-near.
+- **Counts:** clear=0 near=9 flat_vs_5m~=14 over_vs_5m=9 under_vs_5m=39 underfloor_vs_KEEP=0.
+- **Verdict:** **NO CLEAR** - no cell soft>=2.5 dpts>=~2k. Park ES soft (seasonal/week2/wfb_false/news/fib micro/soft-near triples/tmpb/kama). KEEP unchanged EP_tick nd1850 PF2.84/+221185.9 n191 max_loss4.
+- **Kick:** Batch ET `ORTHO_RESIDUAL_ET_PF284` 5m — soft-near densify around ES champ compound cap1400×hold12p5×mb250_260 (cap/hold/mb micro + fib038/tmpb mild; do not tick under-2k alone). Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-ES parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify. EP/EQ/ER tip paths remain parked.
+- **Next:** score Batch ET when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~11:23 Europe/Bucharest Asia Batch ET `ORTHO_RESIDUAL_ET_PF284` 5m scored - **CLEAR**; kick tick `cap1550_hold12p5_mb250_260`
+- **Grid:** `results/overnight_5m_grid_20261003T082112Z.json` - tag `ORTHO_RESIDUAL_ET_PF284` - 37/37 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_ET_pf284_20261003.py` - log `results/_et_grid_run.log` - finished ~2026-10-03T08:21Z UTC - seed `results/_seed_pf284_nd1850_nbars11_maxb19_hold13_ema32_rc5_flat22_mb255_rm085_cap4000.json`.
+- **KEEP (unchanged until ticks):** EP_tick nd1850 ticks `20261003T053918Z_99a5e4c2` PF **2.84** / **+221185.9** n191 win65.4% max_loss**4** - asia0-6 · ema32 · wait14 · rc5 · cap1200 · flat22 · mb255 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold13 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF284_nd1850_baseline` n191 PF **2.835** / **+220929.4** win65.4% (vs KEEP tick pts 221185.9).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick (5):**
+  - `cap1550_hold12p5_mb250_260_nd1850` / `cap1600_hold12p5_mb250_260_nd1850` (identical) n193 PF **2.876** / **+225227.1** win64.8% - dpts_keep **+4041.2** dpts_5m **+4297.7** dPF **+0.036** overrides `{"resume_max_break_pts":1550.0,"max_hold_hours":12.5,"min_break_pts_above":250.0,"min_break_pts_below":260.0,"near_box_pts":1850.0}`
+  - `cap1400_hold12p5_mb255_260_nd1850` n189 PF **2.914** / **+224249.0** win65.6% - dpts_keep **+3063.1** dpts_5m **+3319.6** dPF **+0.074** overrides `{"resume_max_break_pts":1400.0,"max_hold_hours":12.5,"min_break_pts_above":255.0,"min_break_pts_below":260.0,"near_box_pts":1850.0}`
+  - `cap1400_hold12p5_mb255_265_nd1850` n190 PF **2.896** / **+223501.3** - dpts_keep **+2315.4**
+  - `cap1400_hold12p4_mb250_260_nd1850` n190 PF **2.896** / **+223355.2** - dpts_keep **+2169.3**
+- **Near soft:** `cap1400_hold12p75_mb250_260` +1961.8; ES champ reference +1870.7; others under 2k.
+- **Best by pts:** `cap1550_hold12p5_mb250_260` PF2.876/+225227.1 dpts_keep+4041.2 (cap1600 identical — kick tighter cap1550).
+- **Counts:** clear=5 near=22 flat_vs_5m~=1 over_vs_5m=29 under_vs_5m=7 underfloor_vs_KEEP=0.
+- **Verdict:** **CLEAR** - soft-near densify around ES compound lifted past ~2k; pts-champ cap1550_hold12p5_mb250_260. KEEP unchanged until tick.
+- **Kick:** `cap1550_hold12p5_mb250_260` tick-confirm on KEEP seed + overrides resume_max_break_pts=1550 max_hold_hours=12.5 mb_above=250 mb_below=260 near_box_pts=1850 workers=2.
+- **Next:** score tick when done; promote only soft>=2.5 dpts>=~2k max_loss<=7-8. Runner `cap1400_hold12p5_mb255_260` PF2.914/+224249 only if champ promotes. If reject: park ET soft densify; next residual densify on KEEP tip (avoid preferred/CX/CM/trail/DI-ES parked/be_arm/range-SL/asia-hour/fib0.28/EG tpm_range20/EL tpm12). stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-03 ~11:50 Europe/Bucharest Asia EU_tick cap1550_hold12p5_mb250_260 ticks — **NEW KEEP**; kick Batch EU; skip runner cap1400_hold12p5_mb255_260 tick
+- **Run:** `20261003T084030Z_cba35741` — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — saved `overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261003T084030Z_cba35741.json` — started ~2026-10-03T08:23:36Z finished ~2026-10-03T08:40:30Z UTC — ET CLEAR champ tick-confirm (seed EP KEEP + overrides resume_max_break_pts=1550 max_hold_hours=12.5 mb_above=250 mb_below=260 near_box_pts=1850).
+- **Prior KEEP:** EP_tick nd1850 ticks `20261003T053918Z_99a5e4c2` PF **2.84** / **+221185.9** n191 max_loss**4**.
+- **EU_tick cap1550_hold12p5_mb250_260:** n193 PF **2.89** / **+226702.8** win65.3% max_loss**5** — dpts **+5516.9** dPF **+0.05** — exits {"flatten":70,"sl":55,"tp":68}.
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick promote soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **Verdict:** **NEW KEEP** — tick confirms ET CLEAR champ; PF soft floor ok (2.89>=2.5), dpts +5516.9 (>=~2k), streak max_loss5<=8. Demote prior EP_tick nd1850 (park as prior KEEP). Skip runner `cap1400_hold12p5_mb255_260` tick (5m +224249.0 under new KEEP tick pts +226702.8). Park ET soft densify under EU tip; park EQ/ER/ES soft; EP tip singles remain parked.
+- **NEW KEEP params:** asia0-6 — ema32 — wait14 — rc5 — cap1550 — flat22 — mb250/260 — maxb19 — SL range rm0.85/cap4000 (fixed_pts1050) — TP4000 fixed — sls4/2600 — hold12.5 — near_box outside N11 D1850 — wick on — pullback required — pullback_ref=both — pullback_fib=0.40 — fib_anchor=asia — ma_type=ema — news off — trail off — timeout market — wait_from_break.
+- **Seed:** `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` (mirror at repo root). BEST_REQUIRED_KEEP.json refreshed.
+- **Next:** Batch EU `ORTHO_RESIDUAL_EU_PF289` 5m — residual densify on NEW KEEP tip (cap/hold/mb micro around 1550/12.5/250-260 — maxb neighborhood — wait/ema/rc/flat — ntrend — near_box D/N compounds — mild compounds + teff/arange/tflat; avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA–ET parked/be_arm/range-SL/mb-re-ladder/asia-hour/fib0.28 densify). Tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~12:19 Europe/Bucharest Asia Batch EU `ORTHO_RESIDUAL_EU_PF289` 5m scored - **NO CLEAR**; park EU soft; kick Batch EV
+- **Grid:** `results/overnight_5m_grid_20261003T085025Z.json` - tag `ORTHO_RESIDUAL_EU_PF289` - 84/85 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_EU_pf289_20261003.py` - log `results/_eu_grid_run.log` - finished ~2026-10-03T08:51Z UTC - seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` - errors=[{"name": "flat24_tip", "error": "hour must be in 0..23"}].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** - asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_eu_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k (1):**
+  - `flat23_tip` n193 PF **2.869** / **+227862.5** win62.2% - dpts_keep **+1159.7** dpts_5m **+2635.4** overrides `{"flatten_hour":23}`
+- **Best by pts:** `flat23_tip` PF2.869/+227862.5 dpts_5m+2635.4 dpts_keep+1159.7 (under ~2k vs KEEP; do not tick; do not densify DO flat23 lineage).
+- **Counts:** clear=0 near=1 flat_vs_5m~=15 over_vs_5m=4 under_vs_5m=65 underfloor_vs_KEEP=83.
+- **Verdict:** **NO CLEAR** - tip densify (cap/hold/mb/maxb/wait/ema/rc/flat/ntrend/near_box D/N/mild/teff/arange/tflat/side) produced only soft-near flat23_tip (+1159.7 vs KEEP). Park EU soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch EV `ORTHO_RESIDUAL_EV_PF289` 5m - residual densify on KEEP tip open axes not closed by EU: seasonal/week2 x tip · wfb_false tip · news tip · fib micro around 0.40 (not 0.28) · tmpb/temd/tsess · kama mild · timeout_min_break · wick/uhc/rco mild · mild compounds with tip locks. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-EU parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify. EU tip singles (cap/hold/mb/maxb/wait/ema/rc/flat/ntrend/D/N/teff/arange/tflat) parked.
+- **Next:** score Batch EV when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-03 ~12:46 Europe/Bucharest Asia Batch EV `ORTHO_RESIDUAL_EV_PF289` 5m scored - **NO CLEAR**; park EV soft; kick Batch EW
+- **Grid:** `results/overnight_5m_grid_20261003T091949Z.json` - tag `ORTHO_RESIDUAL_EV_PF289` - 78/78 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_EV_pf289_20261003.py` - log `results/_ev_grid_run.log` - finished ~2026-10-03T09:xxZ UTC - seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` - PARAM_ECHO_OK - errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** - asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_ev_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by pts:** tip-flat cluster (wick_off/tmpb/temd/tsess/week2_tag/news_tag/rco_on/…) PF2.876/+225227.1 dpts_5m0 dpts_keep-1475.7 (no-ops under tip). Under: fib036–045, season/week2 filters, wfb_false, news_filter, kama, uhc_off, side splits.
+- **Counts:** clear=0 near=0 flat_vs_5m~=34 over_vs_5m=0 under_vs_5m=44 underfloor_vs_KEEP=78.
+- **Verdict:** **NO CLEAR** - seasonal/week2/wfb_false/news/fib micro/tmpb/temd/tsess/kama/wick-uhc-rco residual produced 0 soft lift vs KEEP. Park EV soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch EW `ORTHO_RESIDUAL_EW_PF289` 5m - residual densify on KEEP tip open axes not closed by EU/EV: pullback_ref/fib_anchor · hma/zlema · otpd_off · sl_fixed micro around 1050 · tp_fixed micro around 4000 · arange/teff/tflat denser · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-EV parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify. EU tip singles + EV axes parked.
+- **Next:** score Batch EW when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-03 ~13:19 Europe/Bucharest Asia Batch EW `ORTHO_RESIDUAL_EW_PF289` 5m scored - **NO CLEAR**; park EW soft; kick Batch EX
+- **Grid:** `results/overnight_5m_grid_20261003T094949Z.json` - tag `ORTHO_RESIDUAL_EW_PF289` - 83/83 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_EW_pf289_20261003.py` - log `results/_ew_grid_run.log` - finished ~2026-10-03T09:50Z UTC - seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` - PARAM_ECHO_OK - errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** - asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_ew_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by pts:** tip-flat cluster (arange275-400 / teff025-045 / tflat1000-2000 / otpd_off / slf micro flat) PF2.876/+225227.1 dpts_5m0 dpts_keep-1475.7. Under: pbref/fib_anchor · hma/zlema · tpf ladder · arange450 · side splits.
+- **Counts:** clear=0 near=0 flat_vs_5m~=42 over_vs_5m=0 under_vs_5m=41 underfloor_vs_KEEP=83.
+- **Verdict:** **NO CLEAR** - pbref/fib_anchor · hma/zlema · otpd_off · sl_fixed micro · tp_fixed micro · arange/teff/tflat denser residual produced 0 soft lift vs KEEP. Park EW soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch EX `ORTHO_RESIDUAL_EX_PF289` 5m - residual densify on KEEP tip open axes not closed by EU/EV/EW: trend_sessions denser · near_box_trend×tip compounds · wick/uhc/rco tip compounds · temd/tmpb residual gaps · news_set residual · wait/ema/rc outer extremes · hold micro residual finer · fib tiny gaps around 0.40 (not 0.28) · timeout_skip mild · kama tip compounds · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-EW parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify. EU tip singles + EV/EW axes parked.
+- **Next:** score Batch EX when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-03 ~13:48 Europe/Bucharest Asia Batch EX `ORTHO_RESIDUAL_EX_PF289` 5m scored - **NO CLEAR**; park EX soft; kick Batch EY
+- **Grid:** `results/overnight_5m_grid_20261003T102207Z.json` - tag `ORTHO_RESIDUAL_EX_PF289` - 98/98 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_EX_pf289_20261003.py` - log `results/_ex_grid_run.log` - finished ~2026-10-03T10:22Z UTC - seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` - PARAM_ECHO_OK - errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** - asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_ex_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by pts:** `hold12p1_tip` n193 PF **2.889** / **+225728.8** win64.8% - dpts_5m **+501.7** dpts_keep **-974.0** overrides `{"max_hold_hours":12.1}` (under ~2k vs KEEP; do not tick). Rest: 41 flat tip no-ops at 5m baseline; 56 under (tsess/ntrend/wick-uhc-rco/temd-tmpb/news/wait-ema-rc outer/fib tiny/timeout_skip/kama).
+- **Counts:** clear=0 near=0 flat_vs_5m~=41 over_vs_5m=1 under_vs_5m=56 underfloor_vs_KEEP=98.
+- **Verdict:** **NO CLEAR** - tsess denser · ntrend×tip · wick/uhc/rco compounds · temd/tmpb gaps · news_set · wait/ema/rc outer · hold micro · fib tiny · timeout_skip · kama compounds produced 0 soft lift vs KEEP. Park EX soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch EY `ORTHO_RESIDUAL_EY_PF289` 5m - residual densify on KEEP tip open axes not closed by EU/EV/EW/EX: min_asia_range · timeout_min_break denser · otpd_false · hma/zlema periods · kama_er denser · tp_sl_mult/tp_r_mult mild (not EG tpm_range20/EL tpm12) · sl_m12_frac gaps · flat20/21 tip compounds (not flat19/flat23 densify) · pb_optional · nbars residual (not nbars12) · maxb outer tip compounds (not maxb17 alone) · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-EX parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify. EU tip singles + EV/EW/EX axes parked.
+- **Next:** score Batch EY when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~14:14 Europe/Bucharest Asia Batch EY `ORTHO_RESIDUAL_EY_PF289` 5m scored - **NO CLEAR**; park EY soft; kick Batch EZ
+- **Grid:** `results/overnight_5m_grid_20261003T105227Z.json` - tag `ORTHO_RESIDUAL_EY_PF289` - 107/107 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_EY_pf289_20261003.py` - log `results/_ey_grid_run.log` - finished ~2026-10-03T10:53Z UTC - seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` - PARAM_ECHO_OK - errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** - asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_ey_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Underfloor pts>KEEP PF<2.5 (do not tick / do not densify pb_optional):** `pb_optional_*` n270 PF **2.040** / **+236017.2** dpts_keep **+9314.4** (tip/hold/cap/mb identical) — pullback optional lifts pts but collapses PF.
+- **Best by soft pts:** tip-flat cluster (mar/tmb/otpd_false/slm12/nbars13-14/…) PF2.876/+225227.1 dpts_5m0 dpts_keep-1475.7. Over 5m only the underfloor pb_optional cluster. Under: hma/zlema periods · kama_er · tpsl/tpr · flat20/21 · nbars8-10/15 · maxb outer · mild compounds.
+- **Counts:** clear=0 near=0 flat_vs_5m~=39 over_vs_5m=4 under_vs_5m=64 underfloor_vs_KEEP=103 (incl. pb_optional underfloor pts-above).
+- **Verdict:** **NO CLEAR** - mar/tmb/otpd_false/hma-zlema periods/kama_er/tpsl-tpr mild/slm12/flat20-21/pb_optional/nbars residual/maxb outer produced 0 soft lift vs KEEP. Park EY soft (do not densify pb_optional underfloor). KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch EZ `ORTHO_RESIDUAL_EZ_PF289` 5m - residual densify on KEEP tip open axes not closed by EU/EV/EW/EX/EY: near_box D micro around 1850 · teff/tflat denser · flat18 tip compounds (not flat19/flat23 densify) · kama_fast/slow denser · rc mid residual · seasonal_join/week2_mode denser · news skip/pause · tmpb outer · rco/wick/uhc tip · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-EY parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify. EU tip singles + EV/EW/EX/EY axes parked.
+- **Next:** score Batch EZ when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-03 ~14:48 Europe/Bucharest Asia Batch EZ `ORTHO_RESIDUAL_EZ_PF289` 5m scored - **NO CLEAR**; park EZ soft; kick Batch FA
+- **Grid:** `results/overnight_5m_grid_20261003T111717Z.json` - tag `ORTHO_RESIDUAL_EZ_PF289` - 103/103 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_EZ_pf289_20261003.py` - finished ~2026-10-03T11:18Z UTC - seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` - PARAM_ECHO_OK - errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** - asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_ez_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by pts:** `nd2100_tip` n201 PF **2.745** / **+225940.7** win64.2% - dpts_5m **+713.6** dpts_keep **-762.1** overrides `{"near_box_pts":2100.0}` (under KEEP; do not tick). Rest: ~49 flat tip no-ops at 5m baseline; 53 under (kama f/s · flat18 · teff/tflat denser · rc mid · season/news · tmpb · rco/wick/uhc · side splits).
+- **Counts:** clear=0 near=0 flat_vs_5m~=49 over_vs_5m=1 under_vs_5m=53 underfloor_vs_KEEP=103.
+- **Verdict:** **NO CLEAR** - near_box D micro · teff/tflat denser · flat18 · kama_fast/slow · rc mid · season/week2 · news skip/pause · tmpb · rco/wick/uhc produced 0 soft lift vs KEEP. Park EZ soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FA `ORTHO_RESIDUAL_FA_PF289` 5m - residual densify on KEEP tip open axes not closed by EU/EV/EW/EX/EY/EZ: skip_late_short wait/asia micro around tip 4/2600 (not revive CX tip_sls4_2600 park) · ema_tf_min residual · flat17 tip compounds (not flat18/19/20/21/23 densify) · cap micro gaps around 1550 · hold micro finer · week2_trend compounds · uhc_off/wick_off tip · temd denser · sl_cap micro around 4000 (no range-mult re-ladder) · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-EZ parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify. EU tip singles + EV/EW/EX/EY/EZ axes parked.
+- **Next:** score Batch FA when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+### 2026-10-03 ~15:20 Europe/Bucharest Asia Batch FA `ORTHO_RESIDUAL_FA_PF289` 5m scored - **NO CLEAR**; park FA soft; kick Batch FB
+- **Grid:** `results/overnight_5m_grid_20261003T115306Z.json` - tag `ORTHO_RESIDUAL_FA_PF289` - 97/97 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_FA_pf289_20261003.py` - log `results/_fa_grid_run.log` - finished ~2026-10-03T11:54Z UTC - seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` - PARAM_ECHO_OK - errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** - asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_fa_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k (1):**
+  - `slcap5000_tip` n193 PF **2.945** / **+228050.3** win64.8% - dpts_keep **+1347.5** dpts_5m **+2823.2** overrides `{"sl_cap_pts":5000.0}` (under ~2k vs KEEP; do not tick; do not densify sl_cap ladder further from FA near)
+- **Best by pts:** `slcap5000_tip` PF2.945/+228050.3 dpts_5m+2823.2 dpts_keep+1347.5. Rest: hold12p2/12p4/12p8 tiny over 5m still under KEEP; ~40 flat tip no-ops at 5m baseline; 52 under (sls wait/asia · ema_tf · flat17 · cap micro · week2_trend · uhc_off · temd · mild compounds).
+- **Counts:** clear=0 near=1 flat_vs_5m~=40 over_vs_5m=5 under_vs_5m=52 underfloor_vs_KEEP=0.
+- **Verdict:** **NO CLEAR** - sls wait/asia micro · ema_tf_min · flat17 · cap micro · hold micro finer · week2_trend · uhc_off/wick_off · temd denser · sl_cap micro produced 0 soft lift >=~2k vs KEEP. Park FA soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FB `ORTHO_RESIDUAL_FB_PF289` 5m - residual densify on KEEP tip open axes not closed by EU–FA: flat16 tip compounds (not flat17–23 densify lineages) · ema_period micro around 32 · wait micro residual 10/11/17–19 · nbars residual compounds (not EN nbars12 alone) · maxb tip compounds denser (not EB maxb17 / EC maxb19_hold14 alone) · rco denser tip · sl_fixed tip micro (avoid DI/DJ sl1030 densify) · tp_fixed tip micro (not EG tpm_range20 / EL tpm12 / DS TP densify) · timeout_skip mild · arange micro gaps · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA–FA parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify. EU tip singles + EV–FA axes parked.
+- **Next:** score Batch FB when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-03 ~15:41 Europe/Bucharest Asia Batch FB `ORTHO_RESIDUAL_FB_PF289` 5m scored - **NO CLEAR**; park FB soft; kick Batch FC
+- **Grid:** `results/overnight_5m_grid_20261003T122302Z.json` - tag `ORTHO_RESIDUAL_FB_PF289` - 91/91 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_FB_pf289_20261003.py` - log `results/_fb_grid_run.log` - finished ~2026-10-03T12:24Z UTC - seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` - PARAM_ECHO_OK - errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** - asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_fb_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by soft pts:** tip-flat cluster (toskip/slf*/rco_on/nbars13-14/arange250-400) PF2.876/+225227.1 dpts_5m0 dpts_keep-1475.7. Over 5m: 0. Under: flat16 cluster ~-72.8k · wait10/18/19 · ema38 · side splits · wait/ema/nbars/maxb residual under tip.
+- **Counts:** clear=0 near=0 flat_vs_5m=32 over_vs_5m=0 under_vs_5m=59 underfloor_vs_KEEP=0.
+- **Verdict:** **NO CLEAR** - flat16 · ema micro · wait 10/11/17-19 · nbars residual · maxb tip compounds · rco denser · sl_fixed tip micro · tp_fixed tip micro · timeout_skip · arange micro produced 0 soft lift vs KEEP. Park FB soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FC `ORTHO_RESIDUAL_FC_PF289` 5m - residual densify on KEEP tip open axes not closed by EU-FB: flat15 tip compounds (not flat16-23 densify lineages) · resume_closes denser 3/6/7/8/9 (not DY rc5 alone) · hold micro residual quarters · pullback_fib micro around 0.40 (not fib0.28 densify) · timeout_min_pullback denser · otpd_false tip · tsess/teff/tflat denser · ema_tf denser · nbars outer 7/16-18 · maxb residual 15/23/24 · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FB parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify. EU tip singles + EV-FB axes parked. pid 9884 log `results/_fc_grid_run.log` grid `overnight_5m_grid_20261003T124448Z.json` 107 cells workers=2 PARAM_ECHO_OK.
+- **Next:** score Batch FC when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~16:14 Europe/Bucharest Asia Batch FC `ORTHO_RESIDUAL_FC_PF289` 5m scored - **NO CLEAR**; park FC soft; kick Batch FD
+- **Grid:** `results/overnight_5m_grid_20261003T124448Z.json` - tag `ORTHO_RESIDUAL_FC_PF289` - 107/107 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_FC_pf289_20261003.py` - log `results/_fc_grid_run.log` - finished ~2026-10-03T12:45Z UTC - seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` - PARAM_ECHO_OK - errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** - asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_fc_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by pts:** `hold12p1_tip` / `hold12p1_cap1550` n193 PF **2.889** / **+225728.8** win64.8% - dpts_5m **+501.7** dpts_keep **-974.0** overrides `{"max_hold_hours":12.1}` (under ~2k vs KEEP; do not tick). Rest: ~54 flat tip no-ops at 5m baseline; 51 under (flat15 · rc denser · fib micro · tmpb · otpd_false · tsess/teff/tflat · ema_tf · nbars outer · maxb 15/23/24 · mild).
+- **Counts:** clear=0 near=0 soft_positive_vs_5m=2 flat_vs_5m~=54 over_vs_5m=2 under_vs_5m=51 underfloor_vs_KEEP=107.
+- **Verdict:** **NO CLEAR** - flat15 · rc denser 3/6-9 · hold micro residual · fib micro around 0.40 · tmpb denser · otpd_false · tsess/teff/tflat denser · ema_tf denser · nbars outer · maxb 15/23/24 produced 0 soft lift vs KEEP. Park FC soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FD `ORTHO_RESIDUAL_FD_PF289` 5m - residual densify on KEEP tip open axes not closed by EU-FC: flat14 tip compounds · mb asymmetric mild · wait tip compounds/outer · ema outer residual · maxb 14/25/26 · hold outer mild compounds · ntrend×tip locks · fib_anchor/pbref residual · tmb/temd mid gaps · seasonal_mode tip · skip_late_short outer · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FC parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify. EU tip singles + EV-FC axes parked.
+- **Next:** score Batch FD when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~16:50 Europe/Bucharest Asia Batch FD `ORTHO_RESIDUAL_FD_PF289` 5m scored - **NO CLEAR**; park FD soft; kick Batch FE
+- **Grid:** `results/overnight_5m_grid_20261003T131753Z.json` - tag `ORTHO_RESIDUAL_FD_PF289` - 115/115 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_FD_pf289_20261003.py` - log `results/_fd_grid_run.log` - finished ~2026-10-03T13:19Z UTC - seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` - PARAM_ECHO_OK - errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** - asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_fd_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Soft positive vs 5m under KEEP (3):**
+  - `mbasym230_260_tip` n193 PF **2.887** / **+225881.2** win65.3% - dpts_5m **+654.1** dpts_keep **-821.6**
+  - `mbasym240_260_tip` / `mbasym240_260_hold12p5` n193 PF **2.886** / **+225795.9** win65.3% - dpts_5m **+568.8** dpts_keep **-906.9**
+- **Best by pts:** `mbasym230_260_tip` PF2.887/+225881.2 dpts_5m+654.1 dpts_keep-821.6 (under ~2k vs KEEP; do not tick). Rest: many flat tip no-ops at 5m baseline; under (flat14 · wait outer · ema outer · maxb 14/25/26 · hold outer · ntrend · fib_anchor/pbref · tmb/temd · seasonal · sls outer · mild · side splits).
+- **Counts:** clear=0 near=0 soft_positive_vs_5m=3 flat_vs_5m~=many over_vs_5m=3 under_vs_5m=rest underfloor_vs_KEEP=115.
+- **Verdict:** **NO CLEAR** - flat14 · mb asym mild · wait tip/outer · ema outer · maxb 14/25/26 · hold outer · ntrend×tip · fib_anchor/pbref · tmb/temd · seasonal · sls outer produced 0 soft lift >=~2k vs KEEP. Park FD soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FE `ORTHO_RESIDUAL_FE_PF289` 5m - residual densify on KEEP tip open axes not closed by EU-FD: flat13 tip compounds (not flat14-23 densify lineages) · min_asia_range micro · require_close_outside tip · near_box_trend residual locks · pullback_fib outer micro (not fib0.28 densify) · sl_fixed outer micro gaps (avoid DI/DJ sl1030 densify) · tp_fixed outer micro (not EG tpm_range20 / EL tpm12 / DS TP densify) · skip_late_short × asia denser residual · trend_flat/teff residual gaps · hold outer extremes · maxb residual 13/27/28 · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FD parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify. EU tip singles + EV-FD axes parked.
+- **Next:** score Batch FE when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-03 ~17:16 Europe/Bucharest Asia Batch FE `ORTHO_RESIDUAL_FE_PF289` 5m scored - **NO CLEAR**; park FE soft; kick Batch FF
+- **Grid:** `results/overnight_5m_grid_20261003T135453Z.json` - tag `ORTHO_RESIDUAL_FE_PF289` - 113/113 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_FE_pf289_20261003.py` - log `results/_fe_grid_run.log` - finished ~2026-10-03T13:56Z UTC - seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` - PARAM_ECHO_OK - errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** - asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_fe_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by soft pts:** tip-flat cluster (mar200-400 / ntrend_outside / rco_off / rco_on tip locks) PF2.876/+225227.1 dpts_5m0 dpts_keep-1475.7. Over 5m: **0**. Under: flat13 cluster · fib outer · sl_fixed outer · tp_fixed outer · sls×asia denser · tflat/teff · hold outer extremes · maxb 13/27/28 · mild · side splits (best PF side_short_mar350 PF3.211/+107942.7 thin).
+- **Counts:** clear=0 near=0 soft_positive_vs_5m=0 flat_vs_5m=39 over_vs_5m=0 under_vs_5m=74 underfloor_vs_KEEP=113.
+- **Verdict:** **NO CLEAR** - flat13 · min_asia_range · rco tip · ntrend residual · fib outer micro · sl_fixed outer · tp_fixed outer · sls×asia denser · tflat/teff residual · hold outer extremes · maxb 13/27/28 produced 0 soft lift vs KEEP. Park FE soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FF `ORTHO_RESIDUAL_FF_PF289` 5m - residual densify on KEEP tip open axes not closed by EU-FE: flat12 tip compounds · wait mid 12/13/15/16 · ema mid 28/30/34/36 · cap outer residual (not FA micro densify) · maxb tip neighborhood 12/16/18/21/22 · nbars outer 5/6/19/20/21 · tmb/temd denser · tsess denser · tp_sl_mult/tp_r_mult mild (not EG tpm_range20 / EL tpm12 / DS TP densify) · sls wait 7/8 outer · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FE parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify. EU tip singles + EV-FE axes parked.
+- **Next:** score Batch FF when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~17:43 Europe/Bucharest Asia Batch FF `ORTHO_RESIDUAL_FF_PF289` 5m scored - **NO CLEAR**; park FF soft; kick Batch FG
+- **Grid:** `results/overnight_5m_grid_20261003T141922Z.json` - tag `ORTHO_RESIDUAL_FF_PF289` - 106/106 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script `scripts/_residual_ortho_FF_pf289_20261003.py` - log `results/_ff_grid_run.log` - finished ~2026-10-03T14:20Z UTC - seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` - PARAM_ECHO_OK - errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** - asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_ff_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by pts:** tip-flat cluster (cap1700 / temd* / tmb* tip locks) PF2.876/+225227.1 dpts_5m0 dpts_keep-1475.7. Over 5m: **0**. Under: flat12 cluster · wait mid · ema mid · cap outer · maxb 12/16/18/21/22 · nbars outer (nbars19-21 PF3.059/+194817.5 dpts_5m-30409.6) · tmb/temd · tsess · tpsl/tpr · sls7/8 · mild · side splits.
+- **Counts:** clear=0 near=0 soft_positive_vs_5m=0 flat_vs_5m=29 over_vs_5m=0 under_vs_5m=76 underfloor_vs_KEEP=105.
+- **Verdict:** **NO CLEAR** - flat12 · wait mid 12/13/15/16 · ema mid 28/30/34/36 · cap outer · maxb tip neighborhood · nbars outer · tmb/temd · tsess · tpsl/tpr mild · sls7/8 produced 0 soft lift vs KEEP. Park FF soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FG `ORTHO_RESIDUAL_FG_PF289` 5m - residual densify on KEEP tip open axes not closed by EU-FF: flat11 tip compounds (not flat12-23 densify lineages) · wait outer extremes 8/9/20/21 · ema outer 24/26/40/42 · maxb residual 10/11/29/30 · nbars residual 4/8/9/22/23 · teff/tflat residual gaps · kama/hma/zlema period tip alts · wait_from_break false · seasonal_join · sl_m12_frac mild · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FF parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify. EU tip singles + EV-FF axes parked.
+- **Next:** score Batch FG when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~18:11 Europe/Bucharest Asia Batch FG `ORTHO_RESIDUAL_FG_PF289` 5m scored — **NO CLEAR**; park FG soft; kick Batch FH
+- **Grid:** `results/overnight_5m_grid_20261003T144607Z.json` — tag `ORTHO_RESIDUAL_FG_PF289` — 90/90 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_residual_ortho_FG_pf289_20261003.py` — log `results/_fg_grid_run.log` — finished ~2026-10-03T14:47Z UTC — seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` — PARAM_ECHO_OK — errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** — asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_fg_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by pts:** tip-flat cluster (teff/tflat/sjoin/slm12 no-ops) PF2.876/+225227.1 dpts_5m0 dpts_keep-1475.7. Over 5m: **0**. Under: flat11 cluster · wait outer 8/9/20/21 · ema outer 24/26/40/42 · maxb 10/11/29/30 · nbars residual · kama/hma/zlema · wfb_false · sjoin · sl_m12 mild · mild · side splits (worst flat11 ~PF1.68/+31k).
+- **Counts:** clear=0 near=0 soft_positive_vs_5m=0 flat_vs_5m=26 over_vs_5m=0 under_vs_5m=64 underfloor_vs_KEEP=90.
+- **Verdict:** **NO CLEAR** — flat11 · wait outer extremes · ema outer · maxb residual · nbars residual · teff/tflat · kama/hma/zlema period tip · wfb_false · sjoin · sl_m12 mild produced 0 soft lift vs KEEP. Park FG soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FH `ORTHO_RESIDUAL_FH_PF289` 5m — residual densify on KEEP tip open axes not closed by EU-FG: flat10 tip compounds (not flat11-23 densify lineages) · wait ultra-outer 5/6/7/22/23/24 · ema ultra-outer 18/20/22/44/46/48 · maxb residual 8/9/31/32/33 (avoid EB17 / EC19_hold14) · nbars residual 2/3/10/15/24/25 (avoid EN12) · kama_fast/slow residual · week2 tip locks · uhc_false / wick_off tip · ema_tf outer · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FG parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify. EU tip singles + EV-FG axes parked.
+- **Next:** score Batch FH when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~18:44 Europe/Bucharest Asia Batch FH ORTHO_RESIDUAL_FH_PF289 5m scored - **NO CLEAR**; park FH soft; kick Batch FI
+- **Grid:** 
+esults/overnight_5m_grid_20261003T151619Z.json - tag ORTHO_RESIDUAL_FH_PF289 - 84/84 cells - data_source=candles_5m - workers=2 - window 2025-01 to 2026-09 - script scripts/_residual_ortho_FH_pf289_20261003.py - log 
+esults/_fh_grid_run.log - finished ~2026-10-03T15:17Z UTC - seed 
+esults/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json - PARAM_ECHO_OK - errors=[].
+- **5m baseline:** PF289_fh_tip_baseline PF2.876/+225227.1 n193 win%64.8.
+- **Verdict:** NO CLEAR — 0 soft>=2.5 dpts>=~2k; 0 soft>=2.5 dpts>0; 13 flat no-ops (wick_off / week2 / ematf outer); 70 under. Lone pts-above-baseline underfloor maxb33_tip PF2.454/+225480.9 dpts+253.8 (tiny; underfloor PF; do not tick).
+- **KEEP unchanged:** EU_tick cap1550_hold12p5_mb250_260 ticks 20261003T084030Z_cba35741 PF2.89/+226702.8 n193 win%65.3 max_loss5.
+- **Park:** FH soft residual NO CLEAR (flat10 / wait ultra-outer 5-7/22-24 / ema ultra-outer 18-22/44-48 / maxb 8-9/31-33 / nbars 2-3/10/15/24-25 / kama_fast-slow / week2 tip / uhc_false / wick_off / ema_tf outer).
+- **Kick:** Batch FI ORTHO_RESIDUAL_FI_PF289 5m - residual densify on KEEP tip open axes not closed by EU-FH: flat9 tip compounds (not flat10-23 densify lineages) · wait ultra-ultra 3/4/25/26/27 · ema ultra 14/16/50/52/54 · maxb residual 6/7/34/35/36 (avoid EB17 / EC19_hold14) · nbars residual 1/13/14/26/27/28 (avoid EN12) · tsess denser · tmb/temd residual gaps (not EG tpm_range20 / EL tpm12 / DS TP densify) · hma/zlema/kama_er outer residual · seasonal_mode + fib_anchor/pbref tip locks · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FH parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify. EU tip singles + EV-FH axes parked. pid 4120 log 
+esults/_fi_grid_run.log grid overnight_5m_grid_20261003T154838Z.json 109 cells workers=2 PARAM_ECHO_OK.
+- **Next:** score Batch FI when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~19:16 Europe/Bucharest Asia Batch FI ORTHO_RESIDUAL_FI_PF289 5m scored — **NO CLEAR**; park FI soft; kick Batch FJ
+- **Grid:** 
+esults/overnight_5m_grid_20261003T154838Z.json — tag ORTHO_RESIDUAL_FI_PF289 — 109/109 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script scripts/_residual_ortho_FI_pf289_20261003.py — log 
+esults/_fi_grid_run.log — finished ~2026-10-03T15:49Z UTC — seed 
+esults/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json — PARAM_ECHO_OK — errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks 20261003T084030Z_cba35741 PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** — asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** PF289_fi_tip_baseline n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by pts:** underfloor **maxb35_tip / maxb36_tip** PF2.471/+233000.8 dpts_5m+7773.7 dpts_keep+6298.0 (underfloor PF; do not tick / do not densify maxb34-36 neighborhood). Also underfloor maxb34_* / nbars14_maxb34 PF2.458/+229419.9. Tip-flat cluster PF2.876/+225227.1 dpts_5m0. Soft>=2.5 dpts>0 vs 5m: **0**.
+- **Counts:** clear=0 near=0 soft_positive_vs_5m=0 flat_vs_5m=33 over_vs_5m=5 (all underfloor PF) under_vs_5m=70 underfloor_vs_KEEP=5.
+- **Verdict:** **NO CLEAR** — flat9 · wait ultra-ultra 3/4/25-27 · ema ultra 14/16/50-54 · maxb 6/7/34-36 · nbars 1/13/14/26-28 · tsess denser · tmb/temd · hma/zlema/kama_er · seasonal/fib_anchor/pbref produced 0 soft lift vs KEEP. Park FI soft. Note underfloor maxb35/36 — do not tick / do not densify that neighborhood. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FJ ORTHO_RESIDUAL_FJ_PF289 5m — residual densify on KEEP tip open axes not closed by EU-FI: flat8 tip compounds (not flat9-23 densify lineages) · wait extreme 1/2/28/29/30 · ema extreme 10/12/56/58/60 · maxb LOW 2/3/4/5 only (avoid FI underfloor maxb34-36 densify; avoid EB17 / EC19_hold14) · nbars extreme 15/18/29-32 (avoid EN12) · skip_late_short wait/asia residual outer · min_asia_range micro · timeout_min_pullback residual sparse tip · teff outer · rco_true / news mild locks · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FI parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify / FI underfloor maxb34-36 densify. EU tip singles + EV-FI axes parked. pid 9416 log 
+esults/_fj_grid_run.log grid overnight_5m_grid_20261003T162045Z.json 107 cells workers=2 PARAM_ECHO_OK.
+- **Next:** score Batch FJ when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~19:48 Europe/Bucharest Asia Batch FJ `ORTHO_RESIDUAL_FJ_PF289` 5m scored — **NO CLEAR**; park FJ soft; kick Batch FK
+- **Grid:** `results/overnight_5m_grid_20261003T162045Z.json` — tag `ORTHO_RESIDUAL_FJ_PF289` — 107/107 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_residual_ortho_FJ_pf289_20261003.py` — log `results/_fj_grid_run.log` — finished ~2026-10-03T16:21Z UTC — seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` — PARAM_ECHO_OK — errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** — asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_fj_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by soft pts:** tip-flat cluster (mar*/tmpb*/teff*/rco_true/news_skip) PF2.876/+225227.1 dpts_5m0 dpts_keep-1475.7. Over 5m: **0**. Soft>=2.5 dpts>0 vs 5m: **0**. Under: flat8 cluster · wait extreme 1/2/28-30 · ema extreme 10/12/56-60 · maxb 2-5 · nbars extreme · sls wait/asia residual · mar outer · tmpb · teff · news_filter · mild · side splits.
+- **Counts:** clear=0 near=0 soft_positive_vs_5m=0 flat_vs_5m=29 over_vs_5m=0 under_vs_5m=78 underfloor_vs_KEEP=0.
+- **Verdict:** **NO CLEAR** — flat8 · wait extreme · ema extreme · maxb LOW 2-5 · nbars extreme · skip_late_short residual · min_asia_range · timeout_min_pullback · teff outer · rco/news produced 0 soft lift vs KEEP. Park FJ soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FK `ORTHO_RESIDUAL_FK_PF289` 5m — residual densify on KEEP tip open axes not closed by EU-FJ: flat7 tip compounds (not flat8-23 densify lineages) · ema extreme further 6/8/62/64/66 · nbars mid gaps 5/6/7/16/17/19/20/21 (avoid EN12) · resume_closes tip compounds 2-4/6-10 (not DY rc5/flat22 alone) · pullback_fib tip micro around 0.40 (avoid EH fib0.28 / EY pb_optional) · near_box_trend tip re-probe breakout/none/with · trend_flat denser · otpd_false / wick_off tip · hold micro finer · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FJ parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify / FI underfloor maxb34-36 densify. EU tip singles + EV-FJ axes parked.
+- **Kick meta:** pid 12496 log `results/_fk_grid_run.log` grid `overnight_5m_grid_20261003T165252Z.json` 97 cells workers=2 PARAM_ECHO_OK.
+- **Next:** score Batch FK when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~20:20 Europe/Bucharest Asia Batch FK `ORTHO_RESIDUAL_FK_PF289` 5m scored — **NO CLEAR**; park FK soft; kick Batch FL
+- **Grid:** `results/overnight_5m_grid_20261003T165252Z.json` — tag `ORTHO_RESIDUAL_FK_PF289` — 97/97 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_residual_ortho_FK_pf289_20261003.py` — log `results/_fk_grid_run.log` — finished ~2026-10-03T16:53Z UTC — seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` — PARAM_ECHO_OK — errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** — asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_fk_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by soft pts:** tip-flat cluster (otpd_false / wick_off / tflat*) PF2.876/+225227.1 dpts_5m0 dpts_keep-1475.7. Soft>=2.5 dpts>0 vs 5m: **0**. Over 5m: **0**. Under: flat7 · ema 6/8/62/64/66 · nbars mid 5-7/16/17/19-21 · rc 2-4/6-10 · fib tip micro · ntrend · hold micro · mild.
+- **Counts:** clear=0 near=0 soft_positive_vs_5m=0 flat_vs_5m=17 over_vs_5m=0 under_vs_5m=80 underfloor_vs_KEEP=0.
+- **Verdict:** **NO CLEAR** — flat7 · ema extreme further · nbars mid · rc tip compounds · fib tip micro · ntrend tip · tflat denser · otpd/wick · hold micro produced 0 soft lift vs KEEP. Park FK soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FL `ORTHO_RESIDUAL_FL_PF289` 5m — residual densify on KEEP tip open axes not closed by EU-FK: flat6 tip compounds (not flat7-23 densify lineages) · ema ultra-extreme 4/68/70/72/74 · wfb_false tip compounds · tmb/temd residual mid · tsess denser · ematf residual gaps · hold ultra extremes 8-10/16-18/20 · maxb tip-adjacent 18/20-22 only (avoid EB17 / EC19_hold14 / FI underfloor maxb34-36) · seasonal_join / week2 residual · sl_m12 residual · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FK parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify / FI underfloor maxb34-36 densify. EU tip singles + EV-FK axes parked.
+- **Kick meta:** pid 7776 log `results/_fl_grid_run.log` grid `overnight_5m_grid_20261003T172003Z.json` 111 cells workers=2 PARAM_ECHO_OK.
+- **Next:** score Batch FL when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-03 20:34 Europe/Bucharest BTCUSD Asia overnight `WIDETP_DENSIFY` 5m scored
+- **Grid:** `results/overnight_5m_grid_BTCUSD_20261003T173420Z.json` + `results/overnight_5m_grid_BTCUSD_20261003T173420Z.csv` â€” 31 cells â€” candles_5m â€” workers=2 â€” window 2025-01 to 2026-09 â€” script `results/_asia_stage/btcusd_asia_widetp_densify_5m_grid.py` â€” errors=0.
+- **Constraints:** Asia 0-6; timeout market; pullback required; trail off; sparse SL 300/500/700, TP 8000/10000/12000/15000, EMA 21/50/80, wait 3/5/8/10, mb 50/100/150; both plus four long-only cells.
+- **CONTROL_tp6000:** +90000.0 pts / PF1.300 / n365.
+- **Top 5 by pts:** both_w8_e80_m150_s700_t12 PF2.236/+119400.0 n156; both_w3_e80_m150_s700_t12 PF2.667/+105000.0 n104; both_w10_e80_m100_s700_t10 PF1.961/+102900.0 n174; both_w5_e80_m150_s500_t12 PF2.667/+97500.0 n130; CONTROL_tp6000 PF1.3/+90000.0 n365
+- **Top 5 by PF:** both_wait5_ema50_s300_t12_mb100 PF3.299/+66900.0 n105; both_w5_e80_m50_s300_t15 PF3.279/+83400.0 n130; both_w3_e50_m150_s300_t10 PF2.941/+39600.0 n74; both_wait5_ema50_s300_t10_mb100 PF2.749/+50900.0 n105; both_w3_e80_m150_s700_t12 PF2.667/+105000.0 n104
+- **Tick-worthy screen:** PF>=2.0 and pts>=+90000 vs control (no tick confirm): both_w3_e80_m150_s700_t12 PF2.667/+105000.0 n104; both_w5_e80_m150_s500_t12 PF2.667/+97500.0 n130; both_w8_e80_m150_s700_t12 PF2.236/+119400.0 n156
+- **Verdict:** informational densify only; no tick confirmation or reaktor.
+
+
+### 2026-10-03 20:52 Europe/Bucharest Asia overnight Batch FL `ORTHO_RESIDUAL_FL_PF289` 5m scored
+- **Grid:** `results/overnight_5m_grid_20261003T172003Z.json` — 111 cells — candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_residual_ortho_FL_pf289_20261003.py` — errors=0 — finished ~2026-10-03T17:21Z (pid 7776).
+- **Seed / KEEP:** EU_tick `20261003T084030Z_cba35741` PF2.89/+226702.8 n193 max_loss5 — asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 · trail off · timeout market.
+- **5m baseline:** `PF289_fl_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by soft pts:** tip-flat cluster (ematf*/sjoin*/slm12*/temd*/week2*/tsess* no-ops) PF2.876/+225227.1 dpts_5m0 dpts_keep-1475.7. Soft>=2.5 dpts>0 vs 5m: **0**. Over 5m: **0**. Under: ema ultra · wfb_false · tmb · hold ultra · maxb tip-adj · mild. Zero-trade: all flat6 compounds (asia_end=6).
+- **Counts:** clear=0 near=0 soft_positive_vs_5m=0 flat_vs_5m=57 over_vs_5m=0 under_vs_5m=35 zero=19 underfloor_vs_KEEP=0.
+- **Verdict:** **NO CLEAR** — flat6 · ema ultra-extreme 4/68-74 · wfb_false · tmb/temd residual · tsess denser · ematf residual · hold ultra · maxb tip-adj 18/20-22 · seasonal_join/week2 · sl_m12 residual · mild produced 0 soft lift vs KEEP. Park FL soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FM `ORTHO_RESIDUAL_FM_PF289` 5m — residual densify on KEEP tip open axes not closed by EU-FL: near_box_pts tip neighborhood 1700-2300 (not full DP D densify) · mb tip micro asymmetric (not CM/DY alone / not DU-DW re-ladder) · resume_max tip micro around 1550 (not FA sl_cap) · wait residual gaps 11/17-19/24/27/30/32 · ema mid residual 22-37 · hma/zlema outer periods · uhc_false denser compounds · fib_anchor/pullback_ref tip locks · tmpb residual outer · seasonal tag/filter · news filter/tag/all · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FL parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify / FI underfloor maxb34-36 densify / flat6 dead zone. EU tip singles + EV-FL axes parked.
+- **Kick meta:** pid 5860 log `results/_fm_grid_run.log` grid `overnight_5m_grid_20261003T175251Z.json` 127 cells workers=2 PARAM_ECHO_OK.
+- **Next:** score Batch FM when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~21:21 Europe/Bucharest Asia Batch FM `ORTHO_RESIDUAL_FM_PF289` 5m scored — **NO CLEAR**; park FM soft; kick Batch FN
+- **Grid:** `results/overnight_5m_grid_20261003T175251Z.json` — tag `ORTHO_RESIDUAL_FM_PF289` — 127/127 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_residual_ortho_FM_pf289_20261003.py` — log `results/_fm_grid_run.log` — finished ~2026-10-03T17:54Z UTC — seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` — PARAM_ECHO_OK — errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** — asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_fm_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** **nd2300_tip** PF2.614/+228335.0 n211 dpts_5m+3107.9 dpts_keep+1632.2 (under ~2k; no tick)
+- **Best by soft pts:** near **nd2300_tip** PF2.614/+228335.0 dpts_5m+3107.9 dpts_keep+1632.2 (under ~2k; do not tick / do not densify DP D neighborhood). Soft>=2.5 dpts>0 vs 5m: **2** (nd2300, nd2100 PF2.745/+225940.7 dpts_keep-762). Tip-flat cluster PF2.876/+225227.1 dpts_5m0. Under: mb micro · cap micro · wait residual · ema mid · hma/zlema · uhc_false · pbref · season/news · mild.
+- **Counts:** clear=0 near=1 soft_positive_vs_5m=2 flat_vs_5m=23 over_vs_5m=2 under_vs_5m=102 underfloor_vs_KEEP=0 zero=0.
+- **Verdict:** **NO CLEAR** — near_box_pts tip neighborhood · mb tip micro · resume_max tip micro · wait residual · ema mid residual · hma/zlema outer · uhc_false denser · fib_anchor/pbref tip locks · tmpb residual · seasonal/news produced 0 CLEAR soft lift vs KEEP. Park FM soft. Note near nd2300 under +2k — no tick / no DP densify. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FN `ORTHO_RESIDUAL_FN_PF289` 5m — residual densify on KEEP tip open axes not closed by EU-FM: rco_true tip · otpd_false tip · skip_late_short tip micro · sl_fixed tip micro around 1050 (not DI/DJ 1030 soft focus) · tp_fixed tip micro around 4000 (not DS/EG/EL TP densify) · ema_tf denser · kama_er denser · min_asia_range tip micro · tmb/temd residual outer · week2 denser · nbars 16-21 (avoid EN12) · tflat outer · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP (incl. FM near nd2300 densify)/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FM parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify / FI underfloor maxb34-36 densify / flat6 dead zone. EU tip singles + EV-FM axes parked.
+- **Kick meta:** pid 13768 log `results/_fn_grid_run.log` grid `overnight_5m_grid_20261003T182046Z.json` 150 cells workers=2 PARAM_ECHO_OK=True alive=True.
+- **Next:** score Batch FN when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~21:52 Europe/Bucharest Asia Batch FN `ORTHO_RESIDUAL_FN_PF289` 5m scored — **NO CLEAR**; park FN soft; kick Batch FO
+- **Grid:** `results/overnight_5m_grid_20261003T182046Z.json` — tag `ORTHO_RESIDUAL_FN_PF289` — 150/150 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_residual_ortho_FN_pf289_20261003.py` — log `results/_fn_grid_run.log` — finished ~2026-10-03T18:22Z UTC — seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` — PARAM_ECHO_OK — errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** — asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 asia · trail off · timeout market · wait_from_break.
+- **5m baseline:** `PF289_fn_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by soft pts:** tip-flat cluster (ematf*/rco*/otpd*/mar*/tmb*/temd*/tflat* no-ops) PF2.876/+225227.1 dpts_5m0 dpts_keep-1475.7. Soft>=2.5 dpts>0 vs 5m: **0**. Over 5m: **0**. Under: kama_er · week2_filter · tpf micro · nbars16-21 · sls tip micro · side splits · mild.
+- **Counts:** clear=0 near=0 soft_positive_vs_5m=0 flat_vs_5m=85 over_vs_5m=0 under_vs_5m=65 underfloor_vs_KEEP=0 zero=0.
+- **Verdict:** **NO CLEAR** — rco_true · otpd_false · skip_late_short tip micro · sl_fixed tip micro · tp_fixed tip micro · ema_tf denser · kama_er denser · min_asia_range tip micro · tmb/temd residual outer · week2 denser · nbars16-21 · tflat outer · mild produced 0 soft lift vs KEEP. Park FN soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FO `ORTHO_RESIDUAL_FO_PF289` 5m — residual densify on KEEP tip open axes not closed by EU-FN: kama_fast/slow denser (not FN kama_er) · maxb tip-adj 15/16/23-26 (avoid EB17 / EC19_hold14 / FI underfloor 34-36) · hold ultra-fine around 12.5 (avoid DZ hold13 alone) · timeout_action=skip tip · week2_trend denser · flatten tip-far 1-5/24-26 (flat6-10 closed; flat11-23 densify parked) · rc extremes 1/11-16 · pullback_fib further around 0.40 (avoid EH fib0.28 / EY pb_optional) · teff finer · nbars 22/23/33-36 (avoid EN12) · sl_m12 denser · wait 10/31/33-35 · ema odd mid/outer 23/25/27/38/39/41 · mild compounds. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP (incl. FM near nd2300 densify)/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FN parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify / FI underfloor maxb34-36 densify / flat6 dead zone. EU tip singles + EV-FN axes parked.
+- **Kick meta:** pid 12276 log `results/_fo_grid_run.log` grid `overnight_5m_grid_20261003T185148Z.json` 156 cells workers=2 PARAM_ECHO_OK=True alive=True.
+- **Next:** score Batch FO when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+### 2026-10-03 ~22:13 Europe/Bucharest Asia Batch FO `ORTHO_RESIDUAL_FO_PF289` 5m scored — **NO CLEAR**; park FO soft; kick Batch FP
+- **Grid:** `results/overnight_5m_grid_20261003T185148Z.json` — tag `ORTHO_RESIDUAL_FO_PF289` — 150/156 cells (6 errors: flat24-26 hour must be in 0..23) — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_residual_ortho_FO_pf289_20261003.py` — log `results/_fo_grid_run.log`.
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** — asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 · TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 · wick on · pullback required both fib0.40 · trail off.
+- **5m baseline:** `PF289_fo_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by soft pts:** **hold12p15_tip** PF2.889/+225728.8 dpts_5m+501.7 dpts_keep**-974.0**; hold12p4_* +117.1; hold12p8_* +104.8; hold12p2 +6.3. Soft>=2.5 dpts>0 vs 5m: **6** (all hold ultra-fine; all under KEEP). Over 5m: **6**. Flat: **40** (slm12*/teff*/toact_skip*/w2t* no-ops). Under: **96** (kama_fast/slow · maxb15/16/23-26 · fib further · rc extremes · nbars22/23/33-36 · wait leftovers · ema odd). Zero: **8** (flat1-5 tip-far). Errors: **6** (flat24-26 invalid hour). Underfloor vs KEEP: **0**.
+- **Counts:** clear=0 near=0 soft_positive_vs_5m=6 flat_vs_5m=40 over_vs_5m=6 under_vs_5m=96 underfloor_vs_KEEP=0 zero=8 errors=6.
+- **Verdict:** **NO CLEAR** — kama_fast/slow · maxb tip-adj 15/16/23-26 · hold ultra-fine · toact_skip · week2_trend · flat tip-far 1-5/24-26 · rc extremes · fib further · teff · nbars22/23/33-36 · sl_m12 · wait leftovers · ema odd — all parked soft. KEEP unchanged.
+- **Kick:** Batch FP `ORTHO_RESIDUAL_FP_PF289` 5m — residual densify on KEEP tip open axes not closed by EU-FO: maxb tip-adj 27-33 (avoid EB17 / EC19_hold14 / FI underfloor 34-36) · hold ultra-ultra fine 12.05-12.95 · wait leftovers 11/17-19/32/36-38 · ema leftover odds 29/31/33/35/37/42-44 · nbars leftovers 24-32/37-40 (avoid EN12) · rc further 17-24 · fib further outer 0.20-0.26/0.58-0.70 (avoid EH fib0.28 densify) · teff outer · sl_m12 residual · tmpb denser compounds (not EA alone) · tsess residual · hma/zlema mid periods · ntrend denser tip re-probe · wick_false denser · tp_r/tp_sl mild (not DS/EG/EL) · news pause/skip denser · mild.
+- **Kick meta:** pid 10248 log `results/_fp_grid_run.log` grid `overnight_5m_grid_20261003T191724Z.json` 206 cells workers=2 PARAM_ECHO_OK=True alive=True.
+- **Next:** score Batch FP when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+### 2026-10-03 ~22:48 Europe/Bucharest Asia Batch FP `ORTHO_RESIDUAL_FP_PF289` 5m scored — **NO CLEAR**; park FP soft; kick Batch FQ
+- **Grid:** `results/overnight_5m_grid_20261003T191724Z.json` — tag `ORTHO_RESIDUAL_FP_PF289` — 206/206 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_residual_ortho_FP_pf289_20261003.py` — log `results/_fp_grid_run.log` — finished ~2026-10-03T19:19Z UTC — seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` — PARAM_ECHO_OK — errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** — asia0-6 — ema32 — wait14 — rc5 — cap1550 — flat22 — mb250/260 — maxb19 — SL range rm0.85/cap4000 (sl_fixed 1050) — TP4000 — sls4/2600 — hold12.5 — near_box outside N11 D1850 — wick on — pullback required both fib0.40 asia — trail off — timeout market — wait_from_break.
+- **5m baseline:** `PF289_fp_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** (none)
+- **Best by soft pts:** **hold12p1_tip** PF2.889/+225728.8 dpts_5m+501.7 dpts_keep**-974.0**. Soft>=2.5 dpts>0 vs 5m: **5** (hold12p1_tip PF2.889/+225728.8 dpts_5m+501.7 dpts_keep-974.0, hold12p25_cap1550 PF2.886/+225233.4 dpts_5m+6.3 dpts_keep-1469.4, hold12p25_tip PF2.886/+225233.4 dpts_5m+6.3 dpts_keep-1469.4, hold12p35_nd1850 PF2.881/+225344.2 dpts_5m+117.1 dpts_keep-1358.6, hold12p35_tip PF2.881/+225344.2 dpts_5m+117.1 dpts_keep-1358.6). Tip-flat cluster PF2.876/+225227.1 dpts_5m0. Under: maxb27-33 — wait leftovers — ema leftover odds — nbars leftovers — rc further — fib outer — teff outer — sl_m12 — tmpb — tsess — hma/zlema mid — ntrend — wick_false — tp_r/tp_sl mild — news.
+- **Counts:** clear=0 near=0 soft_positive_vs_5m=5 flat_vs_5m=76 over_vs_5m=6 under_vs_5m=124 underfloor_vs_KEEP=0 zero=0.
+- **Verdict:** **NO CLEAR** — maxb27-33 · hold ultra-ultra · wait leftovers · ema leftover odds · nbars leftovers · rc further · fib outer · teff outer · sl_m12 · tmpb · tsess · hma/zlema mid · ntrend · wick_false · tp_r/tp_sl mild · news pause/skip · mild produced 0 CLEAR soft lift vs KEEP. Park FP soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FQ `ORTHO_RESIDUAL_FQ_PF289` 5m — residual densify on KEEP tip open axes not closed by EU–FP: maxb tip-adj 14/21 (avoid EB17 / EC19_hold14 / FI 34-36) · hold outer compounds 11–15 (not DZ hold13 alone) · wait remaining 12–13/15–16/20–30/39–40 · ema even leftovers · nbars 13–15/39/41–45 (avoid EN12) · rc mid gaps 2–4/6–10/21/23/25–26 (not DY rc5 alone) · flat0/23 only · temd/tmb residual · ema_tf denser · seasonal/week2 tag|filter · otpd_false · rco_true/uhc_false denser · skip_late_short tip micro · min_asia_range tip micro · sl_fixed tip micro around 1050 (not DI/DJ 1030) · tp_fixed tip micro around 4000 (not DS/EG/EL) · fib mid residual gaps (not EH 0.28) · teff mid · pbref ema/fib · fibanchor roll · tflat residual · mild. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP (incl. FM near nd2300 densify)/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FP parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify / FI underfloor maxb34-36 densify / flat6 dead zone. EU tip singles + EV–FP axes parked.
+- **Kick meta:** pid 10440 log `results/_fq_grid_run.log` grid `results/overnight_5m_grid_20261003T194819Z.json` 280 cells workers=2 PARAM_ECHO_OK=True alive=True.
+- **Next:** score Batch FQ when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+
+### 2026-10-03 ~23:12 Europe/Bucharest Asia Batch FQ `ORTHO_RESIDUAL_FQ_PF289` 5m scored — **NO CLEAR**; park FQ soft; kick Batch FR
+- **Grid:** `results/overnight_5m_grid_20261003T194819Z.json` — tag `ORTHO_RESIDUAL_FQ_PF289` — 280/280 cells — data_source=candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_residual_ortho_FQ_pf289_20261003.py` — log `results/_fq_grid_run.log` — finished ~2026-10-03T19:54Z UTC — seed `results/_seed_pf289_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json` — PARAM_ECHO_OK — errors=[].
+- **KEEP (unchanged):** EU_tick cap1550_hold12p5_mb250_260 ticks `20261003T084030Z_cba35741` PF **2.89** / **+226702.8** n193 win65.3% max_loss**5** — asia0-6 — ema32 — wait14 — rc5 — cap1550 — flat22 — mb250/260 — maxb19 — SL range rm0.85/cap4000 (sl_fixed 1050) — TP4000 — sls4/2600 — hold12.5 — near_box outside N11 D1850 — wick on — pullback required both fib0.40 asia — trail off — timeout market — wait_from_break.
+- **5m baseline:** `PF289_fq_tip_baseline` n193 PF **2.876** / **+225227.1** win64.8% (vs KEEP tick pts 226702.8).
+- **Scoring:** maximize sum_pts; soft PF floor ~2.5; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8; win% secondary.
+- **CLEAR soft>=2.5 dpts>=~2k vs KEEP tick:** (none)
+- **Near soft PF>=2.5 0<dpts_keep<2k:** **flat23_tip / flat23_hold12p5 / flat23_mb250_260** PF2.869/+227862.5 dpts_keep**+1159.7** dpts_5m+2635.4 (same EU soft-near; under ~2k; do not tick / do not densify DO flat23).
+- **Best by soft pts:** flat23 cluster above; tip-flat cluster PF2.876/+225227.1 dpts_5m0. Soft>=2.5 dpts>0 vs 5m: **3** (flat23 only). Over 5m: **3**. Flat: **99**. Under: **175** (maxb14/21 — hold outer — wait leftovers — ema evens — nbars leftovers — rc mid — temd/tmb — ema_tf — season/week2 — otpd/rco/uhc — sls/mar/slf/tpf tip micro — fib mid — teff — pbref/fibanchor — tflat — mild).
+- **Counts:** clear=0 near=3 soft_positive_vs_5m=3 flat_vs_5m=99 over_vs_5m=3 under_vs_5m=175 underfloor_vs_KEEP=0 zero=0 errors=0 (3 null-pf skipped in score).
+- **Verdict:** **NO CLEAR** — FQ residual axes produced 0 CLEAR soft lift vs KEEP; only known flat23 near under 2k. Park FQ soft. KEEP unchanged EU_tick PF2.89/+226702.8 n193 max_loss5.
+- **Kick:** Batch FR `ORTHO_RESIDUAL_FR_PF289` 5m — residual densify on KEEP tip open axes not closed by EU–FQ: maxb tip-adj 12/13/37-40 (avoid EB17 / EC19_hold14 / FI underfloor 34-36) — hold far outer 9–10.5/15.5–18 — wait extremes 8/9/41–50 — ema leftover lows/highs 18–26/52–60 — nbars leftovers 8–10/46–50 (avoid EN12) — rc high leftovers 27–32 — tmpb residual gaps (not EA alone) — slsw/slsa denser — wfb_false — ntrend residual modes — tsess leftovers — hma/zlema period denser — kama_er leftovers — sl_m12 finer — tpr mild (not DS/EG/EL) — news denser — mild. Avoid preferred/CX/CM/trail/DI-DJ/DK-DL/DO flat23 densify/DP (incl. FM near nd2300 densify)/DQ/DR/DS incl. EG underfloor tpm_range20 and EL tpm12/DT/DU-DW/DY-DZ/EA-FQ parked/be_arm/range-SL/mb-re-ladder densify/asia-hour/fib0.28 densify/pb_optional densify/FA sl_cap near densify / FI underfloor maxb34-36 densify / flat6 dead zone. EU tip singles + EV–FQ axes parked.
+- **Kick meta:** pid 11636 log `results/_fr_grid_run.log` grid `overnight_5m_grid_20261003T201613Z.json` 227 cells workers=2 PARAM_ECHO_OK=True alive=True.
+- **Next:** score Batch FR when finished; tick-confirm only soft>=2.5 dpts>=~2k max_loss<=7-8. stop_auto_tick=FALSE. No reaktor / no push.
+
+
+## BTCUSD Asia overnight tag W8_DENSIFY
+- **When:** 2026-10-03 23:54 Europe/Bucharest; **Grid:** `results/overnight_5m_grid_BTCUSD_20261003T205353Z.json` + `results/overnight_5m_grid_BTCUSD_20261003T205353Z.csv`; 32 cells; candles_5m; local ProcessPool workers=2; window 2025-01 to 2026-09; errors=0.
+- **Controls:** seed `wait8 ema80 mb150 SL700/TP12000`, side both; Asia 0-6; pullback required; timeout market; trail off. Prior reference +119400 PF2.236 n156.
+- **Top 5 by pts:** w6_e80_mb150_sl700_tp14000 PF2.645/+139300.0 n137; w8_e100_mb150_sl700_tp12000 PF2.348/+137800.0 n166; w8_e100_mb150_sl600_tp12000 PF2.432/+127200.0 n166; w8_e80_mb120_sl700_tp14000 PF2.286/+126000.0 n156; w8_e80_mb150_sl700_tp14000 PF2.286/+126000.0 n156
+- **Top 5 by PF:** CLEARED_NEIGHBOR_w3_e80_mb150_sl700_tp12000 PF2.667/+105000.0 n104; CLEARED_NEIGHBOR_w5_e80_mb150_sl500_tp12000 PF2.667/+97500.0 n130; w6_e80_mb150_sl700_tp14000 PF2.645/+139300.0 n137; w8_e100_mb150_sl600_tp12000 PF2.432/+127200.0 n166; w6_e80_mb150_sl700_tp12000 PF2.429/+120000.0 n137
+- **Seed still champ:** False (champ by pts; seed result: CHAMP_SEED_w8_e80_mb150_sl700_tp12000 PF2.236/+119400.0 n156).
+- **Tick-worthy:** strict PF>=2 and pts>=+119000: w6_e80_mb150_sl700_tp14000 PF2.645/+139300.0 n137; w8_e100_mb150_sl700_tp12000 PF2.348/+137800.0 n166; w8_e100_mb150_sl600_tp12000 PF2.432/+127200.0 n166; w8_e80_mb120_sl700_tp14000 PF2.286/+126000.0 n156; w8_e80_mb150_sl700_tp14000 PF2.286/+126000.0 n156; w8_e80_mb180_sl700_tp14000 PF2.286/+126000.0 n156; w8_e100_mb150_sl800_tp12000 PF2.055/+123200.0 n166; w6_e80_mb150_sl700_tp12000 PF2.429/+120000.0 n137; CHAMP_SEED_w8_e80_mb150_sl700_tp12000 PF2.236/+119400.0 n156; w8_e80_mb120_sl700_tp12000 PF2.236/+119400.0 n156; w8_e80_mb180_sl700_tp12000 PF2.236/+119400.0 n156; near PF>=2 and pts>=+110000: w6_e80_mb150_sl700_tp14000 PF2.645/+139300.0 n137; w8_e100_mb150_sl700_tp12000 PF2.348/+137800.0 n166; w8_e100_mb150_sl600_tp12000 PF2.432/+127200.0 n166; w8_e80_mb120_sl700_tp14000 PF2.286/+126000.0 n156; w8_e80_mb150_sl700_tp14000 PF2.286/+126000.0 n156; w8_e80_mb180_sl700_tp14000 PF2.286/+126000.0 n156; w8_e100_mb150_sl800_tp12000 PF2.055/+123200.0 n166; w6_e80_mb150_sl700_tp12000 PF2.429/+120000.0 n137; CHAMP_SEED_w8_e80_mb150_sl700_tp12000 PF2.236/+119400.0 n156; w8_e80_mb120_sl700_tp12000 PF2.236/+119400.0 n156; w8_e80_mb180_sl700_tp12000 PF2.236/+119400.0 n156; w10_e80_mb150_sl700_tp14000 PF2.025/+113400.0 n174. No tick run.
+
+
+
+### 2026-10-04 ~19:40 Europe/Bucharest new knobs on EU_tick KEEP — FS 5m + nbr2500 tick — **NO PROMOTE**; tpcap2 tick kicked
+- **5m grid:** `results/overnight_5m_grid_20261003T204422Z.json` — tag `ORTHO_NEW_FS_PF289` — 19 cells — candles_5m — workers=2 — window 2025-01 to 2026-09 — script `scripts/_new_knobs_FS_pf289_20261003.py` — finished 2026-10-03 evening. Baseline PF **2.876** / **+225227.1** n193.
+- **near_box_min_range (timeout fill only):** nbr2500 PF **3.137** / **+226319** n173 (PF jump, pts only ~+1.1k vs tick KEEP). Best gate by pts nbr2200 PF **3.107** / **+227417** n175. Wider gates lift PF and fade pts (nbr5000 +213.9k).
+- **fixed_cap TP:** tpcap2p0 (min(4000, 2.0 x stop)) PF **2.959** / **+229573** n193, about +4.3k vs 5m baseline and ~+2.9k vs tick KEEP. Tighter caps (1.0/1.25/1.5) give points back. nbr2500+tpcap1.5 PF3.222/+227717 n173.
+- **Tick nbr2500:** run `20261003T210348Z_41b5a794` saved `results/overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261003T210348Z_41b5a794.json` — finished 2026-10-03T21:03Z. PF **3.16** / **+227798.4** n173 win68.2% max_loss**5**. vs KEEP EU_tick PF2.89/+226702.8 n193 max_loss5: dpts **+1095.6**. Under the ~+2k promote bar. **NO PROMOTE.** KEEP unchanged.
+- **Kick:** tick confirm tpcap2.0 on the same KEEP (near_box_min_range 0, tp_mode fixed_cap, tp_sl_mult 2.0, tp_fixed_pts 4000, shock off, workers=2). Body `results/_fs_tick_tpcap2_body.json`. Started ~2026-10-04 19:40 Europe/Bucharest. Shock trail still queued (tick only; promote only if dpts >= ~+10k).
+- **Next:** score tpcap2 tick; promote only if PF>=~2.5 and dpts>=~+2k and max_loss<=8. Tune loop stays paused. No reaktor / no push.
+
+### 2026-10-04 ~19:53 Europe/Bucharest FS_tick tpcap2 scored — **PROMOTE** NEW KEEP; kick shock-trail tick
+- **Tick:** run `20261004T165048Z_d13c03fc` saved `results/overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261004T165048Z_d13c03fc.json` — finished 2026-10-04T16:50:48Z — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — body `results/_fs_tick_tpcap2_body.json` — PARAM_ECHO ok (tp_mode=fixed_cap tp_sl_mult=2.0 tp_fixed=4000 near_box_min_range=0 shock_trail=false).
+- **Result:** PF **2.98** / **+231044.7** n193 win66.3% max_loss**4**.
+- **vs prior KEEP** EU_tick `20261003T084030Z_cba35741` PF 2.89 / +226702.8 n193 max_loss5: dpts **+4341.9** dPF **+0.09** (same n193). Clears soft PF≥~2.5 · dpts≥~+2k · max_loss≤8.
+- **Verdict:** **PROMOTE** → NEW KEEP **FS_tick tpcap2** PF2.98/+231044.7 n193 win66.3% max_loss4. Params: asia0-6 · ema32 · wait14 · rc5 · cap1550 · flat22 · mb250/260 · maxb19 · SL range rm0.85/cap4000 (sl_fixed 1050) · **tp_mode fixed_cap** tp_sl_mult**2.0** TP4000 · sls4/2600 · hold12.5 · near_box outside N11 D1850 (min_range off) · wick on · pullback required both fib0.40 asia · trail off · shock off · timeout market · wait_from_break. Demote EU_tick (TP fixed uncapped) to parked prior KEEP.
+- **Seed/BEST:** `results/_seed_pf298_tpcap2_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json`; `BEST_REQUIRED_KEEP.json` + `BEST_KEEP_FS_tick_pf298_tpcap2.json` refreshed.
+- **Kick:** shock-trail tick probe on NEW KEEP (shock_trail=true, defaults window2s/move300/arm1500/trail1000/settle800/tight800; all other KEEP params incl. fixed_cap tpcap2; ticks workers=2). Promote shock only if dpts≥~+10k vs new KEEP; else park. Tick path only — no 5m shock grid.
+- **Next:** score shock-trail tick when finished. Tune loop stays paused. Score-tpcap2 routine deletes after this score. No reaktor / no push.
+
+
+
+### 2026-10-04 ~20:31 Europe/Bucharest shock-trail tick on FS_tick tpcap2 scored — **PARK**; KEEP unchanged
+- **Tick:** run 20261004T171309Z_be440471 saved 
+esults/overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261004T171309Z_be440471.json — finished 2026-10-04T17:13:09Z — data_source=ticks — workers=2 — window 2025-01 to 2026-09 — body 
+esults/_fs_tick_shock_trail_body.json — PARAM_ECHO ok (KEEP FS_tick tpcap2 + shock_trail=true window2s/move300/arm1500/trail1000/settle_min0).
+- **Result:** PF **2.60** / **+166633.8** n193 win71.0% max_loss**4** — exits shock90 / tp19 / sl49 / flatten35; trail_armed 91 (47.2%).
+- **vs KEEP** FS_tick tpcap2 20261004T165048Z_d13c03fc PF 2.98 / +231044.7 n193 max_loss4: dpts **-64410.9** dPF **-0.38** (same n193). PF clears ~2.5 and max_loss≤8, but points fail the ~+10k promote bar by a wide margin.
+- **Verdict:** **PARK** shock-trail defaults. KEEP unchanged **FS_tick tpcap2** PF2.98/+231044.7 n193 win66.3% max_loss4 (tp_mode fixed_cap tp_sl_mult2.0 TP4000; shock off).
+- **Next:** no 5m shock grid; Asia breakout tune loop stays paused; Score shock trail tick routine deleted after this score. No reaktor / no push.
+
+
+### 2026-10-04 ~23:55 Europe/Bucharest nbr2500 + tpcap2 tick on FS_tick KEEP scored - **PROMOTE** NEW KEEP
+- **Tick:** run `20261004T202927Z_7d09a44d` saved `results/overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261004T202927Z_7d09a44d.json` - finished 2026-10-04T20:29:27Z (23:29 Europe/Bucharest) - data_source=ticks - started by Igor ~23:17 (workers=4) - window 2025-01 to 2026-09 - PARAM_ECHO ok (near_box_min_range_pts=2500, tp_mode=fixed_cap, tp_sl_mult=2.0, tp_fixed=4000, shock_trail=false, rest = KEEP).
+- **Result:** PF **3.28** / **+234184.8** n173 win69.4% max_loss**4** - exits tp79 / sl43 / flatten51; entries ema_touch130 / near_box_timeout26 / higher_close9 / fib_touch7 / lower_close1; skips no_break129 / no_pullback97 / late_short30.
+- **vs KEEP** FS_tick tpcap2 `20261004T165048Z_d13c03fc` PF 2.98 / +231044.7 n193 max_loss4: dpts **+3140.1** dPF **+0.30** (n -20). Clears PF>=~2.5, dpts>=~+2k, max_loss<=8.
+- **Verdict:** **PROMOTE** - NEW KEEP **nbr2500_tpcap2 tick** PF3.28/+234184.8 n173 win69.4% max_loss4. Params: asia0-6 - ema32 - wait14 - rc5 - cap1550 - flat22 - mb250/260 - maxb19 - SL range rm0.85/cap4000 (sl_fixed 1050) - tp_mode fixed_cap tp_sl_mult2.0 TP4000 - sls4/2600 - hold12.5 - near_box outside N11 D1850 **min_range 2500** - wick on - pullback required both fib0.40 asia - trail off - shock off - timeout market - wait_from_break. Demote FS_tick tpcap2 to parked prior KEEP.
+- **Seed/BEST:** `results/_seed_pf328_nbr2500_tpcap2_nd1850_nbars11_maxb19_hold12p5_ema32_rc5_flat22_mb250_260_rm085_cap4000_cap1550.json`; `BEST_REQUIRED_KEEP.json` + `BEST_KEEP_nbr2500_tpcap2_pf328.json` refreshed; BEST_SEEDS_INDEX.md updated.
+- **Next:** Asia breakout tune loop stays paused. Score Igor tick sweep routine deleted after this score. No reaktor / no push.
+
+
+### 2026-10-05 ~08:05 Europe/Bucharest KEEP nbr2500_tpcap2 from-2024 per-year robustness check - **INFO ONLY** (no promotion; KEEP and seeds unchanged)
+- **Tick:** run `20261005T045453Z_3e0e6f0f` saved `results/overnight_XAUUSD_ticks_2024-01-01_2026-09-01_20261005T045453Z_3e0e6f0f.json` - finished 2026-10-05T04:54:53Z (07:54 Europe/Bucharest) - data_source=ticks - workers=4 - 32 months 2024-01-01 to 2026-09-01 - body `results/_keep_pf328_from2024_body.json` - params identical to KEEP run `20261004T202927Z_7d09a44d` (0 param diffs).
+- **Per-year (computed from rows; max_loss = longest consecutive losing trades within the year):**
+
+| Period | PF | Points | Trades | Win% | Max loss streak |
+|---|---|---|---|---|---|
+| 2024 | 1.28 | +8109.9 | 67 | 43.3 | 4 |
+| 2025 | 2.64 | +84472.4 | 97 | 64.9 | 3 |
+| 2026 Jan-Aug | 3.92 | +149712.4 | 76 | 75.0 | 4 |
+| 2025-2026 subtotal | 3.28 | +234184.8 | 173 | 69.4 | 4 |
+| **Full 2024-01 to 2026-08** | **2.84** | **+242294.7** | **240** | **62.1** | **4** |
+
+- **Match check:** 2025-2026 part matches the original KEEP run exactly (PF 3.28 / +234184.8 / n173 / win 69.4 / max_loss 4; every month and every trade identical). No mismatch.
+- **2024 notes:** exits sl33 / tp20 / flatten13 / timeout1; entries ema_touch51 / higher_close12 / fib_touch3 / near_box_timeout1; avg win +1265.1 / avg loss -752.1; avg Asia range ~1021 pts vs ~4068 in 2025-26 (lower gold price, smaller boxes) so points scale down. Weak months 2024-05 (-3487.6, PF0.26), 2024-02, 2024-04, 2024-12 slightly negative. Edge positive but thin in 2024 (PF 1.28).
+- **Verdict:** robustness info only. KEEP unchanged **nbr2500_tpcap2 tick** PF3.28/+234184.8 n173 (2025-01 to 2026-09). Asia breakout tune loop stays paused. Per-year routine deleted after this fire. No reaktor / no push.
+
+### 2026-10-05 ~08:52 Europe/Bucharest KEEP nbr2500_tpcap2 Sep 2026 peek (ticks) — partial month
+- **Run:** `20261005T055205Z_60ab4baf` saved `results/overnight_XAUUSD_ticks_2026-09-01_2026-10-01_20261005T055205Z_60ab4baf.json` — date 2026-09-01 to 2026-10-01 — workers=2 — PARAM_ECHO nbr2500 + fixed_cap tp_sl_mult2.0.
+- **Result:** PF **1.57** / **+3513.4** n6 win50% max_loss**2** — exits tp2/sl2/flatten2 — days_seen 7 — 1 skip (no_pullback on 2026-09-09).
+- **Trades:** 09-01 DOWN TP +4000 · 09-02 DOWN SL −4000 · 09-03 UP near_box TP +4000 · 09-04 DOWN SL −1713.6 · 09-07 DOWN flatten −471.5 · 09-08 DOWN flatten +1698.5.
+- **Data:** on-disk Sep ticks only ~01–09 (05/10+ empty). Downloader did not fill 10–30 during this run.
+- **Next:** KEEP baseline ticks 2023-01-01→2024-10-01 then scale-tune for slower/cheaper gold as a separate era seed. Live KEEP unchanged. Tune loop paused.
+
+
+### 2026-10-05 ~09:30 Europe/Bucharest KEEP nbr2500_tpcap2 era baseline 2023-01 to 2024-10 (ticks) + 5m scale screen GA - **INFO ONLY** (no promotion; live KEEP unchanged)
+- **Tick:** run `20261005T061725Z_689a2fbb` saved `results/overnight_XAUUSD_ticks_2023-01-01_2024-10-01_20261005T061725Z_689a2fbb.json` - finished 2026-10-05T06:17:25Z (09:17 Europe/Bucharest) - data_source=ticks - workers=4 - 21 months (all present incl. 2023 Mar-Jun; days_seen 451) - body `results/_keep_pf328_2023_oct2024_body.json` - params = KEEP nbr2500_tpcap2.
+
+| Period | PF | Points | Trades | Win% | Max loss streak |
+|---|---|---|---|---|---|
+| 2023 | 1.09 | +1492.0 | 48 | 33.3 | 6 |
+| 2024 Jan-Sep | 1.25 | +5163.0 | 49 | 44.9 | 4 |
+| **Full 2023-01 to 2024-09** | **1.18** | **+6655.0** | **97** | **39.2** | **6** |
+
+- exits sl52 / tp29 / flatten16; avg win +1167.4 / avg loss -639.1; skips no_break200 / no_pullback88 / late_short59 / asia_too_small7 (354 skipped of 451 days).
+- **Asia range:** mean ~898 pts (median ~725) all days; 2023 mean ~780 (median ~655), 2024 Jan-Sep mean ~1055 (median ~862); traded days mean ~935. vs 2025-26 KEEP mean ~4187 (median ~3419) = boxes ~4.6x smaller. Avg entry price 2148 vs 3956. Avg SL 772 / TP 1448 (range SL already scales; nbr2500 gate never lets timeout fills through in this era).
+- Weak months: 2023-02 (-4271.8), 2023-04, 2023-11, 2024-05 (-3487.6); 2023-09 zero trades.
+
+- **5m scale screen GA** `scripts/_era2324_scale_GA_pf328_20261005.py` TAG ERA2324_SCALE_GA_PF328 - 31 cells workers=4 - window 2023-01-01..2024-10-01 - out `results/overnight_5m_grid_era2324_20261005T062458Z.json` (log `results/_era2324_ga_grid_run.log`). First launch died on a 5m candle-pack build race (4 workers writing 2023-04.candlepack at once; junk output renamed *.failed_packrace.json); packs prebuilt single-process, relaunched pid 10856, finished in ~75 s. Knob groups scaled by s: nbr(2500), nd(1850), rmb(1550), mb(250/260), tpsl(tp_fixed 4000 / sl_cap 4000 / sl_fixed 1050), sls asia(2600), optional min_asia(300). Cells: uniform s 0.8-0.2, uniform+min_asia, one-group-only s0.5/0.25, leave-one-out at s0.25, nbr0.
+- **5m baseline** PF1.169 / +6378.7 n97 ml6 (tick 1.18 / +6655.0 - good fidelity).
+- **Best cells:** all_s0p65 PF1.392/+17677.4 n129 but ml12 (2023 PF1.00, 2024 PF1.81) - fails streak filter; all_s0p25 PF1.238/+16960.1 n226 ml10; nbr0_all_s0p25 PF1.239/+17730.6 ml10; loo_keep_sls_s0p25 PF1.283/+15006.8 n178 ml7 (2023 PF0.99, 2024 1.64); loo_keep_nbr_s0p25 PF1.219/+14415.2 ml7; only_rmb_s0p25 PF1.306/+9569.4 n87 ml6 (2023 1.25 / 2024 1.36 - most even across years); only_tpsl_s0p25 PF1.276/+8393.6 ml6 (2023 0.81 / 2024 1.87).
+- **Read:** shrinking point knobs adds trades and points (up to ~2.7x) but PF stays ~1.2-1.4; no cell reaches PF 1.5 on the full era within max_loss <=8. 2023 is ~flat almost everywhere; gains come from 2024. Point scaling alone does not restore the 2025-26 edge - next era screens should try structural knobs (ema/wait/pullback/hold/sl range_mult/tp_sl_mult) on top of rmb s0.25 or loo_keep_sls s0.25.
+- **Next:** live 2025-26 KEEP unchanged; Asia breakout tune loop stays paused; era baseline routine deleted after this score. No reaktor / no push.
+
+### 2026-10-05 ~12:10 Europe/Bucharest entry_shock defaults probe on KEEP nbr2500_tpcap2 (ticks) - **REJECT** (disaster; no densify kicked; live KEEP unchanged)
+- **Code:** strateg `92121b3` (feat(overnight): shift the pullback entry when price rushes the level). Body `results/_entry_shock_defaults_body.json` = KEEP nbr2500_tpcap2 + entry_shock ON, window 10s / move 300 / giveback 0.25 / settle_n 2 / settle_pts 1500 / pace_mult 3.0; shock trail off. 2025-01-01..2026-09-01, workers=4.
+- **Run:** `20261005T085214Z_c574c0c6` saved `results/overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261005T085214Z_c574c0c6.json` - finished 08:52Z (11:52 Europe/Bucharest), 20 months, not cancelled.
+- **Result:** PF **2.45** / **+162131.6** n156 win65.4% max_loss**4** - exits tp65/sl46/flatten45 - entries ema_touch109/near_box_timeout31/higher_close8/fib_touch7/lower_close1 - skips no_break129/no_pullback114/late_short30.
+- **vs KEEP** (PF 3.28 / +234184.8 / n173 / ml4, run `20261004T202927Z_7d09a44d`): dPF -0.83, **dpts -72053.2**, dn -17.
+- **entry_shock=true fills:** only **2** (2026-01-07 DOWN +4000, 2026-05-14 DOWN -2312.4) - both identical pts to KEEP. shock_fired=0.
+- **Where the loss came from:** 17 KEEP trade days now skip as no_pullback (KEEP pts on those days +41701.0) and 42 shared days have a different entry price (mean |shift| ~0.76 price, ~76 pts) with 11 of them changing outcome (-30352.2, e.g. 2025-11-21 TP +4000 -> SL -3357.1; 2026-04-14 ema_touch TP +4000 -> near_box_timeout -2760.4). None of those 42 rows carry entry_shock=true.
+- **Read:** the damage is not from flagged shock fills. Either the shifted-entry path changes entries without setting the flag, or 92121b3 moved the baseline even with entry_shock off. Needs a parity run (same KEEP body, entry_shock=false, on 92121b3) before any entry_shock densify is meaningful.
+- **Next:** densify NOT kicked (disaster rule, -20k+). Asia tune loop stays paused. No reaktor / no push.
+
+### 2026-10-05 ~12:31 Europe/Bucharest entry_shock=false parity baseline on 92121b3 (ticks) - **BASELINE OK** (exact parity) + Batch ES entry_shock densify kicked
+- **Run:** `20261005T091821Z_9366196c` saved `results/overnight_XAUUSD_ticks_2025-01-01_2026-09-01_20261005T091821Z_9366196c.json` - finished 09:18Z (12:18 Europe/Bucharest), not cancelled - body `results/_entry_shock_false_baseline_body.json` - workers=4 - PARAM_ECHO entry_shock=false (all other params identical to KEEP; only the new entry_shock_* keys differ).
+- **Result:** PF **3.28** / **+234184.8** n173 win69.4% max_loss**4** - exits tp79/sl43/flatten51 - entries ema_touch130/near_box_timeout26/higher_close9/fib_touch7/lower_close1 - skips no_break129/no_pullback97/late_short30.
+- **vs KEEP** `20261004T202927Z_7d09a44d`: dPF 0.00, dpts 0.0, dn 0 - identical skips and entries.
+- **Read:** 92121b3 does NOT move the baseline with shock off. The -72k in the defaults probe (`20261005T085214Z_c574c0c6`) is caused by entry_shock=true itself, mostly via unflagged entry shifts / new no_pullback skips (only 2 fills carried the flag). Worth a code look at why shifted entries are not flagged.
+- **Batch ES densify kicked** (Igor asked for entry_shock densify today): runner `scripts/_es_entry_shock_densify_tick_runner.py` (pid 1656), sequential ticks, workers=4, 2025-01-01..2026-09-01, KEEP nbr2500_tpcap2 + entry_shock ON, one knob moved from defaults (w10/mv300/gb0.25/sn2/sp1500/pace3). Cells in order: mv800, mv1200, w5, mv500, w20, w30, gb0p10, gb0p50, sn1, sn3, sp800, sp2500 (12 cells, ~10 min each, ETA ~14:30-14:45 Europe/Bucharest). Summary `results/_es_entry_shock_densify_tick.json` (per-cell PF/pts/n/max_loss/dpts/dPF, flagged shock fills, PARAM_ECHO). First cell started 09:30:53Z.
+- **Next:** score ES vs KEEP; promote only if a cell beats KEEP by >= ~+2k pts with PF >= ~2.5 and max_loss <= 8. Live KEEP unchanged. Asia tune loop stays paused. No reaktor / no push.
+
+### 2026-10-05 SESSION_LONDON 5m KEEP nbr2500_tpcap2 (flatten22, Europe/Bucharest hours)
+- File `overnight_5m_grid_session_london_20261005T093339Z.json` — BASE 0-6 PF3.259/+232710.6 n173 ml4.
+- Best non-Asia: s9_15 9-15 PF1.196/+35743.7 n231 ml6 — still ~196967 pts behind BASE. No London window near Asia edge.
+- Info only; no promote.
+
+### 2026-10-05 SESSION_LONDON + wait-reclaim 5m
+- File `overnight_5m_grid_session_london_wait_reclaim_20261005T093645Z.json`. Filter: wait candles must not reclaim broken Asia edge.
+- BASE 0-6 PF1.504/+9868.7 n24 (raw173 drop149) ml4.
+- Daytime windows: none near Asia; best non-Asia still weak PF. Info only.
+
+### 2026-10-05 ~17:55 Europe/Bucharest Batch ES entry_shock densify (ticks) - **REJECT ALL** (no cell beats KEEP; live KEEP unchanged)
+- **Code:** strateg `92121b3`. Runner `scripts/_es_entry_shock_densify_tick_runner.py`, summary `results/_es_entry_shock_densify_tick.json` (done=true, started 12:30:53, resumed 15:58:39 after Lenovo restart, finished 17:37:02 Europe/Bucharest). KEEP nbr2500_tpcap2 + entry_shock ON, one knob moved from defaults (w10/mv300/gb0.25/sn2/sp1500/pace3). 2025-01-01..2026-09-01.
+- **KEEP** `20261004T202927Z_7d09a44d`: PF 3.28 / +234184.8 / n173 / win69.4 / ml4. Defaults probe (`20261005T085214Z_c574c0c6`): PF 2.45 / +162131.6 / n156.
+- **PARAM_ECHO bug:** after the restart the ES and ET runners shared the webapp and the ES runner attributed two ET trail files to its cells (sn3 -> `20261005T140049Z_66acb812`, sp800 -> `20261005T142315Z_acd2b83c`; both entry_shock=false, trail fixed arm4000 / trail 800 or 1000, TP 6000, param_echo_ok=false). Correct ES files found by params scan: sn3 = `20261005T135017Z_9203f9aa`, sp800 = `20261005T141317Z_5832d7df`. Rescored below with the correct files. The ET summary may have the mirror mix-up - check it by params before scoring ET.
+
+| cell | run | PF | pts | n | win% | ml | dpts | dPF | flagged | echo |
+|---|---|---|---|---|---|---|---|---|---|---|
+| mv800 | 094533Z_0cee8e46 | 3.16 | 222184.8 | 170 | 68.8 | 4 | -12000.0 | -0.12 | 0 | ok |
+| mv1200 | 100545Z_1e44584f | 3.16 | 222184.8 | 170 | 68.8 | 4 | -12000.0 | -0.12 | 0 | ok |
+| mv500 | 111057Z_b1609074 | 2.82 | 201773.0 | 169 | 67.5 | 4 | -32411.8 | -0.46 | 1 | ok |
+| w5 | 103946Z_6fb75e93 | 2.39 | 164283.5 | 162 | 64.8 | 4 | -69901.3 | -0.89 | 1 | ok |
+| w20 | 113731Z_b520732d | 2.59 | 166856.5 | 154 | 66.2 | 3 | -67328.3 | -0.69 | 2 | ok |
+| w30 | 120322Z_1d9f01ac | 2.78 | 172666.3 | 150 | 68.0 | 3 | -61518.5 | -0.50 | 2 | ok |
+| gb0p10 | 131110Z_22f5598a | 2.45 | 162131.6 | 156 | 65.4 | 4 | -72053.2 | -0.83 | 2 | ok |
+| gb0p50 | 132354Z_64789302 | 2.45 | 162131.6 | 156 | 65.4 | 4 | -72053.2 | -0.83 | 2 | ok |
+| sn1 | 133708Z_c78e8ef8 | 2.45 | 162131.6 | 156 | 65.4 | 4 | -72053.2 | -0.83 | 4 | ok |
+| sn3 (fixed) | 135017Z_9203f9aa | 2.52 | 166694.8 | 156 | 66.0 | 4 | -67490.0 | -0.76 | 2 | ok (rescored) |
+| sp800 (fixed) | 141317Z_5832d7df | 2.45 | 162131.6 | 156 | 65.4 | 4 | -72053.2 | -0.83 | 2 | ok (rescored) |
+| sp2500 | 143656Z_9bb1b664 | 2.45 | 162131.6 | 156 | 65.4 | 4 | -72053.2 | -0.83 | 2 | ok |
+
+- **Read:** every entry_shock=true cell loses to KEEP (best mv800/mv1200 at -12.0k, flagged fills 0, so the loss is again from unflagged entry shifts / extra no_pullback skips, not flagged shock fills). giveback / settle_n / settle_pts barely matter (most land exactly on the defaults result); a higher move threshold just turns the feature down toward KEEP. Nothing meets the bar (dpts >= +2k, PF >= 2.5, ml <= 8). entry_shock stays OFF.
+- **Next:** live KEEP unchanged; Batch ES routine deleted after this score. Asia tune loop stays paused. Mid-2022 to mid-2024 era seed stays queued. No reaktor / no push.
+
+### 2026-10-05 ~19:30 Europe/Bucharest Batch ET trail fixed-arm 4000 densify (ticks) - **MEETS BAR, NOT PROMOTED** (awaiting Igor; live KEEP unchanged)
+- **Code:** strateg `92121b3`. Summary `results/_et_trail_arm4000_densify_tick.json` (done=true, started 15:58:41, finished 19:11:10 Europe/Bucharest). KEEP nbr2500_tpcap2 + trail_arm_mode=fixed arm 4000, flex trail_pts and tp_fixed_pts; tp_mode fixed_cap tp_sl_mult 2.0 unchanged; entry_shock off. 2025-01-01..2026-09-01.
+- **PARAM_ECHO:** all 11 result files re-checked on disk by params (arm fixed/4000, trail_pts, tp_fixed_pts, entry_shock=false, nbr2500) - all match their cells, including 140049Z_66acb812 and 142315Z_acd2b83c that the ES runner had mis-claimed. No ET mix-up.
+- **KEEP** `20261004T202927Z_7d09a44d`: PF 3.28 / +234184.8 / n173 / win69.4 / ml4.
+
+| cell | run | PF | pts | n | win% | ml | dpts | dPF | armed% | exits tp/sl/flat/trail |
+|---|---|---|---|---|---|---|---|---|---|---|
+| tr1000_tp8k | 151930Z_db2c9ced | 3.42 | 248227.9 | 173 | 69.4 | 4 | +14043.1 | +0.14 | 37.0 | 23/43/51/56 |
+| tr1000_tp10k | 160001Z_b931846a | 3.42 | 248227.9 | 173 | 69.4 | 4 | +14043.1 | +0.14 | 37.0 | 23/43/51/56 |
+| tr600_tp6k | 153938Z_5909e0df | 3.41 | 247791.9 | 173 | 69.4 | 4 | +13607.1 | +0.13 | 37.0 | 22/43/51/57 |
+| tr800_tp8k | 150853Z_1b94c066 | 3.41 | 247383.5 | 173 | 69.4 | 4 | +13198.7 | +0.13 | 37.0 | 20/43/51/59 |
+| tr800_tp6k | 140049Z_66acb812 | 3.40 | 247042.8 | 173 | 69.4 | 4 | +12858.0 | +0.12 | 37.0 | 25/43/51/54 |
+| tr1500_tp6k | 145700Z_977d52d9 | 3.40 | 246536.7 | 173 | 69.4 | 4 | +12351.9 | +0.12 | 37.0 | 38/43/51/41 |
+| tr1000_tp6k | 142315Z_acd2b83c | 3.39 | 245698.5 | 173 | 69.4 | 4 | +11513.7 | +0.11 | 37.0 | 29/43/51/50 |
+| tr1200_tp8k | 152939Z_c871ae4e | 3.39 | 245177.5 | 173 | 69.4 | 4 | +10992.7 | +0.11 | 37.0 | 25/43/51/54 |
+| tr1200_tp6k | 144656Z_fcfe6c3c | 3.37 | 243500.3 | 173 | 69.4 | 4 | +9315.5 | +0.09 | 37.0 | 32/43/51/47 |
+| tr1000_tp5k | 154944Z_0c022a86 | 3.37 | 243192.7 | 173 | 69.4 | 4 | +9007.9 | +0.09 | 37.0 | 45/43/51/34 |
+| tr1000_tp4k (control) | 161047Z_fc30744c | 3.28 | 234184.8 | 173 | 69.4 | 4 | 0.0 | 0.00 | 37.0 | 79/43/51/0 |
+
+- **Read:** 8 of 10 non-control cells clear the trail bar (dpts >= ~+10k, PF >= 2.5, ml <= 8); best tr1000_tp8k PF 3.42 / +248227.9 (+14.0k). Broad plateau (trail 600-1500 all +9k..+14k), entries/SL/flatten identical to KEEP - the gain is only winners running past 4000. tp8k == tp10k because the 2x-stop cap (stop cap 4000) already limits TP to 8000. Control tp4k reproduces KEEP exactly (sanity OK).
+- **Concentration (best vs KEEP by month):** 8 months up / 5 down; 2026-03 alone +8.3k of +14.0k (~59%); without it about +5.8k. Biggest give-back 2026-04 -2.4k. Gain leans on the 2026 trend run.
+- **Next:** candidate tr1000_tp8k (or tr600-800) for Igor's decision; live KEEP not changed. Batch ET routine deleted after this score. Asia tune loop stays paused. Mid-2022 to mid-2024 era seed stays queued. No reaktor / no push.
+
+## BTCUSD Asia overnight tag RR_CAP
+- **When:** 2026-10-06 09:56 Europe/Bucharest; **Grid:** `results/overnight_5m_grid_BTCUSD_20261006T065550Z.json` + `results/overnight_5m_grid_BTCUSD_20261006T065550Z.csv`; helper `results/_asia_stage/btcusd_asia_rrcap_5m_grid.py`; 36 cells (34 RR-capped + 2 refs); candles_5m; local ProcessPool workers=2; window 2025-01 to 2026-09; errors=0.
+- **Why:** 20:1 cells REJECTED as unrealistic (Igor): prior champ wait6 ema80 mb150 SL700/TP14000 = ~$7 stop / $140 target at point_size 0.01, below BTC spread (~5000 pts = $50 Dukascopy median, Asia too) and 5m noise (median Asia 5m bar H-L ~11840 pts = ~$118). This grid caps RR (TP/SL) at 2-6 and SL at 3000-30000 pts ($30-$300). Asia 0-6, pullback required (+pref cells), timeout market, trail off, side both (+long-only).
+- **Engine costs:** 5m runs are mid-only, no spread/commission knob -> sum_pts is gross. Net columns charge a flat round-trip cost per trade post-hoc (net5000 = Dukascopy median spread, net2000 = tighter broker).
+- **References (not RR-capped):** REF_CHAMP_w6_e80_mb150_sl700_tp14000_RR20 SL700($7)/TP14000 RR20 PF2.645/+139300.0 n137 win11.7% net5000 -545700 PF0.209; REF_KEEP_CONTROL_tp6000 SL1000($10)/TP6000 RR6 PF1.3/+90000.0 n365 win17.8% net5000 -1735000 PF0.036
+- **Top 5 RR-capped by pts:** both_w6_e80_mb3000_req_sl5000_tp15000_rr3 SL5000($50)/TP15000 RR3 PF1.37/+150000.0 n118 win31.4% net5000 -440000 PF0.457; both_w6_e80_mb500_req_sl8000_tp16000_rr2 SL8000($80)/TP16000 RR2 PF1.205/+136000.0 n133 win37.6% net5000 -529000 PF0.51; both_w6_e80_mb500_req_sl8000_tp40000_rr5 SL8000($80)/TP40000 RR5 PF1.157/+136000.0 n133 win18.8% net5000 -529000 PF0.623; both_w6_e50_mb500_req_sl5000_tp15000_rr3 SL5000($50)/TP15000 RR3 PF1.308/+120000.0 n112 win30.4% net5000 -440000 PF0.436; both_w6_e80_mb1500_req_sl12000_tp24000_rr2 SL12000($120)/TP24000 RR2 PF1.114/+108000.0 n123 win35.8% net5000 -507000 PF0.622
+- **Top 5 RR-capped by PF:** both_w6_e80_mb3000_req_sl5000_tp15000_rr3 SL5000($50)/TP15000 RR3 PF1.37/+150000.0 n118 win31.4% net5000 -440000 PF0.457; both_w6_e80_mb500_req_sl3000_tp15000_rr5 SL3000($30)/TP15000 RR5 PF1.333/+105000.0 n133 win21.1% net5000 -560000 PF0.333; both_w6_e50_mb500_req_sl5000_tp15000_rr3 SL5000($50)/TP15000 RR3 PF1.308/+120000.0 n112 win30.4% net5000 -440000 PF0.436; both_w6_e80_mb500_req_sl3000_tp9000_rr3 SL3000($30)/TP9000 RR3 PF1.245/+69000.0 n133 win29.3% net5000 -596000 PF0.207; both_w6_e80_mb1500_req_sl5000_tp15000_rr3 SL5000($50)/TP15000 RR3 PF1.241/+105000.0 n123 win29.3% net5000 -510000 PF0.414
+- **Top 5 RR-capped by net5000 pts:** long_w6_e80_mb500_req_sl5000_tp15000_rr3 SL5000($50)/TP15000 RR3 PF0.818/-40000.0 n56 win21.4% net5000 -320000 PF0.273; long_w6_e80_mb500_req_sl8000_tp24000_rr3 SL8000($80)/TP24000 RR3 PF0.818/-64000.0 n56 win21.4% net5000 -344000 PF0.399; long_w6_e80_mb500_req_sl12000_tp24000_rr2 SL12000($120)/TP24000 RR2 PF0.732/-132000.0 n56 win26.8% net5000 -412000 PF0.409; both_w6_e80_mb3000_req_sl5000_tp15000_rr3 SL5000($50)/TP15000 RR3 PF1.37/+150000.0 n118 win31.4% net5000 -440000 PF0.457; both_w6_e50_mb500_req_sl5000_tp15000_rr3 SL5000($50)/TP15000 RR3 PF1.308/+120000.0 n112 win30.4% net5000 -440000 PF0.436
+- **PF>=2 & n>=100 & pts>0 (gross):** (none). Best RR-capped by pts: both_w6_e80_mb3000_req_sl5000_tp15000_rr3 SL5000($50)/TP15000 RR3 PF1.37/+150000.0 n118 win31.4% net5000 -440000 PF0.457. No tick run.
+- **Read:** capping RR 2-6 with SL $30-$300 kills the edge: best RR-capped cell w6 e80 mb3000 SL5000/TP15000 (RR3) PF1.37 +150000 n118 win31.4% (sl81/tp37) - more gross pts than the rejected 20:1 champ (+139300) but PF 1.37 vs 2.645; no cell reaches PF~2 with n>=100. Gross edge is only ~1271 pts (~$12.7) per trade on the best cell (~1017 pts / ~$10 for the 20:1 champ), below the ~$50 Dukascopy BTC spread and below even a $20 cost (net2000 best -86000 PF0.85); every cell is negative net of spread. Bigger min break (mb1500-3000) and ema50 are the only knobs that help; wait 3/8/10, pullback preferred, long-only and SL >=12000 at mb500 all lose or go flat (SL12000 RR2 with mb1500/3000 only +96k..+108k PF~1.1). Verdict: no realistic-RR BTCUSD Asia breakout pocket on 5m; not tick-worthy. No tick run.
+
+## BTCUSD Asia overnight tag RR5_MIX
+- **When:** 2026-10-06 10:34 Europe/Bucharest; **Grid:** `results/overnight_5m_grid_BTCUSD_20261006T072959Z.json` + `results/overnight_5m_grid_BTCUSD_20261006T072959Z.csv`; helper `results/_asia_stage/btcusd_asia_rr5mix_5m_grid.py`; 424 cells (s1 216, s2 200, s3 6, refs 2); candles_5m; local ProcessPool workers=2; window 2025-01 to 2026-09 (exclusive 2026-09-01); errors=0; runtime 291s.
+- **Design:** RR fixed 1:5 (TP=5xSL, enforced) on the RR_CAP base (Asia 0-6, timeout market, wait_from_break, trail off). Stage 1 = SL{3000,4000,5000,7000,10000,15000} x wait{4,5,6,7} x ema{50,80,120} x mb{500,1500,3000} at defaults (pb required, near_box N5/D1550 outside, resume 6, flatten 22, both). Stage 2 = top 8 s1 seeds (4 gross + 4 net2000, n>=60) x near_box{base,off,N6D5000,N6D15000} x resume{6,8} x side{both,short}, + flatten{21,23} x side, + pullback off x flatten{21,22,23} x side (N=min(6,wait)). Stage 3 = top 6 s2 by net2000 x flatten{21,22,23}. Costs post-hoc: net2000 ($20) / net5000 ($50) per trade, PF recomputed.
+- **Seeds:** s1_both_w6_e50_mb3000_req_nbbase_rc6_fh22_sl15000_tp75000, s1_both_w7_e50_mb3000_req_nbbase_rc6_fh22_sl15000_tp75000, s1_both_w5_e50_mb3000_req_nbbase_rc6_fh22_sl15000_tp75000, s1_both_w6_e50_mb1500_req_nbbase_rc6_fh22_sl15000_tp75000, s1_both_w5_e50_mb3000_req_nbbase_rc6_fh22_sl10000_tp50000, s1_both_w5_e50_mb1500_req_nbbase_rc6_fh22_sl15000_tp75000, s1_both_w6_e50_mb3000_req_nbbase_rc6_fh22_sl10000_tp50000, s1_both_w7_e50_mb3000_req_nbbase_rc6_fh22_sl10000_tp50000
+- **References:** REF_RR5_w6_e80_mb500_sl3000_tp15000 PF1.333/+105000 n133 win21.1% mls14 | net2000 -161000 PF0.693 | net5000 -560000 PF0.333; REF_RR3_w6_e80_mb3000_sl5000_tp15000 PF1.37/+150000 n118 win31.4% mls10 | net2000 -86000 PF0.848 | net5000 -440000 PF0.457
+- **Top 5 gross pts (n>=60):** s2_both_w5_e50_mb1500_pboff_nbbase_rc6_fh22_sl15000_tp75000 PF1.218/+931310 n356 win19.9% mls23 | net2000 +219310 PF1.045 | net5000 -848690 PF0.851; s2_both_w6_e50_mb1500_pboff_nbbase_rc6_fh22_sl15000_tp75000 PF1.218/+931310 n356 win19.9% mls23 | net2000 +219310 PF1.045 | net5000 -848690 PF0.851; s2_short_w7_e50_mb3000_req_nbN6D5000_rc6_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbN6D5000_rc8_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbbase_rc6_fh21_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709
+- **Top 5 net2000 pts (n>=60):** s2_short_w7_e50_mb3000_req_nbN6D5000_rc6_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbN6D5000_rc8_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbbase_rc6_fh21_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbbase_rc6_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbbase_rc6_fh23_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709
+- **Floor (PF>=2, mls<=8, n>=60):** s2_short_w7_e50_mb3000_req_nbN6D5000_rc6_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbN6D5000_rc8_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbbase_rc6_fh21_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbbase_rc6_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbbase_rc6_fh23_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709
+- **Knob means s1 (gross/net2000):** sl: 3000=+141917/-100472, 4000=+139889/-102500, 5000=+114861/-127528, 7000=+142139/-100250, 10000=+38056/-204333, 15000=-29403/-271792; wait: 4=+59555/-151112, 5=+116481/-118630, 6=+110740/-140149, 7=+78196/-194692; ema: 50=+212388/+16888, 80=+116988/-126012, 120=-55647/-344314; mb: 500=+32474/-226192, 1500=+104641/-134026, 3000=+136613/-93220
+- **Knob paired deltas s2 vs seed:** pb=off dpts -54221 dnet2000 -556971 dn +251.4 (5/8 better); nb=off dpts +0 dnet2000 +0 dn +0 (0/8 better); nb=N6D5000 dpts -6875 dnet2000 -7875 dn +0.5 (0/8 better); nb=N6D15000 dpts +141602 dnet2000 +116852 dn +12.4 (8/8 better); rc=8 dpts +0 dnet2000 +0 dn +0 (0/8 better); fh=21 dpts +2218 dnet2000 +2218 dn +0 (1/8 better); fh=23 dpts -1915 dnet2000 -1915 dn +0 (0/8 better); side=short dpts +266835 dnet2000 +347835 dn -40.5 (8/8 better)
+- **Tick-confirm candidates (net2000 PF>=1.3 & net2000>0, n>=60):** s2_short_w7_e50_mb3000_req_nbN6D5000_rc6_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbN6D5000_rc8_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbbase_rc6_fh21_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbbase_rc6_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbbase_rc6_fh23_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nbbase_rc8_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nboff_rc6_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s2_short_w7_e50_mb3000_req_nboff_rc8_fh22_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s3_short_w7_e50_mb3000_req_nbN6D5000_rc6_fh21_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; s3_short_w7_e50_mb3000_req_nbN6D5000_rc6_fh23_sl15000_tp75000 PF2.442/+930000 n64 win32.8% mls7 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709. No tick run.
+- **Verdict (auto):** 74 cell(s) clear net2000 PF>=1.3 on 5m (best s2_short_w7_e50_mb3000_req_nbN6D5000_rc6_fh22_sl15000_tp75000 net2000 +802000 PF2.097); tick-confirm needed before any promotion; net5000-positive cells: 84.
+- **Dedup note:** many cells are behavioural duplicates: resume 8 == resume 6 everywhere; near_box base (N5/D1550 outside) == off whenever mb>1550 (outside needs ext>=mb but D caps it at 1550); flatten 21/23 moves pts by <~2k; pullback off makes wait irrelevant. 424 cells -> ~18 distinct tick-candidate behaviours.
+- **Short probe (30 cells, `results/_asia_stage/logs/btcusd_asia_rr5mix_short_probe.json`):** short w7 e50 mb3000 across SL: SL3000 +168k PF2.27 net2000 +40k PF1.18; SL5000 +220k net2000 +92k PF1.29; SL7000 +392k net2000 +264k PF1.67 (net5000 +72k); SL10000 +620k net2000 +492k PF1.95 (net5000 +300k PF1.47); SL15000 +930k net2000 +802k PF2.10 (net5000 +610k PF1.71). Same short shape at ema80: PF1.27-1.85, net2000 ~0 to +92k (weak); w6 e80 mb500 short: net2000 PF<=1.12; long-only w7 e50 mb3000 loses at every SL.
+- **Read:** RR 1:5 both-side is cost-negative except the ema50+mb3000+SL10000-15000 corner (best both-side w5 e50 mb3000 nbN6D15000 SL15000/TP75000 +836k PF1.72 n104 mls12, net2000 +628k PF1.48, net5000 +316k PF1.21). The real lift is SHORT-ONLY (+267k gross / +348k net2000 per seed, 8/8) and near_box N6/D15000 (+142k, 8/8). Best cell short w7 e50 mb3000 SL15000/TP75000 ($150/$750): +930k PF2.44 n64 win32.8% mls7, net2000 +802k PF2.10, net5000 +610k PF1.71, both years positive (2025 +660k / 2026 +270k), maxDD 105k. Edge scales with SL because cost is flat per trade and the trade set is identical across SL. Caveats: n~60-66 over 20 months, only ~21 TP hits carry it, pocket hinges on ema50 (ema80 collapses to PF~1.3), short bias may be the 2025-26 BTC regime, selected from ~450 cells. pullback off (mls23, 2026 negative), wait 4/7, ema120, mb500, SL3000-5000 at both-side, resume 8, flatten 21/23 = no help/hurt. Verdict: first BTC Asia shape that survives $20 and $50 costs on 5m, but small-n and regime-suspect; tick-confirm candidates short w7 e50 mb3000 SL10000/15000 (nb base or N6D15000) and both-side w5 e50 mb3000 nbN6D15000 SL15000. NOT promoted; no tick run.
+
+## BTCUSD Asia overnight tag SHORT_DENSIFY_BTC
+- **When:** 2026-10-06 10:51 Europe/Bucharest; **Grid:** `results/overnight_5m_grid_BTCUSD_20261006T074048Z.json` + `results/overnight_5m_grid_BTCUSD_20261006T074048Z.csv`; helper `results/_asia_stage/btcusd_asia_short_densify_5m_grid.py`; 939 cells {'ref': 3, 's1': 720, 's2': 210, 'offgrid': 6}; distinct trade lists 876; candles_5m; local ProcessPool workers=2; window 2025-01 to 2026-09 (excl. 2026-09-01); errors=0; runtime 621s.
+- **Design:** short-only, pullback required, timeout market, rc6, fh22, RR_CAP/RR5_MIX base. S1 = ema{40..65} x mb{2000..5000} x wait{5..8} x nb{base,N=min(6,wait) D10k/15k/20k/25k} at SL15000/TP75000; S2 = SL{10000,12500,20000} x top-40 distinct S1 shapes + ema x mb grid at best (wait,nb); OFFGRID RR4/RR6 at SL15000 on top 3 shapes (excluded from ranks). nb base == off here (mb>1550).
+- **Refs (RR5_MIX):** REF_short_w7_e50_mb3000_nbbase_sl15000 PF2.442/+930000 n64 win32.8% mls7 dd105000 | net2000 +802000 PF2.097 | net5000 +610000 PF1.709; REF_short_w7_e50_mb3000_nbN6D15000_sl15000 PF2.333/+900000 n66 win31.8% mls8 dd120000 | net2000 +768000 PF2.004 | net5000 +570000 PF1.633; REF_short_w6_e50_mb3000_nbN6D15000_sl15000 PF2.5/+900000 n60 win33.3% mls9 dd135000 | net2000 +780000 PF2.147 | net5000 +600000 PF1.75
+- **Top 5 distinct by net2000 (n>=60):** s1_short_w8_e50_mb4000_nbN6D10000_sl15000_tp75000 (x2) PF2.738/+1095000 n65 win35.4% mls6 dd90000 | net2000 +965000 PF2.352 | net5000 +770000 PF1.917; s1_short_w8_e50_mb3500_nbbase_sl15000_tp75000 PF2.674/+1080000 n66 win34.8% mls6 dd90000 | net2000 +948000 PF2.297 | net5000 +750000 PF1.872; s1_short_w8_e50_mb4000_nbN6D15000_sl15000_tp75000 PF2.674/+1080000 n66 win34.8% mls7 dd105000 | net2000 +948000 PF2.297 | net5000 +750000 PF1.872; s1_short_w8_e50_mb3500_nbN6D10000_sl15000_tp75000 PF2.614/+1065000 n67 win34.3% mls6 dd90000 | net2000 +931000 PF2.245 | net5000 +730000 PF1.83; s1_short_w8_e50_mb2500_nbbase_sl15000_tp75000 PF2.556/+1050000 n68 win33.8% mls7 dd105000 | net2000 +914000 PF2.195 | net5000 +710000 PF1.789
+- **Top 5 distinct by gross (n>=60):** s1_short_w8_e50_mb4000_nbN6D10000_sl15000_tp75000 (x2) PF2.738/+1095000 n65 win35.4% mls6 dd90000 | net2000 +965000 PF2.352 | net5000 +770000 PF1.917; s1_short_w8_e50_mb3500_nbbase_sl15000_tp75000 PF2.674/+1080000 n66 win34.8% mls6 dd90000 | net2000 +948000 PF2.297 | net5000 +750000 PF1.872; s1_short_w8_e50_mb4000_nbN6D15000_sl15000_tp75000 PF2.674/+1080000 n66 win34.8% mls7 dd105000 | net2000 +948000 PF2.297 | net5000 +750000 PF1.872; s1_short_w8_e50_mb3500_nbN6D10000_sl15000_tp75000 PF2.614/+1065000 n67 win34.3% mls6 dd90000 | net2000 +931000 PF2.245 | net5000 +730000 PF1.83; s1_short_w8_e50_mb2500_nbbase_sl15000_tp75000 PF2.556/+1050000 n68 win33.8% mls7 dd105000 | net2000 +914000 PF2.195 | net5000 +710000 PF1.789
+  - robust: s1_short_w8_e50_mb4000_nbN6D10000_sl15000_tp75000 (x2) PF2.738/+1095000 n65 win35.4% mls6 dd90000 | net2000 +965000 PF2.352 | net5000 +770000 PF1.917 | years 2025:+885000 2026:+210000 | quarters 2025Q1:+405000 2025Q2:+165000 2025Q3:+120000 2025Q4:+195000 2026Q1:+60000 2026Q2:+60000 2026Q3:+90000 (neg 0) | top3 trades +225000 = 20% of gross
+  - robust: s1_short_w8_e50_mb3500_nbbase_sl15000_tp75000 PF2.674/+1080000 n66 win34.8% mls6 dd90000 | net2000 +948000 PF2.297 | net5000 +750000 PF1.872 | years 2025:+870000 2026:+210000 | quarters 2025Q1:+405000 2025Q2:+165000 2025Q3:+105000 2025Q4:+195000 2026Q1:+60000 2026Q2:+60000 2026Q3:+90000 (neg 0) | top3 trades +225000 = 21% of gross
+  - robust: s1_short_w8_e50_mb4000_nbN6D15000_sl15000_tp75000 PF2.674/+1080000 n66 win34.8% mls7 dd105000 | net2000 +948000 PF2.297 | net5000 +750000 PF1.872 | years 2025:+885000 2026:+195000 | quarters 2025Q1:+405000 2025Q2:+165000 2025Q3:+120000 2025Q4:+195000 2026Q1:+45000 2026Q2:+60000 2026Q3:+90000 (neg 0) | top3 trades +225000 = 21% of gross
+  - robust: s1_short_w8_e50_mb3500_nbN6D10000_sl15000_tp75000 PF2.614/+1065000 n67 win34.3% mls6 dd90000 | net2000 +931000 PF2.245 | net5000 +730000 PF1.83 | years 2025:+870000 2026:+195000 | quarters 2025Q1:+405000 2025Q2:+165000 2025Q3:+105000 2025Q4:+195000 2026Q1:+60000 2026Q2:+60000 2026Q3:+75000 (neg 0) | top3 trades +225000 = 21% of gross
+  - robust: s1_short_w8_e50_mb2500_nbbase_sl15000_tp75000 PF2.556/+1050000 n68 win33.8% mls7 dd105000 | net2000 +914000 PF2.195 | net5000 +710000 PF1.789 | years 2025:+795000 2026:+255000 | quarters 2025Q1:+405000 2025Q2:+150000 2025Q3:+45000 2025Q4:+195000 2026Q1:+60000 2026Q2:+30000 2026Q3:+165000 (neg 0) | top3 trades +225000 = 21% of gross
+- **Heatmap net2000 (k pts / net2000 PF) at wait8 nbN6D10000 SL15000:** `ema\mb         2000         2500         3000         3500         4000         5000 ||     40   +228k/1.26   +335k/1.40   +335k/1.40   +313k/1.40   +347k/1.46   +106k/1.15 ||     45   +554k/1.67   +734k/1.92   +734k/1.92   +695k/1.91   +729k/2.00   +415k/1.61 ||     50   +700k/1.84   +880k/2.10   +880k/2.10   +931k/2.25   +965k/2.35   +578k/1.87 ||     55   +649k/1.73   +829k/1.98   +829k/1.98   +807k/2.01   +841k/2.10   +454k/1.64 ||     60   +525k/1.56   +705k/1.78   +705k/1.78   +683k/1.80   +717k/1.88   +583k/1.80 ||     65   +311k/1.31   +474k/1.48   +474k/1.48   +452k/1.48   +486k/1.54   +442k/1.55`; plateau stats {"cells": 36, "net2000_pos": 36, "net2000_pf13": 34, "best": {"ema": 50, "mb": 4000, "v": 965000.0, "pf": 2.352, "n": 65}, "best_neighbors": 8, "best_neighbors_pos": 8, "best_neighbors_pf13": 8, "best_neighbors_mean": 681250}
+- **OFFGRID RR check (SL15000):** OFFGRID_RR6_og_short_w8_e50_mb4000_nbN6D10000_sl15000_tp90000 PF2.433/+988777 n65 win29.2% mls9 dd135000 | net2000 +858777 PF2.098 | net5000 +663777 PF1.721; OFFGRID_RR4_og_short_w8_e50_mb4000_nbN6D10000_sl15000_tp60000 PF2.19/+750000 n65 win35.4% mls6 dd90000 | net2000 +620000 PF1.868 | net5000 +425000 PF1.506; OFFGRID_RR4_og_short_w8_e50_mb3500_nbbase_sl15000_tp60000 PF2.14/+735000 n66 win34.8% mls6 dd90000 | net2000 +603000 PF1.825 | net5000 +405000 PF1.471; OFFGRID_RR6_og_short_w8_e50_mb3500_nbbase_sl15000_tp90000 PF2.381/+973777 n66 win28.8% mls9 dd135000 | net2000 +841777 PF2.054 | net5000 +643777 PF1.685; OFFGRID_RR4_og_short_w8_e50_mb4000_nbN6D15000_sl15000_tp60000 PF2.14/+735000 n66 win34.8% mls7 dd105000 | net2000 +603000 PF1.825 | net5000 +405000 PF1.471; OFFGRID_RR6_og_short_w8_e50_mb4000_nbN6D15000_sl15000_tp90000 PF2.381/+973777 n66 win28.8% mls9 dd135000 | net2000 +841777 PF2.054 | net5000 +643777 PF1.685
+- **Tick-confirm candidates (distinct):** 576. No tick run.
+- **Plateau:** broad, not a spike. S1 (SL15000) 718/720 cells net2000>0, 675/720 net5000>0. Mean net2000 by ema: 40 +236k, 45 +593k, 50 +691k, 55 +602k, 60 +511k, 65 +338k (smooth hill peaking at 50); mb 2000 +460k, 2500 +543k, 3000 +556k, 3500 +526k, 4000 +550k, 5000 +336k (flat 2500-4000; mb2500==mb3000 at most ema); wait 5 +450k, 6 +497k, 7 +475k, 8 +559k (wait8 = grid edge); nb base (==off) +539k ~ N6D10000/15000 +526k > D20000 +503k > D25000 +451k. At w8 nbN6D10000 SL15000 all 36 ema x mb cells net2000>0, 34 with PF>=1.3; all 8 neighbours of the best (e50 mb4000) PF>=1.3, mean +681k.
+- **But one trade set:** top-5 distinct cells share 63-65 of their ~65 trades (w8 e50 mb2500-4000, nb base/N6D10000/15000), so 'top 5' is effectively one strategy. Fixed TP -> top3 trades = 225k = ~20% of gross (no outlier dependence), but time-concentrated: best cell net2000 2025 +811k (37 tr) vs 2026 +154k (28 tr); 2025Q1 alone +375k (39%); 2026 quarters net2000 +44k/+32k/+78k, net5000 +20k/-10k/+60k -> per-trade edge after $20 fell from ~22k to ~5.5k pts in 2026.
+- **SL ladder at best shape (RR5):** SL10000 +670k PF2.56 n2k +540k dd70k; SL12500 +762k PF2.39 n2k +633k; SL15000 +1095k PF2.74 n2k +965k dd90k; SL20000 +977k PF2.09 n2k +847k dd180k -> SL15000 peak, 20000 worse. OFFGRID (SL15000): RR4 +750k PF2.19 n2k +620k; RR6 +989k PF2.43 n2k +859k (mls9, dd135k) -> RR5 is the local peak, RR4/RR6 still clearly positive.
+- **Read / verdict:** the short-only ema~50 / mb2500-4000 / SL15000 RR5 pocket is a genuine 5m parameter plateau that survives $20 and $50 flat costs, but it is one ~65-trade short set whose edge is mostly 2025 (2026 thin, net5000 ~flat) -> regime risk is the main open question, not parameter fragility. Tick-confirm candidates (NOT run, NOT promoted): (1) short w8 e50 mb4000 nb base (==N6D10000) SL15000/TP75000 = best (+1095k PF2.74 n65 mls6, n2k +965k PF2.35, n5k +770k PF1.92); (2) short w7 e50 mb3000 nb base SL15000/TP75000 = RR5_MIX ref at plateau centre, wait off the grid edge, stronger 2026 (+270k). No tick run.
+
+## 2026-10-13 Batch KH: top-10 KEEP history holdout, ticks 2023-01-01 to 2026-10-06
+- Summary: results/_kh_keep_history_2023_tick.json. The 2025-01 to 2026-08 slices reproduce the originals exactly (k01-05, k09, k10).
+- Out-of-sample 2023-24 (pts / approx PF): k01 +4.1k/1.17, k02 +17.0k/1.32, k03 +13.1k/1.18, k04 +22.7k/1.32, k05 +20.2k/1.29, k06 +28.9k/1.40*, k07 +28.7k/1.47*, k09 +22.8k/1.27, k10 +9.6k/1.21. k08 is missing (source JSON deleted).
+- * k06/k07 were cut short by the 2026-10-06 shutdown (they stopped at 2025 and 2024), so their full-window numbers are invalid. Only their 2023-24 numbers count.
+- Full window: k10 PF2.56 +244.7k n295 ml6 (best PF/streak). k09 PF2.17 +250.5k n392 ml10. k01 PF2.28 +77.9k ml5.
+- Conclusion: none hold up out of sample. 2023-24 PF is 1.2-1.5 everywhere, and the edge is concentrated in 2025-26.
+
+## Batch KR — k10 range-scaled TP, ticks 2023-01-01 to 2026-10-06 (logged 2026-10-13)
+Base: k10 nbr2500_tpcap2 (src 20261004T202927Z_7d09a44d), SL range rm0.85/cap4000. Only TP mode changed. Per-year PF = sum(avg_win*wins)/sum(|avg_loss|*losses) from by_month.
+
+| cell | PF | pts | n | maxL | 2023 pts/PF | 2024 pts/PF | 2025 pts/PF | 2026 pts/PF | 23-24 PF | 25-26 PF |
+|---|---|---|---|---|---|---|---|---|---|---|
+| BASE k10 (fixed_cap TP min(4000,2xSL)) | 2.56 | 244746 | 295 | 6 | 1492/1.09 | 8110/1.28 | 84472/2.64 | 150672/3.51 | 1.21 | 3.11 |
+| sl_mult 1.5 | 2.19 | 209436 | 295 | 6 | 1338/1.09 | 10026/1.38 | 69223/2.19 | 128848/2.71 | 1.27 | 2.48 |
+| sl_mult 2.0 | 2.23 | 226002 | 295 | 6 | 1078/1.06 | 8110/1.28 | 84984/2.44 | 131831/2.66 | 1.20 | 2.57 |
+| sl_mult 2.5 | 2.26 | 239898 | 295 | 7 | 749/1.04 | 9716/1.33 | 76115/2.19 | 153319/2.93 | 1.22 | 2.60 |
+| range_mult 1.5 | 2.28 | 232323 | 295 | 6 | 2242/1.14 | 8910/1.33 | 78938/2.34 | 142234/2.79 | 1.26 | 2.60 |
+| range_mult 2.0 | 2.38 | 258111 | 295 | 6 | 1612/1.09 | 8625/1.29 | 86183/2.40 | 161691/3.04 | 1.22 | 2.76 |
+
+Verdict: REJECT all. Range-scaling TP does not fix 2023-24 (best 23-24 PF 1.27 vs 1.21, at most +1.7k pts) and every cell lowers PF in 2025-26 (2.48-2.76 vs 3.11). range_mult 2.0 adds +13.4k pts full-window but PF 2.38 vs 2.56. KEEP unchanged. 2023-24 weakness is likely in the fixed point knobs (mb250/260, near-box D1850, cap1550, sls2600, nbr2500), which strateg cannot range-scale yet.

@@ -24,6 +24,7 @@ KNOWN_KINDS = frozenset(
         "cooloff",
         "fvg",
         "dawn_cross",
+        "stop_scalper",
     }
 )
 
@@ -57,6 +58,8 @@ def classify_filename(name: str) -> Optional[str]:
         return "fvg"
     if n.startswith("dawncross_"):
         return "dawn_cross"
+    if n.startswith("stopscalp_"):
+        return "stop_scalper"
     if n.startswith("micro_"):
         return "micro"
     return None
@@ -209,6 +212,10 @@ def load_into_job(kind: str, name: str) -> Dict[str, Any]:
         out = load_saved(data, name=name)
     elif kind == "dawn_cross":
         from backtest.dawn_cross_jobs import load_saved
+
+        out = load_saved(data, name=name)
+    elif kind == "stop_scalper":
+        from backtest.stop_scalper_jobs import load_saved
 
         out = load_saved(data, name=name)
     else:

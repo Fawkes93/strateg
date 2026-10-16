@@ -135,6 +135,10 @@ def start_asia_box_job(params: AsiaBoxJobParams) -> Dict[str, Any]:
 
     if is_dawn_running():
         return {"ok": False, "error": "Dawn Cross is running"}
+    from backtest.stop_scalper_jobs import is_scalper_running
+
+    if is_scalper_running():
+        return {"ok": False, "error": "Stop Scalper is running"}
     with _lock:
         if _state.running:
             return {"ok": False, "error": "Asia box is already running"}

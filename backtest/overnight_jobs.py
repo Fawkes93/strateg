@@ -250,6 +250,10 @@ def start_overnight_job(params: OvernightJobParams) -> Dict[str, Any]:
 
         if is_dawn_running():
             return {"ok": False, "error": "Dawn Cross is running"}
+        from backtest.stop_scalper_jobs import is_scalper_running
+
+        if is_scalper_running():
+            return {"ok": False, "error": "Stop Scalper is running"}
         _cancel.clear()
         _state.params = params
         _state.result = None

@@ -39,6 +39,7 @@ def test_classify_filename():
     assert sr.classify_filename("fork_XAUUSD_2026-06-01_2026-07-01.json") == "impulse_fork"
     assert sr.classify_filename("cooloff_XAUUSD_2026-06-01_2026-07-01.json") == "cooloff"
     assert sr.classify_filename("ifvg_XAUUSD_2025-05-01_2025-06-01.json") == "fvg"
+    assert sr.classify_filename("stopscalp_20261006T120000Z_abc12345.json") == "stop_scalper"
     assert sr.classify_filename("summary_XAUUSD_2026-06-01_2026-07-01_forward_20260904T120000Z_abc12345.json") == "research"
     assert sr.classify_filename("micro_XAUUSD_2026-06-01_2026-08-31.json") == "micro"
     assert sr.classify_filename("micro_sweep_board.json") == "micro"
