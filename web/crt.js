@@ -13,7 +13,8 @@
     "crt-min-leg", "crt-min-range", "crt-side",
     "crt-entry", "crt-fvg-select", "crt-fvg-entry", "crt-max-fvg", "crt-fvg-wait",
     "crt-sl-mode", "crt-sl-buf", "crt-sl-fixed",
-    "crt-partial", "crt-partial-rr", "crt-runner", "crt-runner-rr", "crt-hold", "crt-max-open",
+    "crt-partial", "crt-partial-rr", "crt-runner", "crt-runner-rr", "crt-hold", "crt-max-concurrent",
+    "crt-mode", "crt-ny-tz", "crt-ny-h", "crt-ny-m",
     "crt-session", "crt-sess-sh", "crt-sess-sm", "crt-sess-eh", "crt-sess-em",
     "crt-news", "crt-cost", "crt-force",
   ];
@@ -97,6 +98,26 @@
     <section class="card">
       <h2>Parameters</h2>
       <div class="grid">
+        <label>Mode
+          <select id="crt-mode">
+            <option value="hunt" selected>Hunt every setup</option>
+            <option value="ny_open">New York open, one a day</option>
+          </select>
+        </label>
+        <label>Max concurrent
+          <input type="number" id="crt-max-concurrent" value="0" min="0" max="500" step="1"
+            title="0 hunts with no cap. A positive number is how many trades may be open at the same time." />
+        </label>
+        <label id="crt-ny-tz-wrap">New York timezone
+          <input id="crt-ny-tz" value="America/New_York" />
+        </label>
+        <label id="crt-ny-open-wrap">New York open
+          <span class="hm">
+            <input type="number" id="crt-ny-h" value="8" min="0" max="23" title="Hour the session opens. The range candle is the one that closes then." />
+            <span class="hm-colon">:</span>
+            <input type="number" id="crt-ny-m" value="0" min="0" max="59" title="Minute" />
+          </span>
+        </label>
         <label>Symbol
           <select id="crt-symbol">${symbols}</select>
         </label>
@@ -210,9 +231,6 @@
         </label>
         <label>Max hold (HTF bars)
           <input type="number" id="crt-hold" value="48" min="1" max="200" step="1" />
-        </label>
-        <label>Max open
-          <input type="number" id="crt-max-open" value="2" min="1" max="10" step="1" />
         </label>
         <label class="chk">Session filter
           <input type="checkbox" id="crt-session"
@@ -343,7 +361,11 @@
       runner_mode: $("crt-runner").value,
       runner_rr: num("crt-runner-rr", 2),
       max_hold_htf: num("crt-hold", 48),
-      max_open: num("crt-max-open", 2),
+      max_concurrent: num("crt-max-concurrent", 0),
+      mode: $("crt-mode").value || "hunt",
+      ny_timezone: ($("crt-ny-tz") && $("crt-ny-tz").value) || "America/New_York",
+      ny_open_hour: num("crt-ny-h", 8),
+      ny_open_minute: num("crt-ny-m", 0),
       session_enabled: !!($("crt-session") && $("crt-session").checked),
       session_start_hour: num("crt-sess-sh", 8),
       session_start_minute: num("crt-sess-sm", 0),
@@ -473,16 +495,25 @@
     poll().catch(function (e) { console.warn(e); });
   }
 
+  function syncMode() {
+    const ny = $("crt-mode") && $("crt-mode").value === "ny_open";
+    ["crt-ny-tz-wrap", "crt-ny-open-wrap"].forEach(function (id) {
+      const el = $(id);
+      if (el) el.hidden = !ny;
+    });
+  }
+
   function wire() {
     ensureTab();
     loadForm();
+    syncMode();
     lastSymbol = formSymbol($("crt-symbol") && $("crt-symbol").value);
     wireTabs();
     loadRules();
     FORM_IDS.forEach(function (id) {
       const el = $(id);
       if (!el) return;
-      el.addEventListener("change", scheduleSave);
+      el.addEventListener("change", function () { scheduleSave(); syncMode(); });
       el.addEventListener("input", scheduleSave);
     });
     if ($("crt-symbol")) $("crt-symbol").addEventListener("change", onSymbolChange);

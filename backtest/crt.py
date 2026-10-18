@@ -1,9 +1,12 @@
-"""Candle Range Theory, trading with the trend.
+"""Candle Range Theory.
 
-The model is the trend continuation from the CRT video, not the one-hour
-candle before New York (that one fades the trend). An agent can run it from
-the README section "CRT tab" or from GET /api/crt/rules without reading this
-file. This module is the rules.
+Hunt mode checks every higher-timeframe candle that fits the trend. There is
+no daily limit. max_concurrent 0 leaves every fill open; a positive number
+caps how many trades are active. ny_open mode uses only the candle that
+closes at New York open, one attempt that day.
+
+An agent can run it from the README section "CRT tab" or from GET /api/crt/rules
+without reading this file. This module is the rules.
 
 Higher timeframe, default 60 minutes:
 
@@ -36,7 +39,7 @@ Lower timeframe, default 5 minutes:
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time as dt_time, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 from zoneinfo import ZoneInfo
 
@@ -54,6 +57,7 @@ FVG_ENTRIES = ("proximal", "ce", "distal")
 SL_MODES = ("beyond_fvg", "beyond_sweep", "fixed")
 RUNNER_MODES = ("swing", "rr")
 SIDES = ("both", "long", "short")
+MODES = ("hunt", "ny_open")
 
 _EPS = 1e-9
 
@@ -81,7 +85,11 @@ class CrtParams:
     runner_mode: str = "swing"
     runner_rr: float = 2.0
     max_hold_htf: int = 48
-    max_open: int = 2
+    max_concurrent: int = 0
+    mode: str = "hunt"
+    ny_timezone: str = "America/New_York"
+    ny_open_hour: int = 8
+    ny_open_minute: int = 0
     session_enabled: bool = False
     session_start_hour: int = 8
     session_start_minute: int = 0
@@ -144,7 +152,22 @@ def normalize_params(params: CrtParams) -> CrtParams:
     if params.runner_rr <= 0:
         raise ValueError("runner_rr must be positive")
     params.max_hold_htf = max(1, min(200, int(params.max_hold_htf or 1)))
-    params.max_open = max(1, min(10, int(params.max_open or 1)))
+    params.max_concurrent = int(params.max_concurrent or 0)
+    if params.max_concurrent < 0:
+        params.max_concurrent = 0
+    if params.max_concurrent > 500:
+        raise ValueError("max_concurrent must be 0 (no cap) or at most 500")
+    params.mode = str(params.mode or "hunt").strip().lower()
+    if params.mode not in MODES:
+        raise ValueError("mode must be hunt or ny_open")
+    params.ny_timezone = str(params.ny_timezone or "America/New_York").strip() or "America/New_York"
+    require_zone(params.ny_timezone)
+    params.ny_open_hour = int(params.ny_open_hour)
+    params.ny_open_minute = int(params.ny_open_minute)
+    if not 0 <= params.ny_open_hour <= 23:
+        raise ValueError("ny_open_hour must be from 0 to 23")
+    if not 0 <= params.ny_open_minute <= 59:
+        raise ValueError("ny_open_minute must be from 0 to 59")
     params.session_enabled = bool(params.session_enabled)
     for name in (
         "session_start_hour",
@@ -212,7 +235,14 @@ def rules_for(params: Optional[CrtParams] = None) -> List[Dict[str, str]]:
             + _num(p.sl_buffer_pts)
             + " points beyond the far side of the gap. A sweep-close entry uses the sweep wick instead."
         )
-    if p.runner_mode == "swing":
+    if p.mode == "ny_open" and p.runner_mode == "swing":
+        runner = (
+            "The rest targets the other side of the New York candle when that price is beyond the partial. "
+            "Otherwise it targets "
+            + _num(p.runner_rr)
+            + " R."
+        )
+    elif p.runner_mode == "swing":
         runner = (
             "The rest targets the far side of the dealing range when that price is beyond the partial. "
             "Otherwise it targets "
@@ -221,6 +251,38 @@ def rules_for(params: Optional[CrtParams] = None) -> List[Dict[str, str]]:
         )
     else:
         runner = "The rest targets " + _num(p.runner_rr) + " R."
+    if p.max_concurrent <= 0:
+        concurrent = "max_concurrent is 0, so there is no cap. Every setup that fills can be open together."
+    else:
+        concurrent = (
+            "At most "
+            + str(p.max_concurrent)
+            + " trades are open at once. A new signal is skipped until one of them exits."
+        )
+    if p.mode == "ny_open":
+        mode_body = (
+            "New York open. One attempt per day: the "
+            + str(p.htf_min)
+            + "m candle that closes at "
+            + _clock(p.ny_open_hour, p.ny_open_minute)
+            + " "
+            + p.ny_timezone
+            + ". The next candle is the only sweep. A sweep of the low is a long. A sweep of the high is a short. "
+            + "Trend, discount, and premium are not used."
+        )
+        range_body = "The range is that one candle, whatever its color. No other candle that day is a candidate."
+        premium_body = "Ignored in New York open mode."
+    else:
+        mode_body = (
+            "Hunt. Every higher-timeframe candle that passes the trend rules is a candidate. "
+            + "There is no daily limit. Set mode to ny_open for the single candle that closes at New York open."
+        )
+        range_body = (
+            "Uptrend range candles are bearish and stay inside the dealing range. "
+            "Downtrend range candles are bullish and stay inside it. "
+            "Only the next candle may sweep."
+        )
+        premium_body = pd
     if p.session_enabled:
         session = (
             "On. The sweep candle must open from "
@@ -238,29 +300,32 @@ def rules_for(params: Optional[CrtParams] = None) -> List[Dict[str, str]]:
         if p.skip_news
         else "Off. The gold news calendar is not applied."
     )
+    trend_body = (
+        "Dealing range is the highest high and lowest low of the last "
+        + str(p.structure_bars)
+        + " closed "
+        + str(p.htf_min)
+        + "m bars before the range candle. Up when the low prints before the high. "
+        + "Down when the high prints first. The same bar is chop and is skipped."
+    )
+    if p.mode == "ny_open":
+        trend_body = "Not used. New York open does not require a dealing-range trend."
     return [
         {
+            "id": "mode",
+            "body": mode_body,
+        },
+        {
             "id": "trend",
-            "body": (
-                "Dealing range is the highest high and lowest low of the last "
-                + str(p.structure_bars)
-                + " closed "
-                + str(p.htf_min)
-                + "m bars before the range candle. Up when the low prints before the high. "
-                + "Down when the high prints first. The same bar is chop and is skipped."
-            ),
+            "body": trend_body,
         },
         {
             "id": "range",
-            "body": (
-                "Uptrend range candles are bearish and stay inside the dealing range. "
-                "Downtrend range candles are bullish and stay inside it. "
-                "Only the next candle may sweep."
-            ),
+            "body": range_body,
         },
         {
             "id": "premium",
-            "body": pd,
+            "body": premium_body,
         },
         {
             "id": "sweep",
@@ -298,9 +363,7 @@ def rules_for(params: Optional[CrtParams] = None) -> List[Dict[str, str]]:
                 "Still-open trades flatten after "
                 + str(p.max_hold_htf)
                 + " higher-timeframe bars, or when the candles end. "
-                + "At most "
-                + str(p.max_open)
-                + " trades are open at once."
+                + concurrent
             ),
         },
         {
@@ -319,7 +382,7 @@ def rules_for(params: Optional[CrtParams] = None) -> List[Dict[str, str]]:
                 + "m OHLC, built from 5m candles. "
                 + "A bar that trades both the stop and a target takes the stop. "
                 + "A gap through a limit fills at the open. "
-                + "This is the trend model. It does not fade the hour before New York."
+                + "Hunt checks every candle. New York open checks one candle a day."
             ),
         },
     ]
@@ -339,13 +402,15 @@ def trend_of(window: Sequence[Candle]) -> Optional[str]:
 
 
 def cap_open(
-    rows: Sequence[Dict[str, Any]], max_open: int
+    rows: Sequence[Dict[str, Any]], max_concurrent: int
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """Keep trades in entry order while fewer than max_open are still on."""
+    """Keep trades in entry order. 0 leaves every fill. A positive cap skips the extras."""
+    limit = int(max_concurrent or 0)
+    ordered = sorted(rows, key=lambda r: (str(r.get("entry_ts") or ""), int(r.get("_seq") or 0)))
+    if limit <= 0:
+        return list(ordered), []
     kept: List[Dict[str, Any]] = []
     skipped: List[Dict[str, Any]] = []
-    limit = max(1, int(max_open))
-    ordered = sorted(rows, key=lambda r: (str(r.get("entry_ts") or ""), int(r.get("_seq") or 0)))
     for row in ordered:
         entry = str(row.get("entry_ts") or "")
         live = sum(1 for prev in kept if str(prev.get("exit_ts") or "") > entry)
@@ -354,6 +419,141 @@ def cap_open(
             continue
         kept.append(row)
     return kept, skipped
+
+
+def ny_side(rng: Candle, nxt: Candle) -> Tuple[Optional[str], Optional[str]]:
+    """Side and sweep state for the New York candle. Direction comes from the sweep."""
+    up = _sweep_state(rng, nxt, "UP")
+    down = _sweep_state(rng, nxt, "DOWN")
+    if up == "ok" and down == "ok":
+        up_depth = float(rng.low) - float(nxt.low)
+        down_depth = float(nxt.high) - float(rng.high)
+        return ("UP" if up_depth >= down_depth else "DOWN"), "ok"
+    if up == "ok":
+        return "UP", "ok"
+    if down == "ok":
+        return "DOWN", "ok"
+    if up == "close_through" or down == "close_through":
+        return ("UP" if up == "close_through" else "DOWN"), "close_through"
+    if up == "no_reclaim" or down == "no_reclaim":
+        return ("UP" if up == "no_reclaim" else "DOWN"), "no_reclaim"
+    return None, None
+
+
+def ny_range_index(
+    htf: Sequence[Candle], day: date, params: CrtParams, ny_tz: ZoneInfo
+) -> Optional[int]:
+    """Index of the higher-timeframe bar that closes at New York open on this date."""
+    local = datetime.combine(
+        day, dt_time(params.ny_open_hour, params.ny_open_minute), tzinfo=ny_tz
+    )
+    want = int(to_utc(local).timestamp())
+    step = int(params.htf_min) * 60
+    nearest: Optional[int] = None
+    nearest_gap: Optional[int] = None
+    for i in range(len(htf) - 1):
+        close_ts = int(to_utc(htf[i].close_time).timestamp())
+        if close_ts == want:
+            return i
+        gap = want - close_ts
+        if 0 < gap < step and (nearest_gap is None or gap < nearest_gap):
+            nearest = i
+            nearest_gap = gap
+    return nearest
+
+
+def _ny_dates(htf: Sequence[Candle], ny_tz: ZoneInfo) -> List[date]:
+    if not htf:
+        return []
+    first = to_utc(htf[0].open_time).astimezone(ny_tz).date()
+    last = to_utc(htf[-1].close_time).astimezone(ny_tz).date()
+    days: List[date] = []
+    day = first
+    while day <= last:
+        days.append(day)
+        day += timedelta(days=1)
+    return days
+
+
+def _record_attempt(
+    *,
+    rows: List[Dict[str, Any]],
+    skips: List[Dict[str, Any]],
+    seq: int,
+    side: str,
+    rng: Candle,
+    nxt: Candle,
+    struct_high: float,
+    struct_low: float,
+    ltf: Sequence[Candle],
+    groups: Dict[int, List[int]],
+    params: CrtParams,
+    ps: float,
+    tz: ZoneInfo,
+    d0: Optional[date],
+    d1: Optional[date],
+    symbol: str,
+    sweep_state: str,
+) -> int:
+    day, weekday = _local_day(nxt.open_time, tz)
+    if not _in_window(day, d0, d1):
+        return seq
+    if sweep_state == "close_through":
+        skips.append(_skip(day, weekday, "close_through", side, "The next candle closed through the range."))
+        return seq
+    if sweep_state == "no_reclaim":
+        skips.append(_skip(day, weekday, "no_reclaim", side, "The sweep did not close back inside the range."))
+        return seq
+    if not _in_session(params, nxt.open_time, tz):
+        skips.append(_skip(day, weekday, "session", side, "The sweep candle opened outside the session."))
+        return seq
+    if params.skip_news and is_news_day(day):
+        skips.append(_skip(day, weekday, "news", side, "Gold news calendar."))
+        return seq
+    ltf_idxs = groups.get(_bucket(nxt.open_time, params.htf_min), [])
+    made = _orders_for_setup(
+        side=side,
+        rng=rng,
+        nxt=nxt,
+        ltf=ltf,
+        ltf_idxs=ltf_idxs,
+        struct_high=struct_high,
+        struct_low=struct_low,
+        params=params,
+        ps=ps,
+    )
+    if not made:
+        skips.append(_skip(day, weekday, "no_fill", side, "No entry before the order expired."))
+        return seq
+    filled_any = False
+    for order in made:
+        trade = _simulate(order, ltf, params, ps)
+        if trade is None:
+            continue
+        entry_day, entry_wd = _local_day(trade["entry_bar"].open_time, tz)
+        if not _in_window(entry_day, d0, d1):
+            continue
+        filled_any = True
+        seq += 1
+        rows.append(
+            _trade_row(
+                trade,
+                seq=seq,
+                day=entry_day,
+                weekday=entry_wd,
+                side=side,
+                rng=rng,
+                nxt=nxt,
+                struct_high=struct_high,
+                struct_low=struct_low,
+                params=params,
+                ps=ps,
+                symbol=symbol,
+            )
+        )
+    if not filled_any:
+        skips.append(_skip(day, weekday, "no_fill", side, "The level was not traded before it expired."))
+    return seq
 
 
 def run_crt_on_candles(
@@ -382,104 +582,110 @@ def run_crt_on_candles(
     groups = _groups(ltf, params.htf_min)
     rows: List[Dict[str, Any]] = []
     skips: List[Dict[str, Any]] = []
-    total = max(0, len(htf) - params.structure_bars - 1)
+    total = max(0, len(htf) - 1)
     seq = 0
     cancelled = False
-    for i in range(params.structure_bars, len(htf) - 1):
-        if stop and stop():
-            cancelled = True
-            break
-        if progress and (i == params.structure_bars or (i % 24) == 0):
-            progress(i - params.structure_bars, total)
-        window = htf[i - params.structure_bars : i]
-        trend = trend_of(window)
-        if trend is None:
-            continue
-        side = "UP" if trend == "up" else "DOWN"
-        if params.side_filter == "long" and side != "UP":
-            continue
-        if params.side_filter == "short" and side != "DOWN":
-            continue
-        rng = htf[i]
-        nxt = htf[i + 1]
-        struct_high = max(c.high for c in window)
-        struct_low = min(c.low for c in window)
-        if struct_high - struct_low <= _EPS:
-            continue
-        if not _range_ok(rng, side, struct_high, struct_low, params, ps):
-            continue
-        sweep_state = _sweep_state(rng, nxt, side)
-        if sweep_state is None:
-            continue
-        day, weekday = _local_day(nxt.open_time, tz)
-        if not _in_window(day, d0, d1):
-            continue
-        if sweep_state == "close_through":
-            skips.append(_skip(day, weekday, "close_through", side, "The next candle closed through the range."))
-            continue
-        if sweep_state == "no_reclaim":
-            skips.append(_skip(day, weekday, "no_reclaim", side, "The sweep did not close back inside the range."))
-            continue
-        if not _in_session(params, nxt.open_time, tz):
-            skips.append(_skip(day, weekday, "session", side, "The sweep candle opened outside the session."))
-            continue
-        if params.skip_news and is_news_day(day):
-            skips.append(_skip(day, weekday, "news", side, "Gold news calendar."))
-            continue
-        ltf_idxs = groups.get(_bucket(nxt.open_time, params.htf_min), [])
-        made = _orders_for_setup(
-            side=side,
-            rng=rng,
-            nxt=nxt,
-            ltf=ltf,
-            ltf_idxs=ltf_idxs,
-            struct_high=struct_high,
-            struct_low=struct_low,
-            params=params,
-            ps=ps,
-        )
-        if not made:
-            skips.append(_skip(day, weekday, "no_fill", side, "No entry before the order expired."))
-            continue
-        filled_any = False
-        for order in made:
-            trade = _simulate(order, ltf, params, ps)
-            if trade is None:
+    if params.mode == "ny_open":
+        ny_tz = require_zone(params.ny_timezone)
+        days = _ny_dates(htf, ny_tz)
+        for n, day in enumerate(days):
+            if stop and stop():
+                cancelled = True
+                break
+            if progress and (n % 5) == 0:
+                progress(n, max(len(days), 1))
+            index = ny_range_index(htf, day, params, ny_tz)
+            if index is None:
                 continue
-            entry_day, entry_wd = _local_day(trade["entry_bar"].open_time, tz)
-            if not _in_window(entry_day, d0, d1):
+            rng = htf[index]
+            nxt = htf[index + 1]
+            span = (rng.high - rng.low) / ps
+            if params.min_range_pts > 0 and span + 1e-6 < params.min_range_pts:
                 continue
-            filled_any = True
-            seq += 1
-            rows.append(
-                _trade_row(
-                    trade,
-                    seq=seq,
-                    day=entry_day,
-                    weekday=entry_wd,
-                    side=side,
-                    rng=rng,
-                    nxt=nxt,
-                    struct_high=struct_high,
-                    struct_low=struct_low,
-                    params=params,
-                    ps=ps,
-                    symbol=symbol,
-                )
+            side, sweep_state = ny_side(rng, nxt)
+            if side is None or sweep_state is None:
+                continue
+            if params.side_filter == "long" and side != "UP":
+                continue
+            if params.side_filter == "short" and side != "DOWN":
+                continue
+            seq = _record_attempt(
+                rows=rows,
+                skips=skips,
+                seq=seq,
+                side=side,
+                rng=rng,
+                nxt=nxt,
+                struct_high=float(rng.high),
+                struct_low=float(rng.low),
+                ltf=ltf,
+                groups=groups,
+                params=params,
+                ps=ps,
+                tz=tz,
+                d0=d0,
+                d1=d1,
+                symbol=symbol,
+                sweep_state=sweep_state,
             )
-        if not filled_any:
-            skips.append(_skip(day, weekday, "no_fill", side, "The level was not traded before it expired."))
+    else:
+        total = max(0, len(htf) - params.structure_bars - 1)
+        for i in range(params.structure_bars, len(htf) - 1):
+            if stop and stop():
+                cancelled = True
+                break
+            if progress and (i == params.structure_bars or (i % 24) == 0):
+                progress(i - params.structure_bars, total)
+            window = htf[i - params.structure_bars : i]
+            trend = trend_of(window)
+            if trend is None:
+                continue
+            side = "UP" if trend == "up" else "DOWN"
+            if params.side_filter == "long" and side != "UP":
+                continue
+            if params.side_filter == "short" and side != "DOWN":
+                continue
+            rng = htf[i]
+            nxt = htf[i + 1]
+            struct_high = max(c.high for c in window)
+            struct_low = min(c.low for c in window)
+            if struct_high - struct_low <= _EPS:
+                continue
+            if not _range_ok(rng, side, struct_high, struct_low, params, ps):
+                continue
+            sweep_state = _sweep_state(rng, nxt, side)
+            if sweep_state is None:
+                continue
+            seq = _record_attempt(
+                rows=rows,
+                skips=skips,
+                seq=seq,
+                side=side,
+                rng=rng,
+                nxt=nxt,
+                struct_high=struct_high,
+                struct_low=struct_low,
+                ltf=ltf,
+                groups=groups,
+                params=params,
+                ps=ps,
+                tz=tz,
+                d0=d0,
+                d1=d1,
+                symbol=symbol,
+                sweep_state=sweep_state,
+            )
     if progress:
         progress(total, total)
-    kept, crowded = cap_open(rows, params.max_open)
+    kept, crowded = cap_open(rows, params.max_concurrent)
     for row in crowded:
         skips.append(
             _skip(
                 _as_date(row.get("local_date")) or date.min,
                 str(row.get("weekday") or ""),
-                "max_open",
+                "max_concurrent",
                 str(row.get("side") or ""),
-                "Another trade was still open.",
+                "max_concurrent trades were already open.",
             )
         )
     for row in kept:
@@ -1064,24 +1270,44 @@ def _story(row: Dict[str, Any], params: CrtParams, symbol: str, ps: float) -> st
             + _num(params.partial_rr)
             + " R)."
         )
+    swept = "CRL" if row["side"] == "UP" else "CRH"
+    if params.mode == "ny_open":
+        lead = (
+            "New York open. The "
+            + str(params.htf_min)
+            + "m candle that closed at "
+            + _clock(params.ny_open_hour, params.ny_open_minute)
+            + " "
+            + params.ny_timezone
+            + " is the day's only range, CRH "
+            + px(row["crh"])
+            + " CRL "
+            + px(row["crl"])
+            + ". "
+        )
+    else:
+        lead = (
+            trend
+            + " dealing range "
+            + px(row["structure_low"])
+            + "–"
+            + px(row["structure_high"])
+            + ". The "
+            + color
+            + " "
+            + str(params.htf_min)
+            + "m candle is the range, CRH "
+            + px(row["crh"])
+            + " CRL "
+            + px(row["crl"])
+            + "."
+            + where
+            + " "
+        )
     return (
-        trend
-        + " dealing range "
-        + px(row["structure_low"])
-        + "–"
-        + px(row["structure_high"])
-        + ". The "
-        + color
-        + " "
-        + str(params.htf_min)
-        + "m candle is the range, CRH "
-        + px(row["crh"])
-        + " CRL "
-        + px(row["crl"])
-        + "."
-        + where
-        + " The next candle swept "
-        + ("CRL" if row["side"] == "UP" else "CRH")
+        lead
+        + "The next candle swept "
+        + swept
         + " and closed back inside. "
         + how
         + " Stop "

@@ -87,7 +87,7 @@ def _params(**overrides) -> CrtParams:
         runner_mode="swing",
         runner_rr=2,
         max_hold_htf=12,
-        max_open=2,
+        max_concurrent=0,
         session_enabled=False,
         skip_news=False,
         side_filter="both",
@@ -253,6 +253,8 @@ def test_cap_open_keeps_the_earlier_fill():
     kept, skipped = cap_open(rows, 1)
     assert len(kept) == 1 and kept[0]["_seq"] == 1
     assert len(skipped) == 1
+    kept, skipped = cap_open(rows, 0)
+    assert len(kept) == 2 and skipped == []
 
 
 def test_rules_name_the_sweep_and_the_partial():
@@ -260,7 +262,84 @@ def test_rules_name_the_sweep_and_the_partial():
     assert "closes back inside" in rules["sweep"]
     assert "0.5" in rules["partial"]
     assert "1 R" in rules["partial"]
-    assert "New York" in rules["fills"]
+    assert "no cap" in rules["hold"]
+    assert "ny_open" in rules["mode"]
+    ny = {row["id"]: row["body"] for row in rules_for(_params(mode="ny_open"))}
+    assert "One attempt per day" in ny["mode"]
+    assert "08:00" in ny["mode"]
+    assert "America/New_York" in ny["mode"]
+
+
+def _ny_bars():
+    """15m candle closing 08:00 New York on 3 Mar 2025 (13:00 UTC), then the sweep hour."""
+    start = datetime(2025, 3, 3, 12, 45, tzinfo=timezone.utc)
+    legs = [
+        (2010, 2020, 2005, 2015),
+        (2015, 2016, 2000, 2012),
+        (2012, 2014, 2008, 2011),
+        (2011, 2012, 1990, 2005),
+        (2005, 2008, 2002, 2006),
+        (2006, 2010, 2004, 2010),
+        (2010, 2011, 2005, 2008),
+    ]
+    out = []
+    for i, (o, h, l, c) in enumerate(legs):
+        opened = start + timedelta(minutes=5 * i)
+        out.append(
+            Candle(
+                open_time=opened,
+                close_time=opened + timedelta(minutes=5),
+                open=float(o),
+                high=float(h),
+                low=float(l),
+                close=float(c),
+                is_closed=True,
+            )
+        )
+    return out
+
+
+def test_ny_open_takes_one_attempt_and_ignores_the_morning_trend():
+    candles = _pack(_UP) + _ny_bars()
+    raw = run_crt_on_candles(
+        candles,
+        symbol="XAUUSD",
+        params=_params(mode="ny_open", entry_mode="sweep_close", sl_mode="beyond_sweep"),
+        date_from="2025-03-01",
+        date_to="2025-03-10",
+    )
+    assert len(raw["rows"]) == 1
+    row = raw["rows"][0]
+    assert row["side"] == "UP"
+    assert row["entry"] == 2010
+    assert row["sl"] == 1990
+    assert row["crh"] == 2020
+    assert row["crl"] == 2000
+    assert "New York open" in row["story"]
+    assert "one" not in row["story"].lower() or "only range" in row["story"]
+
+
+def test_ny_open_close_through_does_not_fall_back_to_another_candle():
+    bars = _ny_bars()
+    # Last 5m of the sweep hour closes through the range low.
+    bars[5] = Candle(
+        open_time=bars[5].open_time,
+        close_time=bars[5].close_time,
+        open=2006,
+        high=2010,
+        low=1992,
+        close=1995,
+        is_closed=True,
+    )
+    raw = run_crt_on_candles(
+        _pack(_UP) + bars,
+        symbol="XAUUSD",
+        params=_params(mode="ny_open", entry_mode="sweep_close"),
+        date_from="2025-03-01",
+        date_to="2025-03-10",
+    )
+    assert raw["rows"] == []
+    assert raw["skips"][0]["reason"] == "close_through"
 
 
 def test_normalize_rejects_a_timeframe_the_engine_cannot_build():

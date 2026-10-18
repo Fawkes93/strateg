@@ -104,7 +104,7 @@ PYTHONPATH=. .venv/bin/python -m pytest tests/test_asia_box_rules.py -q
 
 ## CRT tab
 
-Candle Range Theory **with the trend**. Not the one-hour candle before New York (that fade trades against the trend). Not Asia box, not Overnight break.
+Candle Range Theory. Two modes. **Hunt** checks every higher-timeframe candle that fits the trend rules, with no daily limit. **New York open** uses only the candle that closes at New York open, one attempt that day. Not Asia box, not Overnight break.
 
 Engine `backtest/crt.py`. Form `web/crt.js` (injected tab). Saved runs `results/crt.sqlite` plus a `crt_*.json` file. Catalog http://127.0.0.1:8765/crt/results — click a trade for the chart. The chart is the entry timeframe (default 5m) with the dealing range, CRH, CRL, the fair value gap, the stop, the 1:1 partial, and the runner.
 
@@ -117,7 +117,8 @@ Engine `backtest/crt.py`. Form `web/crt.js` (injected tab). Saved runs `results/
 3. Only the **next** candle can sweep. A long must trade below the range low and **close back inside** (above the low, at or below the high). A close through the low is `close_through` and is not a trade. Shorts mirror that on the range high. The candle has to close first.
 4. Default entry is `fvg`: a lower-timeframe gap whose first candle is the sweep wick or later. The limit is the near edge (`fvg_entry=proximal`). It goes live only after both the sweep candle and the gap's third candle have closed. `fvg_select=extreme` keeps the most discounted gap (lowest for a long). `all` stacks up to `max_fvgs` (default 2). `sweep_close` buys or sells the sweep candle's close instead.
 5. Stop default `beyond_fvg` sits `sl_buffer_pts` beyond the far side of the gap. `partial_frac` 0.5 closes at `partial_rr` 1. The rest targets the far side of the dealing range (`runner_mode=swing`) when that price is beyond the partial, otherwise `runner_rr`. A partial then a stop is a scratch at 0.5 and 1 R (`exit_reason=partial_sl`, `pts` about 0).
-6. Still-open trades flatten after `max_hold_htf` higher-timeframe bars. At most `max_open` trades are open. Fills are OHLC on the entry timeframe, built from 5m candles. A bar that trades the stop and a target takes the stop.
+6. Still-open trades flatten after `max_hold_htf` higher-timeframe bars. `max_concurrent` is how many trades may be open at once. **0 means no cap** — every setup that fills stays on. A positive number skips a new signal until one of those trades exits (`skip_reasons.max_concurrent`).
+7. `mode=ny_open` ignores the trend and the discount/premium filter. The range is the higher-timeframe candle that closes at `ny_open_hour:ny_open_minute` in `ny_timezone` (default 08:00 America/New_York). The next candle is the only sweep that day. A sweep of the low is a long. A sweep of the high is a short. With `runner_mode=swing` the runner is the other side of that candle when it sits beyond the partial. Fills are still OHLC on the entry timeframe. A bar that trades the stop and a target takes the stop.
 
 Hours are `timezone` (default `Europe/Bucharest`). Session filter and the gold news calendar are off unless the checkboxes are on. The news calendar is the gold calendar on every symbol. Point fields (`min_leg_pts`, `min_range_pts`, `sl_buffer_pts`, `sl_fixed_pts`, `cost_pts`) divide by 10 when the form moves from gold or bitcoin onto an FX major, and multiply by 10 going back. 1 point is $0.01 on gold and bitcoin and 0.1 pip on FX majors.
 
@@ -133,7 +134,20 @@ curl -s -X POST http://127.0.0.1:8765/api/crt/run \
 # result.sqlite_id is the catalog run. A row with id opens /crt/chart?trade=<id>
 ```
 
-`skip_reasons` counts `close_through`, `no_reclaim`, `no_fill`, `session`, `news`, and `max_open`. Zero-trade runs are written as JSON and are not inserted into SQLite.
+`skip_reasons` counts `close_through`, `no_reclaim`, `no_fill`, `session`, `news`, and `max_concurrent`. Zero-trade runs are written as JSON and are not inserted into SQLite.
+
+```bash
+# Hunt, no cap on overlapping trades.
+curl -s -X POST http://127.0.0.1:8765/api/crt/run \
+  -H 'content-type: application/json' \
+  -d '{"symbol":"XAUUSD","date_from":"2025-03-01","date_to":"2025-04-01","mode":"hunt","max_concurrent":0}'
+
+# One New York attempt per day. 0 still lets yesterday's runner stay open.
+# Set max_concurrent to 1 to refuse a new day while a trade is open.
+curl -s -X POST http://127.0.0.1:8765/api/crt/run \
+  -H 'content-type: application/json' \
+  -d '{"symbol":"EURUSD","date_from":"2025-03-01","date_to":"2025-04-01","mode":"ny_open","max_concurrent":1,"ny_timezone":"America/New_York","ny_open_hour":8,"ny_open_minute":0}'
+```
 
 ```bash
 PYTHONPATH=. .venv/bin/python -m pytest tests/test_crt.py tests/test_crt_store.py -q

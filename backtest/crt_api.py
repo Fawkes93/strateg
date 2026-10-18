@@ -48,7 +48,11 @@ class CrtRunRequest(BaseModel):
     runner_mode: str = "swing"
     runner_rr: float = 2.0
     max_hold_htf: int = 48
-    max_open: int = 2
+    max_concurrent: int = 0
+    mode: str = "hunt"
+    ny_timezone: str = "America/New_York"
+    ny_open_hour: int = 8
+    ny_open_minute: int = 0
     session_enabled: bool = False
     session_start_hour: int = 8
     session_start_minute: int = 0
@@ -86,7 +90,11 @@ def _params_from_body(body: CrtRunRequest) -> CrtJobParams:
         runner_mode=str(body.runner_mode or "swing"),
         runner_rr=float(body.runner_rr),
         max_hold_htf=int(body.max_hold_htf),
-        max_open=int(body.max_open or 1),
+        max_concurrent=int(body.max_concurrent or 0),
+        mode=str(body.mode or "hunt"),
+        ny_timezone=str(body.ny_timezone or "America/New_York"),
+        ny_open_hour=int(body.ny_open_hour),
+        ny_open_minute=int(body.ny_open_minute),
         session_enabled=bool(body.session_enabled),
         session_start_hour=int(body.session_start_hour),
         session_start_minute=int(body.session_start_minute),
@@ -275,7 +283,11 @@ def crt_rules():
             "runner_mode": params.runner_mode,
             "runner_rr": params.runner_rr,
             "max_hold_htf": params.max_hold_htf,
-            "max_open": params.max_open,
+            "max_concurrent": params.max_concurrent,
+            "mode": params.mode,
+            "ny_timezone": params.ny_timezone,
+            "ny_open_hour": params.ny_open_hour,
+            "ny_open_minute": params.ny_open_minute,
         },
         "run": "POST /api/crt/run with JSON. Poll GET /api/crt until running is false. "
         "Trades with an id open at /crt/chart?trade=<id>. The catalog is /crt/results.",
