@@ -102,6 +102,44 @@ PYTHONPATH=. .venv/bin/python -m pytest tests/test_asia_box_rules.py -q
 `tests/test_asia_box.py` turns the three session gates off in its helper so the older tests stay about setup geometry.
 
 
+## CRT tab
+
+Candle Range Theory **with the trend**. Not the one-hour candle before New York (that fade trades against the trend). Not Asia box, not Overnight break.
+
+Engine `backtest/crt.py`. Form `web/crt.js` (injected tab). Saved runs `results/crt.sqlite` plus a `crt_*.json` file. Catalog http://127.0.0.1:8765/crt/results — click a trade for the chart. The chart is the entry timeframe (default 5m) with the dealing range, CRH, CRL, the fair value gap, the stop, the 1:1 partial, and the runner.
+
+`GET /api/crt/rules` returns the sentences for the **default** params. A finished run also stores those sentences under `rules`, rebuilt from the params that were posted. Read that. Do not guess from the video.
+
+**What a trade is**
+
+1. Dealing range = highest high and lowest low of the last `structure_bars` higher-timeframe bars (default 24 × 60m) before the range candle. Up when the low prints before the high. Down when the high prints first. The same bar is chop and is skipped.
+2. Uptrend: the range candle is bearish and stays inside that range. Downtrend: it is bullish and stays inside. With `pd_filter` on (default), a long closes at or below `equilibrium` (0.5, discount) and a short closes at or above it (premium).
+3. Only the **next** candle can sweep. A long must trade below the range low and **close back inside** (above the low, at or below the high). A close through the low is `close_through` and is not a trade. Shorts mirror that on the range high. The candle has to close first.
+4. Default entry is `fvg`: a lower-timeframe gap whose first candle is the sweep wick or later. The limit is the near edge (`fvg_entry=proximal`). It goes live only after both the sweep candle and the gap's third candle have closed. `fvg_select=extreme` keeps the most discounted gap (lowest for a long). `all` stacks up to `max_fvgs` (default 2). `sweep_close` buys or sells the sweep candle's close instead.
+5. Stop default `beyond_fvg` sits `sl_buffer_pts` beyond the far side of the gap. `partial_frac` 0.5 closes at `partial_rr` 1. The rest targets the far side of the dealing range (`runner_mode=swing`) when that price is beyond the partial, otherwise `runner_rr`. A partial then a stop is a scratch at 0.5 and 1 R (`exit_reason=partial_sl`, `pts` about 0).
+6. Still-open trades flatten after `max_hold_htf` higher-timeframe bars. At most `max_open` trades are open. Fills are OHLC on the entry timeframe, built from 5m candles. A bar that trades the stop and a target takes the stop.
+
+Hours are `timezone` (default `Europe/Bucharest`). Session filter and the gold news calendar are off unless the checkboxes are on. The news calendar is the gold calendar on every symbol. Point fields (`min_leg_pts`, `min_range_pts`, `sl_buffer_pts`, `sl_fixed_pts`, `cost_pts`) divide by 10 when the form moves from gold or bitcoin onto an FX major, and multiply by 10 going back. 1 point is $0.01 on gold and bitcoin and 0.1 pip on FX majors.
+
+The video's chart examples are EURUSD, one hour for the range and five minutes for the gap. The same POST works on any symbol in the dropdown. XAUUSD 5m packs are already on disk for 2019-12 through 2026-09. EURUSD will download.
+
+```bash
+# date_to is exclusive. Restart python webapp.py if /api/crt/rules is 404.
+curl -s http://127.0.0.1:8765/api/crt/rules
+curl -s -X POST http://127.0.0.1:8765/api/crt/run \
+  -H 'content-type: application/json' \
+  -d '{"symbol":"XAUUSD","date_from":"2025-03-01","date_to":"2025-04-01","timezone":"Europe/Bucharest"}'
+# poll GET /api/crt until running is false
+# result.sqlite_id is the catalog run. A row with id opens /crt/chart?trade=<id>
+```
+
+`skip_reasons` counts `close_through`, `no_reclaim`, `no_fill`, `session`, `news`, and `max_open`. Zero-trade runs are written as JSON and are not inserted into SQLite.
+
+```bash
+PYTHONPATH=. .venv/bin/python -m pytest tests/test_crt.py tests/test_crt_store.py -q
+```
+
+
 ## Asia liquidity tab
 
 Injected tab (`web/asia_liquidity.js`) for the **Dual-Mode Asia Liquidity Engine** — not the Asia box fib tab above, and not Overnight break.

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CRT chart — Strateg</title>
+  <link rel="stylesheet" href="/static/app.css?v=20261016a" />
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body class="ab-page">
+  <header class="top">
+    <div>
+      <h1 id="crt-title">CRT trade</h1>
+      <p class="sub" id="crt-sub">Loading…</p>
+    </div>
+    <div class="ab-chart-actions">
+      <label class="ab-btn ab-magnet-toggle" title="Drag across the chart to read the point distance, price change, and how many bars. Esc clears the box. On by default.">
+        <input type="checkbox" id="crt-measure" checked />
+        Measure
+      </label>
+      <label class="ab-btn ab-magnet-toggle" title="Snap the crosshair to the candle open, high, low, or close.">
+        <input type="checkbox" id="crt-magnet" />
+        Magnet
+      </label>
+      <a id="crt-back" class="ab-back" href="/crt/results">← Catalog</a>
+    </div>
+  </header>
+  <section class="card ab-chart-card">
+    <div class="ab-chart-wrap">
+      <div id="crt-chart" class="ab-chart"></div>
+      <svg id="crt-measure-svg" class="ab-measure-svg" aria-hidden="true"></svg>
+      <div id="crt-measure-label" class="ab-measure-label" hidden></div>
+    </div>
+    <p class="hint" id="crt-decision"></p>
+    <ul id="crt-legend" class="ab-legend"></ul>
+  </section>
+  <script src="/static/crt_chart.js?v=20261018a"></script>
+</body>
+</html>

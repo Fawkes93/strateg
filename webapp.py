@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local Strateg research UI — single run + overnight sweep + overnight break + Asia liquidity."""
+"""Local Strateg research UI — single run + overnight sweep + overnight break + CRT."""
 
 from __future__ import annotations
 
@@ -99,14 +99,17 @@ from backtest.stop_scalper_jobs import (
 from backtest.asia_box_api import router as asia_box_router
 from backtest.overnight_api import router as overnight_router
 from backtest.asia_pullback_api import router as asia_pullback_router
+from backtest.crt_api import router as crt_router
 
 WEB_DIR = ROOT / "web"
 app = FastAPI(title="Strateg", version="0.5", docs_url="/docs")
 app.include_router(asia_box_router)
 app.include_router(overnight_router)
 app.include_router(asia_pullback_router)
+app.include_router(crt_router)
 
 _ASIA_PULLBACK_SCRIPT = '<script src="/static/asia_pullback.js?v=20261016a"></script>'
+_CRT_SCRIPT = '<script src="/static/crt.js?v=20261018a"></script>'
 
 
 class RunRequest(BaseModel):
@@ -1243,6 +1246,8 @@ def index():
     html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
     if "asia_pullback.js" not in html:
         html = html.replace("</body>", _ASIA_PULLBACK_SCRIPT + "\n</body>")
+    if "crt.js" not in html:
+        html = html.replace("</body>", _CRT_SCRIPT + "\n</body>")
     return HTMLResponse(html)
 
 

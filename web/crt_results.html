@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CRT results — Strateg</title>
+  <link rel="stylesheet" href="/static/app.css?v=20261016a" />
+</head>
+<body class="ab-page">
+  <header class="top">
+    <div>
+      <h1>CRT catalog</h1>
+      <p class="sub">Candle-range runs saved in SQLite. Click a trade to open its chart.</p>
+    </div>
+    <a class="ab-back" href="/">← Strateg</a>
+  </header>
+
+  <section class="card">
+    <h2>Filters</h2>
+    <div class="grid ab-filters">
+      <label>Run
+        <select id="crt-run"><option value="">All runs</option></select>
+        <span class="field-help">Each finished CRT run with at least one trade.</span>
+      </label>
+      <div class="ab-run-actions">
+        <button type="button" class="ab-btn ab-btn-danger" id="crt-delete-run" disabled>Delete run</button>
+      </div>
+      <label>Side
+        <select id="crt-side">
+          <option value="">Both</option>
+          <option value="UP">UP</option>
+          <option value="DOWN">DOWN</option>
+        </select>
+        <span class="field-help">UP is the long after a sweep of the range low.</span>
+      </label>
+      <label>Entry
+        <select id="crt-entry">
+          <option value="">Any</option>
+          <option value="fvg">Fair value gap</option>
+          <option value="sweep_close">Sweep close</option>
+        </select>
+      </label>
+      <label>Exit
+        <select id="crt-exit">
+          <option value="">Any</option>
+          <option value="tp">tp</option>
+          <option value="sl">sl</option>
+          <option value="partial_sl">partial_sl</option>
+          <option value="time">time</option>
+        </select>
+        <span class="field-help">partial_sl closed half at 1:1 and the rest at the stop.</span>
+      </label>
+      <label>From
+        <input type="date" id="crt-from" />
+      </label>
+      <label>To
+        <input type="date" id="crt-to" />
+        <span class="field-help">Stops before this local date.</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Summary</h2>
+    <p id="crt-summary" class="hint">Loading…</p>
+  </section>
+
+  <section class="card">
+    <h2>Trades</h2>
+    <p class="table-note">Click a row. The chart opens in a new tab with the dealing range, CRH, CRL, the gap, the stop, 1:1, and the runner.</p>
+    <div class="table-wrap">
+      <table class="ab-table" id="crt-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Local</th>
+            <th>Side</th>
+            <th>Entry</th>
+            <th>Fill</th>
+            <th>Exit</th>
+            <th>Pts</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+  <script src="/static/dates.js?v=20260926j"></script>
+  <script src="/static/crt_results.js?v=20261018a"></script>
+</body>
+</html>
