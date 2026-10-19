@@ -1,7 +1,7 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   const STORAGE_KEY = "strateg_crt_v1";
-  const POINT_FIELDS = ["crt-min-leg", "crt-min-range", "crt-sl-buf", "crt-sl-fixed", "crt-cost"];
+  const POINT_FIELDS = ["crt-min-leg", "crt-min-range", "crt-min-sl", "crt-sl-buf", "crt-sl-fixed", "crt-cost", "crt-commission"];
   let pollTimer = null;
   let saveTimer = null;
   let lastSymbol = "XAUUSD";
@@ -12,11 +12,11 @@
     "crt-htf", "crt-ltf", "crt-struct", "crt-pd", "crt-eq",
     "crt-min-leg", "crt-min-range", "crt-side",
     "crt-entry", "crt-fvg-select", "crt-fvg-entry", "crt-max-fvg", "crt-fvg-wait",
-    "crt-sl-mode", "crt-sl-buf", "crt-sl-fixed",
+    "crt-sl-mode", "crt-sl-buf", "crt-min-sl", "crt-sl-fixed",
     "crt-partial", "crt-partial-rr", "crt-runner", "crt-runner-rr", "crt-hold", "crt-max-concurrent",
     "crt-mode", "crt-ny-tz", "crt-ny-h", "crt-ny-m",
     "crt-session", "crt-sess-sh", "crt-sess-sm", "crt-sess-eh", "crt-sess-em",
-    "crt-news", "crt-cost", "crt-force",
+    "crt-news", "crt-cost", "crt-commission", "crt-force",
   ];
 
   function formSymbol(symbol) {
@@ -159,13 +159,13 @@
             title="0.5 is the middle of the dealing range." />
         </label>
         <label>Min leg (pts)
-          <input type="number" id="crt-min-leg" value="0" min="0" step="10" title="0 = any dealing range. Points use the symbol scale." />
+          <input type="number" id="crt-min-leg" value="0" min="0" step="10" title="0 = any dealing range. Used in Hunt and in New York open. Points use the symbol scale." />
         </label>
         <label>Min range candle (pts)
           <input type="number" id="crt-min-range" value="0" min="0" step="10" title="0 = any candle. High minus low of the range candle." />
         </label>
-        <label>Side
-          <select id="crt-side">
+        <label>Direction
+          <select id="crt-side" title="Long only, short only, or both. On gold the longs have carried the book. On EURUSD the shorts have.">
             <option value="both" selected>Both</option>
             <option value="long">Longs only</option>
             <option value="short">Shorts only</option>
@@ -208,6 +208,10 @@
         </label>
         <label>Stop buffer (pts)
           <input type="number" id="crt-sl-buf" value="0" min="0" step="1" />
+        </label>
+        <label>Min stop (pts)
+          <input type="number" id="crt-min-sl" value="0" min="0" step="1"
+            title="Skip a fill whose stop, after the buffer, is tighter than this. 0 allows any stop that is beyond the entry." />
         </label>
         <label>Fixed stop (pts)
           <input type="number" id="crt-sl-fixed" value="300" min="1" step="10" />
@@ -254,8 +258,13 @@
           <input type="checkbox" id="crt-news"
             title="Uses the gold news calendar on every symbol. Off by default." />
         </label>
-        <label>Cost (pts)
-          <input type="number" id="crt-cost" value="0" min="0" step="1" title="Subtracted from each trade. 0 = no cost." />
+        <label>Spread (pts)
+          <input type="number" id="crt-cost" value="0" min="0" step="1"
+            title="Charged once, on the entry. Not charged again on the partial or the runner." />
+        </label>
+        <label>Commission / fill (pts)
+          <input type="number" id="crt-commission" value="0" min="0" step="1"
+            title="Charged on the entry and on each exit. A partial and a runner are two exits, so this is paid three times. 0 = no commission." />
         </label>
       </div>
       <div class="actions">
@@ -347,7 +356,8 @@
       equilibrium: num("crt-eq", 0.5),
       min_leg_pts: num("crt-min-leg", 0),
       min_range_pts: num("crt-min-range", 0),
-      side_filter: $("crt-side").value,
+      min_sl_pts: num("crt-min-sl", 0),
+      direction: $("crt-side").value,
       entry_mode: $("crt-entry").value,
       fvg_select: $("crt-fvg-select").value,
       fvg_entry: $("crt-fvg-entry").value,
@@ -373,6 +383,7 @@
       session_end_minute: num("crt-sess-em", 0),
       skip_news: !!($("crt-news") && $("crt-news").checked),
       cost_pts: num("crt-cost", 0),
+      commission_pts: num("crt-commission", 0),
       force_download: !!($("crt-force") && $("crt-force").checked),
     };
   }
@@ -397,6 +408,24 @@
     scheduleSave();
   }
 
+  function pfText(block) {
+    if (!block) return "—";
+    var pf = block.profit_factor == null ? "—" : block.profit_factor;
+    return (block.trades || 0) + " PF " + pf;
+  }
+
+  function yearDirection(result) {
+    var bits = [];
+    var dirs = result.by_direction || {};
+    if (dirs.long || dirs.short) {
+      bits.push("long " + pfText(dirs.long) + " · short " + pfText(dirs.short));
+    }
+    (result.by_year || []).forEach(function (year) {
+      bits.push(year.year + " " + pfText(year));
+    });
+    return bits.length ? " · " + bits.join(" · ") : "";
+  }
+
   function render(state) {
     const prog = (state && state.progress) || {};
     const bar = $("crt-bar");
@@ -417,7 +446,8 @@
         (result.skip_reasons && result.skip_reasons.invalidated_before_fill
           ? " · invalidated before fill " + result.skip_reasons.invalidated_before_fill
           : "") +
-        (result.saved_to ? " · " + result.saved_to : "");
+        (result.saved_to ? " · " + result.saved_to : "") +
+        yearDirection(result);
     }
     const hero = $("crt-hero");
     if (hero) {
@@ -427,6 +457,8 @@
         ["PF", pf],
         ["Sum pts", result.sum_pts],
         ["Scratches", result.scratches],
+        ["Max DD", result.max_dd_pts],
+        ["Closed DD", result.max_dd_closed_pts],
       ].map(function (pair) {
         return "<div><span>" + pair[0] + "</span><strong>" + (pair[1] == null ? "—" : pair[1]) + "</strong></div>";
       }).join("");

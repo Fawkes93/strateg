@@ -8,11 +8,15 @@ from backtest.candles import Candle
 from backtest.crt import (
     CrtParams,
     cap_open,
+    mark_drawdown,
     normalize_params,
     rules_for,
     run_crt_on_candles,
+    summarize_crt,
+    trade_charges,
     trend_of,
 )
+from backtest.crt_api import CrtRunRequest, _params_from_body
 
 
 def _bar(minute_offset: int, o, h, l, c) -> Candle:
@@ -90,7 +94,7 @@ def _params(**overrides) -> CrtParams:
         max_concurrent=0,
         session_enabled=False,
         skip_news=False,
-        side_filter="both",
+        direction="both",
         cost_pts=0,
     )
     base.update(overrides)
@@ -379,3 +383,118 @@ def test_normalize_rejects_a_timeframe_the_engine_cannot_build():
         normalize_params(CrtParams(htf_min=15, ltf_min=15))
     with pytest.raises(ValueError):
         normalize_params(CrtParams(htf_min=30, ltf_min=60))
+
+
+def test_min_sl_skips_a_tighter_stop_and_keeps_the_boundary():
+    # beyond_fvg stop on the standard long is 300 points (2010 to 2007).
+    kept = _run(_UP, min_sl_pts=290)
+    assert len(kept["rows"]) == 1
+    assert kept["rows"][0]["pts"] == 1150
+    skipped = _run(_UP, min_sl_pts=310)
+    assert skipped["rows"] == []
+    assert skipped["skip_reasons"].get("min_sl") == 1
+
+
+def test_spread_is_once_and_commission_is_per_fill():
+    assert trade_charges(True, 0.5, 10, 4) == 10 + 4 * 3
+    assert trade_charges(False, 0.5, 10, 4) == 10 + 4 * 2
+    raw = _run(_UP, cost_pts=10, commission_pts=4)
+    assert raw["rows"][0]["pts"] == 1150 - 22
+
+
+def test_direction_keeps_one_side():
+    assert _run(_UP, direction="short")["rows"] == []
+    assert len(_run(_UP, direction="long")["rows"]) == 1
+    params = _params_from_body(CrtRunRequest(side_filter="short"))
+    assert params.direction == "short"
+    assert _params_from_body(CrtRunRequest(direction="long")).direction == "long"
+
+
+def test_ny_open_respects_min_leg():
+    candles = _pack(_UP) + _ny_bars()
+    params = dict(mode="ny_open", entry_mode="sweep_close", sl_mode="beyond_sweep")
+    wide = run_crt_on_candles(
+        candles,
+        symbol="XAUUSD",
+        params=_params(min_leg_pts=1000, **params),
+        date_from="2025-03-01",
+        date_to="2025-03-10",
+    )
+    tight = run_crt_on_candles(
+        candles,
+        symbol="XAUUSD",
+        params=_params(min_leg_pts=100000, **params),
+        date_from="2025-03-01",
+        date_to="2025-03-10",
+    )
+    assert len(wide["rows"]) == 1
+    assert tight["rows"] == []
+
+
+def test_mark_to_market_drawdown_sees_the_open_dip():
+    start = datetime(2025, 3, 3, 10, 0, tzinfo=timezone.utc)
+    bars = []
+    closes = [100.0, 90.0, 110.0]
+    for i, close in enumerate(closes):
+        opened = start + timedelta(minutes=5 * i)
+        bars.append(
+            Candle(
+                open_time=opened,
+                close_time=opened + timedelta(minutes=5),
+                open=close,
+                high=close,
+                low=close,
+                close=close,
+                is_closed=True,
+            )
+        )
+    # 1000 pts up from 100 to 110 at 0.01. The middle close is 1000 pts under water.
+    trade = {
+        "side": "UP",
+        "entry": 100.0,
+        "partial_px": 110.0,
+        "pts": 1000.0,
+        "partial_hit": False,
+        "entry_ts": bars[0].open_time.isoformat(),
+        "exit_ts": bars[2].open_time.isoformat(),
+        "partial_ts": None,
+    }
+    dd = mark_drawdown([trade], bars, _params(cost_pts=0, commission_pts=0), 0.01)
+    assert dd["max_dd_closed_pts"] == 0
+    assert dd["max_dd_pts"] == 1000
+
+
+def test_results_split_pf_by_year_and_direction():
+    rows = [
+        {"local_date": "2025-03-03", "side": "UP", "pts": 100.0, "exit_reason": "tp", "entry_reason": "fvg"},
+        {"local_date": "2025-06-02", "side": "DOWN", "pts": -50.0, "exit_reason": "sl", "entry_reason": "fvg"},
+        {"local_date": "2026-01-05", "side": "UP", "pts": 40.0, "exit_reason": "tp", "entry_reason": "fvg"},
+    ]
+    out = summarize_crt(
+        {"rows": rows, "skips": [], "symbol": "XAU/USD", "point_size": 0.01, "ticks": 0},
+        _params(),
+        symbol="XAUUSD",
+    )
+    assert [row["year"] for row in out["by_year"]] == ["2025", "2026"]
+    assert out["by_year"][0]["profit_factor"] == 2.0
+    assert out["by_direction"]["long"]["trades"] == 2
+    assert out["by_direction"]["long"]["sum_pts"] == 140
+    assert out["by_direction"]["short"]["profit_factor"] == 0.0
+
+
+def test_stdio_reconfigure_accepts_an_arrow():
+    import io
+    import sys
+
+    from webapp import _configure_stdio
+
+    raw = io.BytesIO()
+    wrapper = io.TextIOWrapper(raw, encoding="cp1252", errors="strict")
+    sys.stdout = wrapper
+    try:
+        _configure_stdio()
+        sys.stdout.write("→\n")
+        sys.stdout.flush()
+        assert "→" in raw.getvalue().decode("utf-8")
+    finally:
+        sys.stdout = sys.__stdout__

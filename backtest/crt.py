@@ -72,6 +72,7 @@ class CrtParams:
     equilibrium: float = 0.5
     min_leg_pts: float = 0.0
     min_range_pts: float = 0.0
+    min_sl_pts: float = 0.0
     entry_mode: str = "fvg"
     fvg_select: str = "extreme"
     fvg_entry: str = "proximal"
@@ -96,8 +97,9 @@ class CrtParams:
     session_end_hour: int = 17
     session_end_minute: int = 0
     skip_news: bool = False
-    side_filter: str = "both"
+    direction: str = "both"
     cost_pts: float = 0.0
+    commission_pts: float = 0.0
 
 
 def normalize_params(params: CrtParams) -> CrtParams:
@@ -121,6 +123,7 @@ def normalize_params(params: CrtParams) -> CrtParams:
         raise ValueError("equilibrium must be from 0.05 to 0.95")
     params.min_leg_pts = max(0.0, float(params.min_leg_pts or 0))
     params.min_range_pts = max(0.0, float(params.min_range_pts or 0))
+    params.min_sl_pts = max(0.0, float(params.min_sl_pts or 0))
     params.entry_mode = str(params.entry_mode or "fvg").strip().lower()
     if params.entry_mode not in ENTRY_MODES:
         raise ValueError("entry_mode must be fvg or sweep_close")
@@ -186,10 +189,13 @@ def normalize_params(params: CrtParams) -> CrtParams:
             raise ValueError(name + " must be from 0 to 59")
         setattr(params, name, value)
     params.skip_news = bool(params.skip_news)
-    params.side_filter = str(params.side_filter or "both").strip().lower()
-    if params.side_filter not in SIDES:
-        raise ValueError("side_filter must be both, long, or short")
+    legacy = getattr(params, "side_filter", None)
+    chosen = params.direction if params.direction else legacy
+    params.direction = str(chosen or "both").strip().lower()
+    if params.direction not in SIDES:
+        raise ValueError("direction must be both, long, or short")
     params.cost_pts = max(0.0, float(params.cost_pts or 0))
+    params.commission_pts = max(0.0, float(params.commission_pts or 0))
     return params
 
 
@@ -239,6 +245,12 @@ def rules_for(params: Optional[CrtParams] = None) -> List[Dict[str, str]]:
         " If price trades through that stop before the limit fills, the order is cancelled "
         "(invalidated_before_fill). A stop on the wrong side of the fill is cancelled too."
     )
+    if p.min_sl_pts > 0:
+        stop += (
+            " A fill whose stop is tighter than "
+            + _num(p.min_sl_pts)
+            + " points, measured after the buffer, is skipped (min_sl)."
+        )
     if p.mode == "ny_open" and p.runner_mode == "swing":
         runner = (
             "The rest targets the other side of the New York candle when that price is beyond the partial. "
@@ -272,7 +284,7 @@ def rules_for(params: Optional[CrtParams] = None) -> List[Dict[str, str]]:
             + " "
             + p.ny_timezone
             + ". The next candle is the only sweep. A sweep of the low is a long. A sweep of the high is a short. "
-            + "Trend, discount, and premium are not used."
+            + "Trend and discount are not used. min_leg_pts still applies to the dealing range in front of that candle."
         )
         range_body = "The range is that one candle, whatever its color. No other candle that day is a candidate."
         premium_body = "Ignored in New York open mode."
@@ -368,6 +380,9 @@ def rules_for(params: Optional[CrtParams] = None) -> List[Dict[str, str]]:
                 + str(p.max_hold_htf)
                 + " higher-timeframe bars, or when the candles end. "
                 + concurrent
+                + " direction is "
+                + p.direction
+                + ". cost_pts is the spread, charged once on the entry. commission_pts is charged on the entry and on each exit fill. A partial and a runner are two exits."
             ),
         },
         {
@@ -530,13 +545,15 @@ def _record_attempt(
         skips.append(_skip(day, weekday, "no_fill", side, "No entry before the order expired."))
         return seq
     filled_any = False
-    invalidated = False
+    skip_reason = None
     for order in made:
         trade = _simulate(order, ltf, params, ps)
         if trade is None:
             continue
-        if trade.get("_invalidated"):
-            invalidated = True
+        reason = trade.get("_skip")
+        if reason:
+            if skip_reason != "invalidated_before_fill":
+                skip_reason = reason
             continue
         entry_day, entry_wd = _local_day(trade["entry_bar"].open_time, tz)
         if not _in_window(entry_day, d0, d1):
@@ -560,18 +577,14 @@ def _record_attempt(
             )
         )
     if not filled_any:
-        if invalidated:
-            skips.append(
-                _skip(
-                    day,
-                    weekday,
-                    "invalidated_before_fill",
-                    side,
-                    "Price traded through the stop before the limit filled.",
-                )
-            )
+        if skip_reason == "min_sl":
+            detail = "Stop distance was below min_sl_pts."
+        elif skip_reason == "invalidated_before_fill":
+            detail = "Price traded through the stop before the limit filled."
         else:
-            skips.append(_skip(day, weekday, "no_fill", side, "The level was not traded before it expired."))
+            skip_reason = "no_fill"
+            detail = "The level was not traded before it expired."
+        skips.append(_skip(day, weekday, skip_reason, side, detail))
     return seq
 
 
@@ -624,9 +637,9 @@ def run_crt_on_candles(
             side, sweep_state = ny_side(rng, nxt)
             if side is None or sweep_state is None:
                 continue
-            if params.side_filter == "long" and side != "UP":
+            if not _direction_ok(params, side):
                 continue
-            if params.side_filter == "short" and side != "DOWN":
+            if not _leg_ok(htf, index, params, ps):
                 continue
             seq = _record_attempt(
                 rows=rows,
@@ -660,9 +673,7 @@ def run_crt_on_candles(
             if trend is None:
                 continue
             side = "UP" if trend == "up" else "DOWN"
-            if params.side_filter == "long" and side != "UP":
-                continue
-            if params.side_filter == "short" and side != "DOWN":
+            if not _direction_ok(params, side):
                 continue
             rng = htf[i]
             nxt = htf[i + 1]
@@ -714,6 +725,7 @@ def run_crt_on_candles(
         "skips": skips,
         "skipped": len(skips),
         "skip_reasons": _skip_counts(skips),
+        **_mark_drawdown(kept, ltf, params, ps),
         "cancelled": cancelled,
         "ticks": len(fine),
         "symbol": reaktor_symbol(symbol),
@@ -745,6 +757,10 @@ def summarize_crt(
         "skipped": len(skips),
         "skip_reasons": _skip_counts(skips),
         "by_month": _by_month(rows),
+        "by_year": _by_year(rows),
+        "by_direction": _by_direction(rows),
+        "max_dd_pts": raw.get("max_dd_pts", 0.0),
+        "max_dd_closed_pts": raw.get("max_dd_closed_pts", 0.0),
         "ticks": int(raw.get("ticks") or 0),
     }
     out.update(stats)
@@ -752,6 +768,37 @@ def summarize_crt(
 
 
 # --- setup geometry -------------------------------------------------------
+
+
+def _direction_ok(params: CrtParams, side: str) -> bool:
+    want = str(params.direction or "both")
+    if want == "long":
+        return side == "UP"
+    if want == "short":
+        return side == "DOWN"
+    return True
+
+
+def _dealing_leg_pts(htf: Sequence[Candle], index: int, params: CrtParams, ps: float) -> Optional[float]:
+    """Points from the lowest low to the highest high of the structure window before index."""
+    if ps <= 0 or index < int(params.structure_bars):
+        return None
+    window = htf[index - int(params.structure_bars) : index]
+    if len(window) < int(params.structure_bars):
+        return None
+    hi = max(c.high for c in window)
+    lo = min(c.low for c in window)
+    return (hi - lo) / ps
+
+
+def _leg_ok(htf: Sequence[Candle], index: int, params: CrtParams, ps: float) -> bool:
+    """min_leg_pts applies in Hunt and in New York open. 0 disables it."""
+    if params.min_leg_pts <= 0:
+        return True
+    leg = _dealing_leg_pts(htf, index, params, ps)
+    if leg is None:
+        return False
+    return leg + 1e-6 >= float(params.min_leg_pts)
 
 
 def _range_ok(
@@ -1016,8 +1063,20 @@ def _wick_index(
 # --- fills ----------------------------------------------------------------
 
 
-def _invalidated() -> Dict[str, Any]:
-    return {"_invalidated": True}
+def _skipped(reason: str) -> Dict[str, Any]:
+    return {"_skip": reason}
+
+
+def _stop_distance_pts(entry: float, sl: float, ps: float) -> float:
+    if ps <= 0:
+        return 0.0
+    return abs(float(entry) - float(sl)) / ps
+
+
+def _stop_too_tight(entry: float, sl: float, params: CrtParams, ps: float) -> bool:
+    if params.min_sl_pts <= 0:
+        return False
+    return _stop_distance_pts(entry, sl, ps) + 1e-9 < float(params.min_sl_pts)
 
 
 def _simulate(
@@ -1029,30 +1088,34 @@ def _simulate(
     entry = float(order["entry"])
     sl = float(order["sl"])
     if not _stop_protects(side, entry, sl):
-        return _invalidated()
+        return _skipped("invalidated_before_fill")
     if order["market"]:
         i = order["active_i"]
         bar = bars[i]
         imm = _adverse_on_bar(side, bar, entry, sl)
         fill = entry
-        if imm is not None and not _stop_protects(side, fill, sl):
-            return _invalidated()
+        if not _stop_protects(side, fill, sl):
+            return _skipped("invalidated_before_fill")
+        if _stop_too_tight(fill, sl, params, ps):
+            return _skipped("min_sl")
         return _finish(order, bars, i, fill, imm, params, ps)
     last = min(int(order["expire_i"]), len(bars))
     watch_i = int(order.get("watch_i") if order.get("watch_i") is not None else order["active_i"])
     watch_i = max(0, min(watch_i, int(order["active_i"])))
     for i in range(watch_i, int(order["active_i"])):
         if _touched_stop(side, bars[i], sl):
-            return _invalidated()
+            return _skipped("invalidated_before_fill")
     for i in range(int(order["active_i"]), last):
         got = _limit_fill(side, bars[i], entry, sl)
         if got is None:
             if _touched_stop(side, bars[i], sl):
-                return _invalidated()
+                return _skipped("invalidated_before_fill")
             continue
         fill, imm = got
         if not _stop_protects(side, fill, sl):
-            return _invalidated()
+            return _skipped("invalidated_before_fill")
+        if _stop_too_tight(fill, sl, params, ps):
+            return _skipped("min_sl")
         return _finish(order, bars, i, fill, imm, params, ps)
     return None
 
@@ -1159,7 +1222,17 @@ def _finish(
             partial_bar = exit_bar
     if reason == "sl" and partial_hit:
         reason = "partial_sl"
-    pts = _pnl(side, fill, float(exit_px), partial, partial_hit, params.partial_frac, ps, params.cost_pts)
+    pts = _pnl(
+        side,
+        fill,
+        float(exit_px),
+        partial,
+        partial_hit,
+        params.partial_frac,
+        ps,
+        params.cost_pts,
+        params.commission_pts,
+    )
     wick_i = order.get("wick_i")
     sweep_bar = bars[wick_i] if isinstance(wick_i, int) and 0 <= wick_i < len(bars) else bar
     return {
@@ -1209,6 +1282,46 @@ def _targets(
     return None, None, partial_hit
 
 
+def trade_charges(partial_hit: bool, frac: float, cost_pts: float, commission_pts: float) -> float:
+    """Spread once on the entry, plus commission on every fill.
+
+    The entry is one fill. A single exit is the second. When part of the
+    position is closed at the partial and the rest runs, those are two exits,
+    so the commission is paid three times.
+    """
+    fills = 1.0
+    if partial_hit and 1e-12 < float(frac) < 1.0 - 1e-12:
+        fills += 2.0
+    else:
+        fills += 1.0
+    return float(cost_pts) + float(commission_pts) * fills
+
+
+def _charges_while_open(partial_locked: bool, frac: float, cost_pts: float, commission_pts: float) -> float:
+    """Entry spread and entry commission, plus the partial exit once it has filled."""
+    paid = float(cost_pts) + float(commission_pts)
+    if partial_locked and 1e-12 < float(frac) < 1.0 - 1e-12:
+        paid += float(commission_pts)
+    return paid
+
+
+def _gross_pts(
+    side: str,
+    entry: float,
+    price: float,
+    partial: float,
+    partial_hit: bool,
+    frac: float,
+    ps: float,
+) -> float:
+    sign = 1.0 if side == "UP" else -1.0
+    full = sign * (float(price) - float(entry)) / ps
+    if frac <= 1e-12 or not partial_hit:
+        return full
+    part = sign * (float(partial) - float(entry)) / ps
+    return float(frac) * part + (1.0 - float(frac)) * full
+
+
 def _pnl(
     side: str,
     entry: float,
@@ -1217,14 +1330,11 @@ def _pnl(
     partial_hit: bool,
     frac: float,
     ps: float,
-    cost: float,
+    cost_pts: float,
+    commission_pts: float,
 ) -> float:
-    sign = 1.0 if side == "UP" else -1.0
-    full = sign * (exit_px - entry) / ps
-    if frac <= 1e-12 or not partial_hit:
-        return round(full - cost, 2)
-    part = sign * (partial - entry) / ps
-    return round(frac * part + (1.0 - frac) * full - cost, 2)
+    gross = _gross_pts(side, entry, exit_px, partial, partial_hit, frac, ps)
+    return round(gross - trade_charges(partial_hit, frac, cost_pts, commission_pts), 2)
 
 
 def _trade_row(
@@ -1408,6 +1518,129 @@ def _stats(rows: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
         "profit_factor": round(gp / gl, 2) if gl > 1e-9 else None,
         "sum_pts": round(sum(float(r["pts"]) for r in rows), 1),
     }
+
+
+def _by_year(rows: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    buckets: Dict[str, List[Dict[str, Any]]] = {}
+    for row in rows:
+        key = str(row.get("local_date") or "")[:4]
+        if len(key) < 4:
+            continue
+        buckets.setdefault(key, []).append(row)
+    out = []
+    for key in sorted(buckets):
+        stats = _stats(buckets[key])
+        stats["year"] = key
+        out.append(stats)
+    return out
+
+
+def _by_direction(rows: Sequence[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    longs = [row for row in rows if row.get("side") == "UP"]
+    shorts = [row for row in rows if row.get("side") == "DOWN"]
+    return {"long": _stats(longs), "short": _stats(shorts)}
+
+
+def _stamp(iso: Optional[str]) -> Optional[int]:
+    if not iso:
+        return None
+    try:
+        return int(datetime.fromisoformat(str(iso)).timestamp())
+    except ValueError:
+        return None
+
+
+def _open_mark_pts(trade: Dict[str, Any], mark: float, params: CrtParams, ps: float, partial_locked: bool) -> float:
+    gross = _gross_pts(
+        str(trade.get("side") or "UP"),
+        float(trade.get("entry") or 0),
+        mark,
+        float(trade.get("partial_px") or trade.get("entry") or 0),
+        partial_locked,
+        float(params.partial_frac),
+        ps,
+    )
+    paid = _charges_while_open(partial_locked, float(params.partial_frac), params.cost_pts, params.commission_pts)
+    return gross - paid
+
+
+def mark_drawdown(
+    rows: Sequence[Dict[str, Any]],
+    bars: Sequence[Candle],
+    params: CrtParams,
+    ps: float,
+) -> Dict[str, float]:
+    """Closed-trade drawdown, and mark-to-market drawdown that includes open P&L.
+
+    Both are peak-to-trough in points, starting from zero. The mark uses each
+    lower-timeframe close. A partial that has already filled stays locked, and
+    the runner is marked. Costs already paid are included. At the exit bar the
+    trade contributes its final pts.
+    """
+    closed = 0.0
+    closed_peak = 0.0
+    closed_dd = 0.0
+    for row in sorted(rows, key=lambda r: (str(r.get("exit_ts") or ""), int(r.get("_seq") or 0))):
+        closed += float(row.get("pts") or 0)
+        if closed > closed_peak:
+            closed_peak = closed
+        closed_dd = max(closed_dd, closed_peak - closed)
+
+    if not rows or not bars:
+        return {"max_dd_pts": round(closed_dd, 2), "max_dd_closed_pts": round(closed_dd, 2)}
+
+    opens = [int(to_utc(bar.open_time).timestamp()) for bar in bars]
+    indexed: List[Tuple[int, int, Dict[str, Any]]] = []
+    first = len(bars)
+    last = 0
+    for trade in rows:
+        entry_at = _stamp(trade.get("entry_ts"))
+        exit_at = _stamp(trade.get("exit_ts"))
+        if entry_at is None or exit_at is None:
+            continue
+        entry_i = None
+        exit_i = None
+        for i, opened in enumerate(opens):
+            if entry_i is None and opened >= entry_at:
+                entry_i = i
+            if opened <= exit_at:
+                exit_i = i
+        if entry_i is None or exit_i is None:
+            continue
+        indexed.append((entry_i, exit_i, trade))
+        first = min(first, entry_i)
+        last = max(last, exit_i)
+    if not indexed:
+        return {"max_dd_pts": round(closed_dd, 2), "max_dd_closed_pts": round(closed_dd, 2)}
+
+    peak = 0.0
+    max_dd = 0.0
+    for i in range(first, last + 1):
+        stamp = opens[i]
+        mark = float(bars[i].close)
+        equity = 0.0
+        for entry_i, exit_i, trade in indexed:
+            if i < entry_i:
+                continue
+            if i >= exit_i:
+                equity += float(trade.get("pts") or 0)
+                continue
+            partial_at = _stamp(trade.get("partial_ts"))
+            locked = bool(trade.get("partial_hit")) and partial_at is not None and stamp >= partial_at
+            equity += _open_mark_pts(trade, mark, params, ps, locked)
+        if equity > peak:
+            peak = equity
+        max_dd = max(max_dd, peak - equity)
+    return {"max_dd_pts": round(max_dd, 2), "max_dd_closed_pts": round(closed_dd, 2)}
+
+
+def _mark_drawdown(
+    rows: Sequence[Dict[str, Any]],
+    bars: Sequence[Candle],
+    params: CrtParams,
+    ps: float,
+) -> Dict[str, float]:
+    return mark_drawdown(rows, bars, params, ps)
 
 
 def _by_month(rows: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:

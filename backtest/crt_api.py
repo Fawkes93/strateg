@@ -35,6 +35,7 @@ class CrtRunRequest(BaseModel):
     equilibrium: float = 0.5
     min_leg_pts: float = 0.0
     min_range_pts: float = 0.0
+    min_sl_pts: float = 0.0
     entry_mode: str = "fvg"
     fvg_select: str = "extreme"
     fvg_entry: str = "proximal"
@@ -59,8 +60,10 @@ class CrtRunRequest(BaseModel):
     session_end_hour: int = 17
     session_end_minute: int = 0
     skip_news: bool = False
-    side_filter: str = "both"
+    direction: Optional[str] = None
+    side_filter: Optional[str] = None
     cost_pts: float = 0.0
+    commission_pts: float = 0.0
     force_download: bool = False
 
 
@@ -77,6 +80,7 @@ def _params_from_body(body: CrtRunRequest) -> CrtJobParams:
         equilibrium=float(body.equilibrium),
         min_leg_pts=float(body.min_leg_pts or 0),
         min_range_pts=float(body.min_range_pts or 0),
+        min_sl_pts=float(body.min_sl_pts or 0),
         entry_mode=str(body.entry_mode or "fvg"),
         fvg_select=str(body.fvg_select or "extreme"),
         fvg_entry=str(body.fvg_entry or "proximal"),
@@ -101,8 +105,9 @@ def _params_from_body(body: CrtRunRequest) -> CrtJobParams:
         session_end_hour=int(body.session_end_hour),
         session_end_minute=int(body.session_end_minute),
         skip_news=bool(body.skip_news),
-        side_filter=str(body.side_filter or "both"),
+        direction=str(body.direction or body.side_filter or "both"),
         cost_pts=float(body.cost_pts or 0),
+        commission_pts=float(body.commission_pts or 0),
         force_download=bool(body.force_download),
     )
 
@@ -285,6 +290,11 @@ def crt_rules():
             "max_hold_htf": params.max_hold_htf,
             "max_concurrent": params.max_concurrent,
             "mode": params.mode,
+            "direction": params.direction,
+            "min_sl_pts": params.min_sl_pts,
+            "min_leg_pts": params.min_leg_pts,
+            "cost_pts": params.cost_pts,
+            "commission_pts": params.commission_pts,
             "ny_timezone": params.ny_timezone,
             "ny_open_hour": params.ny_open_hour,
             "ny_open_minute": params.ny_open_minute,
