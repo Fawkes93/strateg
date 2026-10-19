@@ -107,6 +107,37 @@ def _run(legs, **overrides):
     )
 
 
+def test_beyond_sweep_normal_fill_keeps_the_wick_stop():
+    raw = _run(_UP, sl_mode="beyond_sweep")
+    assert len(raw["rows"]) == 1
+    row = raw["rows"][0]
+    assert row["entry"] == 2010
+    assert row["sl"] == 2000
+    assert row["exit_reason"] == "tp"
+    assert row["exit"] == 2030
+    assert row["pts"] == 1500
+    assert raw["skip_reasons"].get("invalidated_before_fill", 0) == 0
+
+
+def test_beyond_sweep_break_before_fill_is_skipped():
+    # Same morning impulse and bearish range as _UP. The sweep wick is 2000 and
+    # the close is back inside, but no gap exists yet. The next bar trades
+    # through 2000. A later gap would have filled at 2010; that order is cancelled.
+    legs = list(_UP[:15]) + [
+        (2006, 2008, 2000, 2004),
+        (2004, 2007, 2003, 2006),
+        (2006, 2009, 2005, 2008),
+        (2008, 2009, 1994, 1996),
+        (1996, 2002, 1995, 2001),
+        (2001, 2012, 2000, 2011),
+        (2011, 2016, 2010, 2014),
+        (2014, 2015, 2009, 2012),
+    ]
+    raw = _run(legs, sl_mode="beyond_sweep")
+    assert raw["rows"] == []
+    assert raw["skip_reasons"].get("invalidated_before_fill") == 1
+
+
 def test_long_fvg_runs_to_the_dealing_high():
     raw = _run(_UP)
     assert len(raw["rows"]) == 1

@@ -235,6 +235,10 @@ def rules_for(params: Optional[CrtParams] = None) -> List[Dict[str, str]]:
             + _num(p.sl_buffer_pts)
             + " points beyond the far side of the gap. A sweep-close entry uses the sweep wick instead."
         )
+    stop += (
+        " If price trades through that stop before the limit fills, the order is cancelled "
+        "(invalidated_before_fill). A stop on the wrong side of the fill is cancelled too."
+    )
     if p.mode == "ny_open" and p.runner_mode == "swing":
         runner = (
             "The rest targets the other side of the New York candle when that price is beyond the partial. "
@@ -526,9 +530,13 @@ def _record_attempt(
         skips.append(_skip(day, weekday, "no_fill", side, "No entry before the order expired."))
         return seq
     filled_any = False
+    invalidated = False
     for order in made:
         trade = _simulate(order, ltf, params, ps)
         if trade is None:
+            continue
+        if trade.get("_invalidated"):
+            invalidated = True
             continue
         entry_day, entry_wd = _local_day(trade["entry_bar"].open_time, tz)
         if not _in_window(entry_day, d0, d1):
@@ -552,7 +560,18 @@ def _record_attempt(
             )
         )
     if not filled_any:
-        skips.append(_skip(day, weekday, "no_fill", side, "The level was not traded before it expired."))
+        if invalidated:
+            skips.append(
+                _skip(
+                    day,
+                    weekday,
+                    "invalidated_before_fill",
+                    side,
+                    "Price traded through the stop before the limit filled.",
+                )
+            )
+        else:
+            skips.append(_skip(day, weekday, "no_fill", side, "The level was not traded before it expired."))
     return seq
 
 
@@ -693,6 +712,8 @@ def run_crt_on_candles(
     return {
         "rows": kept,
         "skips": skips,
+        "skipped": len(skips),
+        "skip_reasons": _skip_counts(skips),
         "cancelled": cancelled,
         "ticks": len(fine),
         "symbol": reaktor_symbol(symbol),
@@ -806,6 +827,7 @@ def _orders_for_setup(
                 side=side,
                 market=True,
                 active_i=manage_i,
+                watch_i=manage_i,
                 expire_i=len(ltf),
                 entry=entry,
                 sl=sl,
@@ -836,11 +858,13 @@ def _orders_for_setup(
         if active_i is None or active_i >= expire_i:
             continue
         sl = _stop_level(side, entry, gap["bottom"], gap["top"], sweep_extreme, params, ps)
+        watch_i = manage_i if params.sl_mode == "beyond_sweep" and manage_i is not None else active_i
         orders.append(
             _order(
                 side=side,
                 market=False,
                 active_i=active_i,
+                watch_i=watch_i,
                 expire_i=expire_i,
                 entry=entry,
                 sl=sl,
@@ -928,11 +952,20 @@ def _stop_level(
     else:
         edge = bottom if side == "UP" else top
         sl = edge - buf if side == "UP" else edge + buf
-    if side == "UP" and sl >= entry:
-        sl = entry - max(ps, _EPS)
-    if side == "DOWN" and sl <= entry:
-        sl = entry + max(ps, _EPS)
     return sl
+
+
+def _stop_protects(side: str, entry: float, sl: float) -> bool:
+    """True when the stop is strictly beyond the fill. A stop on the entry or past it is not a trade."""
+    if side == "UP":
+        return sl < entry - _EPS
+    return sl > entry + _EPS
+
+
+def _touched_stop(side: str, bar: Candle, sl: float) -> bool:
+    if side == "UP":
+        return bar.low <= sl + _EPS
+    return bar.high >= sl - _EPS
 
 
 def _partial_px(side: str, entry: float, sl: float, params: CrtParams) -> float:
@@ -983,22 +1016,43 @@ def _wick_index(
 # --- fills ----------------------------------------------------------------
 
 
+def _invalidated() -> Dict[str, Any]:
+    return {"_invalidated": True}
+
+
 def _simulate(
     order: Dict[str, Any], bars: Sequence[Candle], params: CrtParams, ps: float
 ) -> Optional[Dict[str, Any]]:
     if order["active_i"] >= len(bars):
         return None
+    side = order["side"]
+    entry = float(order["entry"])
+    sl = float(order["sl"])
+    if not _stop_protects(side, entry, sl):
+        return _invalidated()
     if order["market"]:
         i = order["active_i"]
         bar = bars[i]
-        imm = _adverse_on_bar(order["side"], bar, order["entry"], order["sl"])
-        return _finish(order, bars, i, float(order["entry"]), imm, params, ps)
+        imm = _adverse_on_bar(side, bar, entry, sl)
+        fill = entry
+        if imm is not None and not _stop_protects(side, fill, sl):
+            return _invalidated()
+        return _finish(order, bars, i, fill, imm, params, ps)
     last = min(int(order["expire_i"]), len(bars))
+    watch_i = int(order.get("watch_i") if order.get("watch_i") is not None else order["active_i"])
+    watch_i = max(0, min(watch_i, int(order["active_i"])))
+    for i in range(watch_i, int(order["active_i"])):
+        if _touched_stop(side, bars[i], sl):
+            return _invalidated()
     for i in range(int(order["active_i"]), last):
-        got = _limit_fill(order["side"], bars[i], float(order["entry"]), float(order["sl"]))
+        got = _limit_fill(side, bars[i], entry, sl)
         if got is None:
+            if _touched_stop(side, bars[i], sl):
+                return _invalidated()
             continue
         fill, imm = got
+        if not _stop_protects(side, fill, sl):
+            return _invalidated()
         return _finish(order, bars, i, fill, imm, params, ps)
     return None
 

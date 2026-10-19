@@ -414,6 +414,9 @@
       $("crt-meta").textContent =
         (result.trades || 0) + " trades · PF " + pf + " · " + (result.sum_pts || 0) +
         " pts · " + (result.skipped || 0) + " skipped" +
+        (result.skip_reasons && result.skip_reasons.invalidated_before_fill
+          ? " · invalidated before fill " + result.skip_reasons.invalidated_before_fill
+          : "") +
         (result.saved_to ? " · " + result.saved_to : "");
     }
     const hero = $("crt-hero");

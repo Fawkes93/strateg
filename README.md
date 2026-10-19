@@ -134,7 +134,7 @@ curl -s -X POST http://127.0.0.1:8765/api/crt/run \
 # result.sqlite_id is the catalog run. A row with id opens /crt/chart?trade=<id>
 ```
 
-`skip_reasons` counts `close_through`, `no_reclaim`, `no_fill`, `session`, `news`, and `max_concurrent`. Zero-trade runs are written as JSON and are not inserted into SQLite.
+`skip_reasons` counts `close_through`, `no_reclaim`, `no_fill`, `invalidated_before_fill`, `session`, `news`, and `max_concurrent`. `invalidated_before_fill` is a limit that was cancelled because price traded through the stop before the fill, or because the stop was not beyond the fill. The count is on the run JSON under `skip_reasons`. Zero-trade runs are written as JSON and are not inserted into SQLite.
 
 ```bash
 # Hunt, no cap on overlapping trades.

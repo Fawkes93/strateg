@@ -109,7 +109,7 @@ app.include_router(asia_pullback_router)
 app.include_router(crt_router)
 
 _ASIA_PULLBACK_SCRIPT = '<script src="/static/asia_pullback.js?v=20261016a"></script>'
-_CRT_SCRIPT = '<script src="/static/crt.js?v=20261018b"></script>'
+_CRT_SCRIPT = '<script src="/static/crt.js?v=20261019a"></script>'
 
 
 class RunRequest(BaseModel):
