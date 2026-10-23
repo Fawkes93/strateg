@@ -100,6 +100,8 @@ class CrtParams:
     direction: str = "both"
     cost_pts: float = 0.0
     commission_pts: float = 0.0
+    # Two ranges can claim the same lower-timeframe gap. On: only the earliest range books it.
+    dedupe_fvg_across_ranges: bool = True
 
 
 def normalize_params(params: CrtParams) -> CrtParams:
@@ -196,6 +198,7 @@ def normalize_params(params: CrtParams) -> CrtParams:
         raise ValueError("direction must be both, long, or short")
     params.cost_pts = max(0.0, float(params.cost_pts or 0))
     params.commission_pts = max(0.0, float(params.commission_pts or 0))
+    params.dedupe_fvg_across_ranges = bool(params.dedupe_fvg_across_ranges)
     return params
 
 
@@ -588,6 +591,32 @@ def _record_attempt(
     return seq
 
 
+def dedupe_fvg_rows(
+    rows: Sequence[Dict[str, Any]], symbol: str
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Keep one trade per (symbol, side, FVG open time, entry). The earliest range wins.
+
+    Rows without an FVG open time (sweep_close entries) are never merged.
+    Returns (kept, dropped)."""
+    ordered = sorted(rows, key=lambda r: (str(r.get("range_open_ts") or ""), int(r.get("_seq") or 0)))
+    seen = set()
+    kept: List[Dict[str, Any]] = []
+    dropped: List[Dict[str, Any]] = []
+    for row in ordered:
+        fvg_ts = row.get("fvg_open_ts")
+        if not fvg_ts:
+            kept.append(row)
+            continue
+        key = (str(symbol), str(row.get("side")), str(fvg_ts), round(float(row.get("entry") or 0.0), 8))
+        if key in seen:
+            dropped.append(row)
+            continue
+        seen.add(key)
+        kept.append(row)
+    kept.sort(key=lambda r: int(r.get("_seq") or 0))
+    return kept, dropped
+
+
 def run_crt_on_candles(
     candles: Sequence[Candle],
     *,
@@ -707,6 +736,18 @@ def run_crt_on_candles(
             )
     if progress:
         progress(total, total)
+    if params.dedupe_fvg_across_ranges:
+        rows, dupes = dedupe_fvg_rows(rows, symbol)
+        for row in dupes:
+            skips.append(
+                _skip(
+                    _as_date(row.get("local_date")) or date.min,
+                    str(row.get("weekday") or ""),
+                    "duplicate_fvg",
+                    str(row.get("side") or ""),
+                    "An earlier range already booked this fair value gap.",
+                )
+            )
     kept, crowded = cap_open(rows, params.max_concurrent)
     for row in crowded:
         skips.append(
@@ -919,6 +960,7 @@ def _orders_for_setup(
                 runner=_runner_px(side, entry, sl, struct_high, struct_low, params),
                 bottom=gap["bottom"],
                 top=gap["top"],
+                fvg_ts=_iso(gap["c1"].open_time),
                 sweep_extreme=sweep_extreme,
                 wick_i=wick_i,
             )
@@ -1250,6 +1292,7 @@ def _finish(
         "pts": pts,
         "bottom": order.get("bottom"),
         "top": order.get("top"),
+        "fvg_ts": order.get("fvg_ts"),
         "sweep_extreme": order.get("sweep_extreme"),
         "wick_i": order.get("wick_i"),
         "entry_reason": "sweep_close" if order["market"] else "fvg",
@@ -1377,6 +1420,7 @@ def _trade_row(
         "sweep_extreme": trade.get("sweep_extreme"),
         "fvg_bottom": trade.get("bottom"),
         "fvg_top": trade.get("top"),
+        "fvg_open_ts": trade.get("fvg_ts"),
         "structure_high": struct_high,
         "structure_low": struct_low,
         "range_open_ts": _iso(rng.open_time),

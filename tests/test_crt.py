@@ -498,3 +498,41 @@ def test_stdio_reconfigure_accepts_an_arrow():
         assert "→" in raw.getvalue().decode("utf-8")
     finally:
         sys.stdout = sys.__stdout__
+
+
+def _dedupe_row(seq, range_open, fvg_open, entry, side="UP"):
+    return {"_seq": seq, "side": side, "range_open_ts": range_open, "fvg_open_ts": fvg_open, "entry": entry, "local_date": "2025-03-03", "weekday": "Mon"}
+
+
+def test_dedupe_two_ranges_sharing_one_fvg_book_one_trade():
+    from backtest.crt import dedupe_fvg_rows
+    later = _dedupe_row(2, "2025-03-03T09:00:00Z", "2025-03-03T09:20:00Z", 2010.0)
+    earlier = _dedupe_row(1, "2025-03-03T08:00:00Z", "2025-03-03T09:20:00Z", 2010.0)
+    kept, dropped = dedupe_fvg_rows([later, earlier], "XAUUSD")
+    assert [r["_seq"] for r in kept] == [1]
+    assert [r["_seq"] for r in dropped] == [2]
+
+
+def test_dedupe_keeps_two_different_fvgs_in_one_range():
+    from backtest.crt import dedupe_fvg_rows
+    a = _dedupe_row(1, "2025-03-03T09:00:00Z", "2025-03-03T09:20:00Z", 2010.0)
+    b = _dedupe_row(2, "2025-03-03T09:00:00Z", "2025-03-03T09:35:00Z", 2016.0)
+    kept, dropped = dedupe_fvg_rows([a, b], "XAUUSD")
+    assert len(kept) == 2 and dropped == []
+
+
+def test_dedupe_ignores_sweep_close_rows_and_other_sides():
+    from backtest.crt import dedupe_fvg_rows
+    a = _dedupe_row(1, "2025-03-03T08:00:00Z", None, 2010.0)
+    b = _dedupe_row(2, "2025-03-03T09:00:00Z", None, 2010.0)
+    c = _dedupe_row(3, "2025-03-03T09:00:00Z", "2025-03-03T09:20:00Z", 2010.0, side="DOWN")
+    d = _dedupe_row(4, "2025-03-03T08:00:00Z", "2025-03-03T09:20:00Z", 2010.0)
+    kept, _ = dedupe_fvg_rows([a, b, c, d], "XAUUSD")
+    assert len(kept) == 4
+
+
+def test_run_rows_carry_the_fvg_open_time_and_dedupe_is_on_by_default():
+    raw = _run(_UP)
+    assert raw["rows"][0]["fvg_open_ts"] == "2025-03-03T09:15:00+00:00"
+    assert _params().dedupe_fvg_across_ranges is True
+    assert len(_run(_UP, dedupe_fvg_across_ranges=False)["rows"]) == 1
