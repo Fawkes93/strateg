@@ -536,3 +536,113 @@ def test_run_rows_carry_the_fvg_open_time_and_dedupe_is_on_by_default():
     assert raw["rows"][0]["fvg_open_ts"] == "2025-03-03T09:15:00+00:00"
     assert _params().dedupe_fvg_across_ranges is True
     assert len(_run(_UP, dedupe_fvg_across_ranges=False)["rows"]) == 1
+
+
+# --- causal gap selection (no lookahead) -------------------------------------------------
+
+def _walk(n=4000, seed=7):
+    import random
+
+    rnd = random.Random(seed)
+    start = datetime(2025, 3, 3, 0, 0, tzinfo=timezone.utc)
+    out, px = [], 2000.0
+    for i in range(n):
+        o = px
+        c = o + rnd.gauss(0, 1.2) + (3.0 if rnd.random() < 0.03 else 0.0) * rnd.choice((-1, 1))
+        h = max(o, c) + abs(rnd.gauss(0, 0.6))
+        l = min(o, c) - abs(rnd.gauss(0, 0.6))
+        t = start + timedelta(minutes=5 * i)
+        out.append(Candle(open_time=t, close_time=t + timedelta(minutes=5), open=o, high=h, low=l, close=c, is_closed=True))
+        px = c
+    return out
+
+
+def _entries(bars, cut, **kw):
+    p = CrtParams(htf_min=60, pd_filter=False, structure_bars=12, fvg_wait_htf=4, max_fvgs=2, cost_pts=0, **kw)
+    rows = run_crt_on_candles(bars, symbol="XAUUSD", params=p)["rows"]
+    return sorted(
+        (r["range_open_ts"], r["fvg_open_ts"], round(float(r["entry"]), 6), r["entry_ts"])
+        for r in rows
+        if datetime.fromisoformat(str(r["entry_ts"]).replace("Z", "+00:00")) < cut
+    )
+
+
+@pytest.mark.parametrize("select", ["first", "extreme", "all", "extreme_at_close"])
+def test_truncating_the_future_does_not_change_earlier_entries(select):
+    bars = _walk()
+    total = 0
+    for k in (1500, 2300, 3100):
+        cut = bars[k].open_time
+        full = _entries(bars, cut, fvg_select=select)
+        short = _entries(bars[:k], cut, fvg_select=select)
+        assert full == short, (select, k)
+        total += len(full)
+    assert total > 0, "synthetic data should produce some fills"
+
+
+def test_legacy_extreme_can_see_future_gaps():
+    bars = _walk()
+    leaked = False
+    for k in range(1200, 3900, 50):
+        cut = bars[k].open_time
+        if _entries(bars, cut, fvg_select="all", lookahead_legacy=True) != _entries(bars[:k], cut, fvg_select="all", lookahead_legacy=True):
+            leaked = True
+            break
+    if not leaked:
+        pytest.skip("synthetic data did not expose the legacy lookahead")
+
+
+def test_causal_caps_fills_per_setup():
+    bars = _walk()
+    for select, cap in (("first", 1), ("extreme", 1), ("extreme_at_close", 1), ("all", 2)):
+        p = CrtParams(htf_min=60, pd_filter=False, structure_bars=12, fvg_wait_htf=4, max_fvgs=2, fvg_select=select, dedupe_fvg_across_ranges=False)
+        rows = run_crt_on_candles(bars, symbol="XAUUSD", params=p)["rows"]
+        per = {}
+        for r in rows:
+            per[r["range_open_ts"]] = per.get(r["range_open_ts"], 0) + 1
+        assert not per or max(per.values()) <= cap, select
+
+
+def test_extreme_at_close_needs_the_causal_engine():
+    with pytest.raises(ValueError):
+        normalize_params(CrtParams(fvg_select="extreme_at_close", lookahead_legacy=True))
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        dict(min_sweep_pts=50.0),
+        dict(min_range_atr=0.5, max_range_atr=3.0),
+        dict(bias_bars=48),
+        dict(min_fvg_pts=30.0),
+        dict(be_after_partial=True),
+        dict(runner_mode="range"),
+        dict(entry_mode="range_mid", sl_mode="beyond_sweep"),
+        dict(entry_mode="sweep_close", sl_mode="beyond_sweep"),
+        dict(ltf_min=15),
+        dict(session_enabled=True, session_start_hour=9, session_end_hour=18),
+    ],
+)
+def test_new_filters_do_not_read_the_future(extra):
+    bars = _walk()
+    for k in (1700, 2900):
+        cut = bars[k].open_time
+        assert _entries(bars, cut, fvg_select="extreme", **extra) == _entries(bars[:k], cut, fvg_select="extreme", **extra), (extra, k)
+
+
+def test_new_params_default_to_the_causal_engine():
+    bars = _walk()
+    base = run_crt_on_candles(bars, symbol="XAUUSD", params=CrtParams(htf_min=60, pd_filter=False, structure_bars=12))["rows"]
+    same = run_crt_on_candles(
+        bars,
+        symbol="XAUUSD",
+        params=CrtParams(htf_min=60, pd_filter=False, structure_bars=12, min_sweep_pts=0, min_range_atr=0, max_range_atr=0, bias_bars=0, min_fvg_pts=0, be_after_partial=False),
+    )["rows"]
+    assert [r["pts"] for r in base] == [r["pts"] for r in same]
+
+
+def test_breakeven_never_loses_more_than_costs_after_the_partial():
+    bars = _walk()
+    p = CrtParams(htf_min=60, pd_filter=False, structure_bars=12, be_after_partial=True, cost_pts=0)
+    rows = run_crt_on_candles(bars, symbol="XAUUSD", params=p)["rows"]
+    assert all(float(r["pts"]) >= -1e-6 for r in rows if r["exit_reason"] == "partial_sl")

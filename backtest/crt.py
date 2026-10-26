@@ -38,6 +38,7 @@ Lower timeframe, default 5 minutes:
 
 from __future__ import annotations
 
+from bisect import bisect_left
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, time as dt_time, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
@@ -51,11 +52,11 @@ from backtest.overnight_break import require_zone
 
 HTF_CHOICES = (15, 30, 60, 120, 240)
 LTF_CHOICES = (5, 15, 30)
-ENTRY_MODES = ("fvg", "sweep_close")
-FVG_SELECTS = ("first", "extreme", "all")
+ENTRY_MODES = ("fvg", "sweep_close", "range_mid")
+FVG_SELECTS = ("first", "extreme", "all", "extreme_at_close")
 FVG_ENTRIES = ("proximal", "ce", "distal")
 SL_MODES = ("beyond_fvg", "beyond_sweep", "fixed")
-RUNNER_MODES = ("swing", "rr")
+RUNNER_MODES = ("swing", "rr", "range")
 SIDES = ("both", "long", "short")
 MODES = ("hunt", "ny_open")
 
@@ -102,6 +103,18 @@ class CrtParams:
     commission_pts: float = 0.0
     # Two ranges can claim the same lower-timeframe gap. On: only the earliest range books it.
     dedupe_fvg_across_ranges: bool = True
+    # False (default): gap selection is causal, see _orders_for_setup. True reproduces the old
+    # results, which picked "extreme"/"all" from every gap in the wait window, including gaps
+    # that formed after an earlier gap had already filled (lookahead).
+    lookahead_legacy: bool = False
+    # Extra causal filters / exits. Defaults (0 / False) leave behaviour unchanged.
+    min_sweep_pts: float = 0.0  # sweep must trade this far beyond the range candle
+    atr_len: int = 14  # HTF ATR length for the range-size filters (bars up to and incl. the range)
+    min_range_atr: float = 0.0  # range candle span >= this many ATRs
+    max_range_atr: float = 0.0  # range candle span <= this many ATRs (0 = off)
+    bias_bars: int = 0  # UP needs range close > close bias_bars HTF bars earlier (DOWN mirrors)
+    min_fvg_pts: float = 0.0  # ignore gaps smaller than this
+    be_after_partial: bool = False  # after the partial, the runner stop moves to the fill
 
 
 def normalize_params(params: CrtParams) -> CrtParams:
@@ -128,10 +141,10 @@ def normalize_params(params: CrtParams) -> CrtParams:
     params.min_sl_pts = max(0.0, float(params.min_sl_pts or 0))
     params.entry_mode = str(params.entry_mode or "fvg").strip().lower()
     if params.entry_mode not in ENTRY_MODES:
-        raise ValueError("entry_mode must be fvg or sweep_close")
+        raise ValueError("entry_mode must be fvg, sweep_close, or range_mid")
     params.fvg_select = str(params.fvg_select or "extreme").strip().lower()
     if params.fvg_select not in FVG_SELECTS:
-        raise ValueError("fvg_select must be first, extreme, or all")
+        raise ValueError("fvg_select must be first, extreme, all, or extreme_at_close")
     params.fvg_entry = str(params.fvg_entry or "proximal").strip().lower()
     if params.fvg_entry not in FVG_ENTRIES:
         raise ValueError("fvg_entry must be proximal, ce, or distal")
@@ -199,6 +212,16 @@ def normalize_params(params: CrtParams) -> CrtParams:
     params.cost_pts = max(0.0, float(params.cost_pts or 0))
     params.commission_pts = max(0.0, float(params.commission_pts or 0))
     params.dedupe_fvg_across_ranges = bool(params.dedupe_fvg_across_ranges)
+    params.lookahead_legacy = bool(params.lookahead_legacy)
+    params.min_sweep_pts = max(0.0, float(params.min_sweep_pts or 0))
+    params.atr_len = max(1, min(200, int(params.atr_len or 14)))
+    params.min_range_atr = max(0.0, float(params.min_range_atr or 0))
+    params.max_range_atr = max(0.0, float(params.max_range_atr or 0))
+    params.bias_bars = max(0, min(1000, int(params.bias_bars or 0)))
+    params.min_fvg_pts = max(0.0, float(params.min_fvg_pts or 0))
+    params.be_after_partial = bool(params.be_after_partial)
+    if params.lookahead_legacy and params.fvg_select == "extreme_at_close":
+        raise ValueError("extreme_at_close has no legacy form")
     return params
 
 
@@ -549,6 +572,7 @@ def _record_attempt(
         return seq
     filled_any = False
     skip_reason = None
+    sims = []
     for order in made:
         trade = _simulate(order, ltf, params, ps)
         if trade is None:
@@ -558,6 +582,14 @@ def _record_attempt(
             if skip_reason != "invalidated_before_fill":
                 skip_reason = reason
             continue
+        sims.append(trade)
+    if not params.lookahead_legacy:
+        # Live, a setup stops once it has its fills: 1 for first/extreme/extreme_at_close,
+        # max_fvgs for all. The rest of its pending orders are cancelled.
+        cap = max(1, int(params.max_fvgs)) if params.fvg_select == "all" else 1
+        sims.sort(key=lambda t: to_utc(t["entry_bar"].open_time))
+        sims = sims[:cap]
+    for trade in sims:
         entry_day, entry_wd = _local_day(trade["entry_bar"].open_time, tz)
         if not _in_window(entry_day, d0, d1):
             continue
@@ -714,6 +746,8 @@ def run_crt_on_candles(
                 continue
             sweep_state = _sweep_state(rng, nxt, side)
             if sweep_state is None:
+                continue
+            if not _extra_filters_ok(htf, i, side, params, ps):
                 continue
             seq = _record_attempt(
                 rows=rows,
@@ -872,6 +906,37 @@ def _range_ok(
     return rng.close >= eq - _EPS
 
 
+def _extra_filters_ok(htf: Sequence[Candle], i: int, side: str, params: CrtParams, ps: float) -> bool:
+    """Optional filters. Only bars up to the sweep candle (i + 1) are read; orders start after it closes."""
+    rng, nxt = htf[i], htf[i + 1]
+    if params.min_sweep_pts > 0:
+        depth = (rng.low - nxt.low) if side == "UP" else (nxt.high - rng.high)
+        if depth / ps + 1e-6 < params.min_sweep_pts:
+            return False
+    if params.min_range_atr > 0 or params.max_range_atr > 0:
+        n = params.atr_len
+        if i - n < 0:
+            return False
+        trs = [max(htf[k].high, htf[k - 1].close) - min(htf[k].low, htf[k - 1].close) for k in range(i - n + 1, i + 1)]
+        atr = sum(trs) / len(trs)
+        if atr <= _EPS:
+            return False
+        ratio = (rng.high - rng.low) / atr
+        if params.min_range_atr > 0 and ratio + 1e-9 < params.min_range_atr:
+            return False
+        if params.max_range_atr > 0 and ratio - 1e-9 > params.max_range_atr:
+            return False
+    if params.bias_bars > 0:
+        j = i - params.bias_bars
+        if j < 0:
+            return False
+        if side == "UP" and not rng.close > htf[j].close + _EPS:
+            return False
+        if side == "DOWN" and not rng.close < htf[j].close - _EPS:
+            return False
+    return True
+
+
 def _sweep_state(rng: Candle, nxt: Candle, side: str) -> Optional[str]:
     """'ok', 'close_through', 'no_reclaim', or None when price never left the range."""
     if side == "UP":
@@ -905,6 +970,32 @@ def _orders_for_setup(
 ) -> List[Dict[str, Any]]:
     sweep_extreme = nxt.low if side == "UP" else nxt.high
     manage_i = _index_at_or_after(ltf, nxt.close_time)
+    if params.runner_mode == "range":
+        struct_high, struct_low = float(rng.high), float(rng.low)
+    if params.entry_mode == "range_mid":
+        if manage_i is None:
+            return []
+        entry = float(rng.low) + params.equilibrium * float(rng.high - rng.low)
+        sl = _stop_level(side, entry, None, None, sweep_extreme, params, ps)
+        exp_at = to_utc(nxt.close_time) + timedelta(minutes=params.fvg_wait_htf * params.htf_min)
+        exp_i = _index_at_or_after(ltf, exp_at)
+        return [
+            _order(
+                side=side,
+                market=False,
+                active_i=manage_i,
+                watch_i=manage_i,
+                expire_i=len(ltf) if exp_i is None else exp_i,
+                entry=entry,
+                sl=sl,
+                partial=_partial_px(side, entry, sl, params),
+                runner=_runner_px(side, entry, sl, struct_high, struct_low, params),
+                bottom=None,
+                top=None,
+                sweep_extreme=sweep_extreme,
+                wick_i=ltf_idxs[0] if ltf_idxs else manage_i,
+            )
+        ]
     if params.entry_mode == "sweep_close":
         if manage_i is None:
             return []
@@ -934,10 +1025,18 @@ def _orders_for_setup(
         return []
     expire_at = to_utc(nxt.close_time) + timedelta(minutes=params.fvg_wait_htf * params.htf_min)
     gaps = _gaps_after(ltf, wick_i, side, expire_at)
-    chosen = _choose_gaps(gaps, side, params.fvg_select, params.max_fvgs)
+    if params.min_fvg_pts > 0:
+        gaps = [g for g in gaps if (g["top"] - g["bottom"]) / ps + 1e-6 >= params.min_fvg_pts]
     expire_i = _index_at_or_after(ltf, expire_at)
     if expire_i is None:
         expire_i = len(ltf)
+    if not params.lookahead_legacy:
+        return _causal_orders(
+            side=side, nxt=nxt, ltf=ltf, gaps=gaps, expire_at=expire_at, expire_i=expire_i,
+            manage_i=manage_i, sweep_extreme=sweep_extreme, wick_i=wick_i,
+            struct_high=struct_high, struct_low=struct_low, params=params, ps=ps,
+        )
+    chosen = _choose_gaps(gaps, side, params.fvg_select, params.max_fvgs)
     orders = []
     for gap in chosen:
         entry = _entry_level(side, gap["bottom"], gap["top"], params.fvg_entry)
@@ -954,6 +1053,102 @@ def _orders_for_setup(
                 active_i=active_i,
                 watch_i=watch_i,
                 expire_i=expire_i,
+                entry=entry,
+                sl=sl,
+                partial=_partial_px(side, entry, sl, params),
+                runner=_runner_px(side, entry, sl, struct_high, struct_low, params),
+                bottom=gap["bottom"],
+                top=gap["top"],
+                fvg_ts=_iso(gap["c1"].open_time),
+                sweep_extreme=sweep_extreme,
+                wick_i=wick_i,
+            )
+        )
+    return orders
+
+
+def _causal_orders(
+    *,
+    side: str,
+    nxt: Candle,
+    ltf: Sequence[Candle],
+    gaps: Sequence[Dict[str, Any]],
+    expire_at: datetime,
+    expire_i: int,
+    manage_i: Optional[int],
+    sweep_extreme: float,
+    wick_i: int,
+    struct_high: float,
+    struct_low: float,
+    params: CrtParams,
+    ps: float,
+) -> List[Dict[str, Any]]:
+    """Orders that only use gaps already formed when the order is placed.
+
+    A gap is known from the bar after its third candle closes (index c3 + 1), and never
+    before the sweep candle closes. Each order is a window [active_i, expire_i):
+    - first: the first gap that forms. Its limit lives until the wait window ends.
+    - extreme: the most extreme gap known so far. When a more extreme gap forms, the
+      older unfilled limit is cancelled at that bar and the new one is placed.
+    - all: every gap gets a limit as it forms, until the wait window ends.
+    - extreme_at_close: nothing is placed during the wait window. When it closes, one
+      limit goes on the most extreme gap of the window and lives for another
+      fvg_wait_htf HTF bars. If price already traded through its stop after the gap
+      formed, it is skipped (invalidated_before_fill).
+    _record_attempt then keeps the earliest fills up to the cap (1, or max_fvgs for all),
+    which is the same as cancelling the remaining limits once the cap is reached.
+    """
+    mode = params.fvg_select
+    sweep_close_i = _index_at_or_after(ltf, nxt.close_time)
+    if sweep_close_i is None:
+        return []
+
+    def known_at(g: Dict[str, Any]) -> int:
+        return max(int(g["i"]) + 1, sweep_close_i)
+
+    windows: List[Tuple[Dict[str, Any], int, int, int]] = []  # gap, active_i, expire_i, watch_i
+    ordered = sorted(gaps, key=lambda g: int(g["i"]))
+    if mode == "first":
+        if ordered:
+            g = ordered[0]
+            windows.append((g, known_at(g), expire_i, known_at(g)))
+    elif mode == "all":
+        for g in ordered:
+            windows.append((g, known_at(g), expire_i, known_at(g)))
+    elif mode == "extreme":
+        current: Optional[Dict[str, Any]] = None
+        start = 0
+        for n, g in enumerate(ordered):
+            best = _choose_gaps(ordered[: n + 1], side, "extreme", 1)[0]
+            if current is None:
+                current, start = best, known_at(best)
+            elif best is not current:
+                stop = known_at(g)
+                windows.append((current, start, min(stop, expire_i), start))
+                current, start = best, stop
+        if current is not None:
+            windows.append((current, start, expire_i, start))
+    elif mode == "extreme_at_close":
+        if ordered:
+            g = _choose_gaps(ordered, side, "extreme", 1)[0]
+            late_at = expire_at + timedelta(minutes=params.fvg_wait_htf * params.htf_min)
+            late_i = _index_at_or_after(ltf, late_at)
+            windows.append((g, expire_i, len(ltf) if late_i is None else late_i, known_at(g)))
+    orders: List[Dict[str, Any]] = []
+    for gap, active_i, end_i, watch_i in windows:
+        if active_i >= end_i or active_i >= len(ltf):
+            continue
+        entry = _entry_level(side, gap["bottom"], gap["top"], params.fvg_entry)
+        sl = _stop_level(side, entry, gap["bottom"], gap["top"], sweep_extreme, params, ps)
+        if params.sl_mode == "beyond_sweep" and manage_i is not None:
+            watch_i = min(watch_i, manage_i)
+        orders.append(
+            _order(
+                side=side,
+                market=False,
+                active_i=active_i,
+                watch_i=watch_i,
+                expire_i=end_i,
                 entry=entry,
                 sl=sl,
                 partial=_partial_px(side, entry, sl, params),
@@ -1076,12 +1271,12 @@ def _runner_px(
     if side == "UP":
         rr_px = entry + params.runner_rr * risk
         partial = entry + params.partial_rr * risk
-        if params.runner_mode == "swing" and struct_high > partial + _EPS:
+        if params.runner_mode in ("swing", "range") and struct_high > partial + _EPS:
             return struct_high
         return rr_px
     rr_px = entry - params.runner_rr * risk
     partial = entry - params.partial_rr * risk
-    if params.runner_mode == "swing" and struct_low < partial - _EPS:
+    if params.runner_mode in ("swing", "range") and struct_low < partial - _EPS:
         return struct_low
     return rr_px
 
@@ -1237,7 +1432,8 @@ def _finish(
                 if to_utc(nxt.open_time) >= deadline:
                     break
                 last_bar = nxt
-                hit = _adverse_on_bar(side, nxt, fill, float(order["sl"]))
+                stop_px = fill if (params.be_after_partial and partial_hit) else float(order["sl"])
+                hit = _adverse_on_bar(side, nxt, fill, stop_px)
                 if hit is not None:
                     reason = "partial_sl" if partial_hit else "sl"
                     exit_px = hit[0]
@@ -1734,12 +1930,20 @@ def _bucket(ts: datetime, tf_min: int) -> int:
     return unix - (unix % step)
 
 
+_OPEN_CACHE: Dict[int, Tuple[Sequence[Candle], int, List[datetime]]] = {}
+
+
 def _index_at_or_after(bars: Sequence[Candle], ts: datetime) -> Optional[int]:
+    """First index whose open is at or after ts. Bars are sorted by open time."""
     want = to_utc(ts)
-    for i, bar in enumerate(bars):
-        if to_utc(bar.open_time) >= want:
-            return i
-    return None
+    hit = _OPEN_CACHE.get(id(bars))
+    if hit is None or hit[0] is not bars or hit[1] != len(bars):
+        if len(_OPEN_CACHE) > 8:
+            _OPEN_CACHE.clear()
+        hit = (bars, len(bars), [to_utc(b.open_time) for b in bars])
+        _OPEN_CACHE[id(bars)] = hit
+    i = bisect_left(hit[2], want)
+    return i if i < len(bars) else None
 
 
 def _in_session(params: CrtParams, open_time: datetime, tz: ZoneInfo) -> bool:
